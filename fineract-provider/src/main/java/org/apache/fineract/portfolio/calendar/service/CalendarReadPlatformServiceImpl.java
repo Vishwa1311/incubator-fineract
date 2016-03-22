@@ -85,6 +85,7 @@ public class CalendarReadPlatformServiceImpl implements CalendarReadPlatformServ
             final EnumOptionData frequency = CalendarEnumerations.calendarFrequencyType(CalendarUtils.getFrequency(recurrence));
             final Integer interval = new Integer(CalendarUtils.getInterval(recurrence));
             final EnumOptionData repeatsOnDay = CalendarEnumerations.calendarWeekDaysType(CalendarUtils.getRepeatsOnDay(recurrence));
+            final EnumOptionData repeatsOnNthDayOfMonth = CalendarEnumerations.calendarFrequencyNthDayType(CalendarUtils.getRepeatsOnNthDayOfMonth(recurrence));
             final Integer remindById = rs.getInt("remindById");
             EnumOptionData remindBy = null;
             if (remindById != null && remindById != 0) {
@@ -96,7 +97,7 @@ public class CalendarReadPlatformServiceImpl implements CalendarReadPlatformServ
             if (startDate != null && recurrence != null) {
                 humanReadable = CalendarUtils.getRRuleReadable(startDate, recurrence);
             }
-
+            Integer monthOnDay = CalendarUtils.getMonthOnDay(recurrence);
             final LocalDate createdDate = JdbcSupport.getLocalDate(rs, "createdDate");
             final LocalDate lastUpdatedDate = JdbcSupport.getLocalDate(rs, "updatedDate");
             final Long createdByUserId = rs.getLong("creatingUserId");
@@ -105,9 +106,9 @@ public class CalendarReadPlatformServiceImpl implements CalendarReadPlatformServ
             final String lastUpdatedByUserName = rs.getString("updatingUserName");
 
             return CalendarData.instance(id, calendarInstanceId, entityId, entityType, title, description, location, startDate, endDate,
-                    duration, type, repeating, recurrence, frequency, interval, repeatsOnDay, remindBy, firstReminder, secondReminder,
-                    humanReadable, createdDate, lastUpdatedDate, createdByUserId, createdByUserName, lastUpdatedByUserId,
-                    lastUpdatedByUserName);
+                    duration, type, repeating, recurrence, frequency, interval, repeatsOnDay, repeatsOnNthDayOfMonth, remindBy, firstReminder, 
+                    secondReminder, humanReadable, createdDate, lastUpdatedDate, createdByUserId, createdByUserName, lastUpdatedByUserId,
+                    lastUpdatedByUserName, monthOnDay);
         }
     }
 
@@ -440,6 +441,7 @@ public class CalendarReadPlatformServiceImpl implements CalendarReadPlatformServ
             final EnumOptionData frequency = CalendarEnumerations.calendarFrequencyType(CalendarUtils.getFrequency(recurrence));
             final Integer interval = new Integer(CalendarUtils.getInterval(recurrence));
             final EnumOptionData repeatsOnDay = CalendarEnumerations.calendarWeekDaysType(CalendarUtils.getRepeatsOnDay(recurrence));
+            final EnumOptionData repeatsOnNthDayOfMonth = CalendarEnumerations.calendarFrequencyNthDayType(CalendarUtils.getRepeatsOnNthDayOfMonth(recurrence));
             final Integer remindById = rs.getInt("remindById");
             EnumOptionData remindBy = null;
             if (remindById != null && remindById != 0) {
@@ -458,11 +460,11 @@ public class CalendarReadPlatformServiceImpl implements CalendarReadPlatformServ
             final String createdByUserName = null;
             final Long lastUpdatedByUserId = null;
             final String lastUpdatedByUserName = null;
-
+            Integer monthOnDay = CalendarUtils.getMonthOnDay(recurrence);
             return CalendarData.instance(id, calendarInstanceId, entityId, entityType, title, description, location, startDate, endDate,
-                    duration, type, repeating, recurrence, frequency, interval, repeatsOnDay, remindBy, firstReminder, secondReminder,
-                    humanReadable, createdDate, lastUpdatedDate, createdByUserId, createdByUserName, lastUpdatedByUserId,
-                    lastUpdatedByUserName);
+                    duration, type, repeating, recurrence, frequency, interval, repeatsOnDay, repeatsOnNthDayOfMonth, remindBy, firstReminder, 
+                    secondReminder, humanReadable, createdDate, lastUpdatedDate, createdByUserId, createdByUserName, lastUpdatedByUserId,
+                    lastUpdatedByUserName, monthOnDay);
         }
     }
 }
