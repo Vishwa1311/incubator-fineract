@@ -288,8 +288,10 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
         if (!changes.isEmpty()) {
             // update calendar history table only if there is a change in
             // calendar start date.
-            final Date endDate = presentMeetingDate.minusDays(1).toDate();
-            calendarHistory.updateEndDate(endDate);
+			if (null != newMeetingDate) {
+				final Date endDate = presentMeetingDate.minusDays(1).toDate();
+				calendarHistory.updateEndDate(endDate);
+			}
             this.calendarHistoryRepository.save(calendarHistory);
             Set<CalendarHistory> history = calendarForUpdate.getCalendarHistory();
             history.add(calendarHistory);
