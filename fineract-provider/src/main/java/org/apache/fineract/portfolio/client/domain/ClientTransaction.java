@@ -46,6 +46,7 @@ import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OrganisationCurrency;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.hibernate.annotations.LazyCollection;
@@ -103,27 +104,32 @@ public class ClientTransaction extends AbstractPersistable<Long> {
     @Transient
     private OrganisationCurrency currency;
 
+    @ManyToOne(optional = true, cascade = CascadeType.ALL)
+    @JoinColumn(name = "global_transaction_ref_id", nullable = true)
+    private GlobalTransactionReference transactionReference;
+
     protected ClientTransaction() {}
 
     public static ClientTransaction payCharge(final Client client, final Office office, PaymentDetail paymentDetail, final LocalDate date,
-            final Money amount, final String currencyCode, final AppUser appUser) {
+            final Money amount, final String currencyCode, final AppUser appUser, final GlobalTransactionReference transactionReference) {
         final boolean isReversed = false;
         final String externalId = null;
         return new ClientTransaction(client, office, paymentDetail, ClientTransactionType.PAY_CHARGE.getValue(), date, amount, isReversed,
-                externalId, DateUtils.getDateOfTenant(), currencyCode, appUser);
+                externalId, DateUtils.getDateOfTenant(), currencyCode, appUser, transactionReference);
     }
 
     public static ClientTransaction waiver(final Client client, final Office office, final LocalDate date, final Money amount,
-            final String currencyCode, final AppUser appUser) {
+            final String currencyCode, final AppUser appUser, final GlobalTransactionReference transactionReference) {
         final boolean isReversed = false;
         final String externalId = null;
         final PaymentDetail paymentDetail = null;
         return new ClientTransaction(client, office, paymentDetail, ClientTransactionType.WAIVE_CHARGE.getValue(), date, amount, isReversed,
-                externalId, DateUtils.getDateOfTenant(), currencyCode, appUser);
+                externalId, DateUtils.getDateOfTenant(), currencyCode, appUser, transactionReference);
     }
 
     public ClientTransaction(Client client, Office office, PaymentDetail paymentDetail, Integer typeOf, LocalDate transactionLocalDate,
-            Money amount, boolean reversed, String externalId, Date createdDate, String currencyCode, AppUser appUser) {
+            Money amount, boolean reversed, String externalId, Date createdDate, String currencyCode, AppUser appUser,
+            final GlobalTransactionReference transactionReference) {
         super();
         this.client = client;
         this.office = office;
@@ -136,6 +142,7 @@ public class ClientTransaction extends AbstractPersistable<Long> {
         this.createdDate = createdDate;
         this.currencyCode = currencyCode;
         this.appUser = appUser;
+        this.transactionReference = transactionReference;
     }
 
     public void reverse() {
@@ -231,4 +238,7 @@ public class ClientTransaction extends AbstractPersistable<Long> {
         return new LocalDate(this.dateOf);
     }
 
+    public GlobalTransactionReference getTransactionReference() {
+        return this.transactionReference;
+    }
 }

@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.loanaccount.domain;
 import java.math.BigDecimal;
 
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.joda.time.LocalDate;
@@ -29,7 +30,8 @@ public interface LoanAccountDomainService {
 
     LoanTransaction makeRepayment(Loan loan, CommandProcessingResultBuilder builderResult, LocalDate transactionDate,
             BigDecimal transactionAmount, PaymentDetail paymentDetail, String noteText, String txnExternalId,
-            final boolean isRecoveryRepayment, boolean isAccountTransfer, HolidayDetailDTO holidatDetailDto, Boolean isHolidayValidationDone);
+            final boolean isRecoveryRepayment, boolean isAccountTransfer, HolidayDetailDTO holidatDetailDto, Boolean isHolidayValidationDone, 
+            final GlobalTransactionReference transactionReference);
 
     LoanTransaction makeRefund(Long accountId, CommandProcessingResultBuilder builderResult, LocalDate transactionDate,
             BigDecimal transactionAmount, PaymentDetail paymentDetail, String noteText, String txnExternalId);
@@ -43,7 +45,8 @@ public interface LoanAccountDomainService {
             PaymentDetail paymentDetail, String noteText, String txnExternalId);
 
     LoanTransaction makeRefundForActiveLoan(Long accountId, CommandProcessingResultBuilder builderResult, LocalDate transactionDate,
-            BigDecimal transactionAmount, PaymentDetail paymentDetail, String noteText, String txnExternalId);
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, String noteText, String txnExternalId,
+            GlobalTransactionReference transactionReference);
 
     /**
      * This method is to recalculate and accrue the income till the last accrued

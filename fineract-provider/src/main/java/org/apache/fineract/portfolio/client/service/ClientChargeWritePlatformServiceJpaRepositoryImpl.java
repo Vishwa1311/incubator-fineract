@@ -51,6 +51,8 @@ import org.apache.fineract.portfolio.client.domain.ClientChargeRepositoryWrapper
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientTransaction;
 import org.apache.fineract.portfolio.client.domain.ClientTransactionRepository;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReferenceAssembler;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -79,6 +81,7 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
     private final ClientTransactionRepository clientTransactionRepository;
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
     private final JournalEntryWritePlatformService journalEntryWritePlatformService;
+    private final GlobalTransactionReferenceAssembler transactionReferenceAssembler;
 
     @Autowired
     public ClientChargeWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
@@ -87,7 +90,8 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
             final ConfigurationDomainService configurationDomainService, final ClientChargeRepositoryWrapper clientChargeRepository,
             final WorkingDaysRepositoryWrapper workingDaysRepository, final ClientTransactionRepository clientTransactionRepository,
             final PaymentDetailWritePlatformService paymentDetailWritePlatformService,
-            final JournalEntryWritePlatformService journalEntryWritePlatformService) {
+            final JournalEntryWritePlatformService journalEntryWritePlatformService,
+            final GlobalTransactionReferenceAssembler transactionReferenceAssembler) {
         this.context = context;
         this.chargeRepository = chargeRepository;
         this.clientChargeDataValidator = clientChargeDataValidator;
@@ -99,6 +103,7 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
         this.clientTransactionRepository = clientTransactionRepository;
         this.paymentDetailWritePlatformService = paymentDetailWritePlatformService;
         this.journalEntryWritePlatformService = journalEntryWritePlatformService;
+        this.transactionReferenceAssembler = transactionReferenceAssembler;
     }
 
     @Override
@@ -159,9 +164,10 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
             // create Payment Transaction
             final Map<String, Object> changes = new LinkedHashMap<>();
             final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
-
+            final GlobalTransactionReference transactionReference = this.transactionReferenceAssembler
+                    .generateTransactionReference(transactionDate);
             ClientTransaction clientTransaction = ClientTransaction.payCharge(client, client.getOffice(), paymentDetail, transactionDate,
-                    chargePaid, clientCharge.getCurrency().getCode(), getAppUserIfPresent());
+                    chargePaid, clientCharge.getCurrency().getCode(), getAppUserIfPresent(), transactionReference);
             this.clientTransactionRepository.saveAndFlush(clientTransaction);
 
             // update charge paid by associations
@@ -200,10 +206,11 @@ public class ClientChargeWritePlatformServiceJpaRepositoryImpl implements Client
 
             // waive the charge
             Money waivedAmount = clientCharge.waive();
-
+            final GlobalTransactionReference transactionReference = this.transactionReferenceAssembler
+                    .generateTransactionReference(transactionDate);
             // create Waiver Transaction
             ClientTransaction clientTransaction = ClientTransaction.waiver(client, client.getOffice(), transactionDate, waivedAmount,
-                    clientCharge.getCurrency().getCode(), getAppUserIfPresent());
+                    clientCharge.getCurrency().getCode(), getAppUserIfPresent(), transactionReference);
             this.clientTransactionRepository.save(clientTransaction);
 
             // update charge paid by associations

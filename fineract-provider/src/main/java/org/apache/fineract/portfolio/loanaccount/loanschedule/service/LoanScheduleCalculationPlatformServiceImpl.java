@@ -38,6 +38,8 @@ import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
 import org.apache.fineract.portfolio.accountdetails.domain.AccountType;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
+import org.apache.fineract.portfolio.globaltransaction.service.GlobalTransactionReferenceIdGenerateHelper;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanDisbursementDetails;
@@ -77,6 +79,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
     private final ConfigurationDomainService configurationDomainService;
     private final CurrencyReadPlatformService currencyReadPlatformService;
     private final LoanUtilService loanUtilService;
+    private final GlobalTransactionReferenceIdGenerateHelper transactionReferenceIdGenerateHelper;
 
     @Autowired
     public LoanScheduleCalculationPlatformServiceImpl(final CalculateLoanScheduleQueryFromApiJsonHelper fromApiJsonDeserializer,
@@ -86,7 +89,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
             final LoanAssembler loanAssembler,
             final LoanRepaymentScheduleTransactionProcessorFactory loanRepaymentScheduleTransactionProcessorFactory,
             final ConfigurationDomainService configurationDomainService, final CurrencyReadPlatformService currencyReadPlatformService,
-            final LoanUtilService loanUtilService) {
+            final LoanUtilService loanUtilService, final GlobalTransactionReferenceIdGenerateHelper transactionReferenceIdGenerateHelper) {
         this.fromApiJsonDeserializer = fromApiJsonDeserializer;
         this.loanScheduleAssembler = loanScheduleAssembler;
         this.fromJsonHelper = fromJsonHelper;
@@ -99,6 +102,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
         this.configurationDomainService = configurationDomainService;
         this.currencyReadPlatformService = currencyReadPlatformService;
         this.loanUtilService = loanUtilService;
+        this.transactionReferenceIdGenerateHelper = transactionReferenceIdGenerateHelper;
     }
 
     @Override
@@ -187,8 +191,10 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
             modifiedTransactions.add(LoanTransaction.copyTransactionProperties(loanTransaction));
         }
         if (isNewPaymentRequired) {
+            final GlobalTransactionReference transactionReference = this.transactionReferenceIdGenerateHelper
+                    .getGlobalTransactionReference(DateUtils.getLocalDateOfTenant());
             LoanTransaction ondayPaymentTransaction = LoanTransaction.repayment(null, totalAmount, null, today, null,
-                    DateUtils.getLocalDateTimeOfTenant(), null);
+                    DateUtils.getLocalDateTimeOfTenant(), null, transactionReference);
             modifiedTransactions.add(ondayPaymentTransaction);
         }
 

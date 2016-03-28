@@ -319,4 +319,12 @@ public class CommandWrapper {
         return this.actionName.equalsIgnoreCase("UPDATE") && this.entityName.equalsIgnoreCase("DISBURSEMENTDETAIL")
                 && this.entityId == null;
     }
+
+    public boolean isGlobalTransactionReferenceResource() {
+        return this.entityName.equalsIgnoreCase("GLOBALTRANSACTIONREFERENCE");
+    }
+
+    public boolean isUndoTransaction() {
+        return this.actionName.equalsIgnoreCase("UNDOTRANSACTION");
+    }
 }

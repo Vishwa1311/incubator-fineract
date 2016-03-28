@@ -18,6 +18,14 @@
  */
 package org.apache.fineract.portfolio.savings.domain;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -25,6 +33,7 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
@@ -35,14 +44,6 @@ import org.joda.time.format.DateTimeFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.math.MathContext;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Service
 public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainService {
@@ -75,7 +76,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
     @Override
     public SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final SavingsTransactionBooleanValues transactionBooleanValues) {
+            final SavingsTransactionBooleanValues transactionBooleanValues, final GlobalTransactionReference transactionReference) {
 
         AppUser user = getAppUserIfPresent();
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
@@ -89,13 +90,13 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
         final SavingsAccountTransactionDTO transactionDTO = new SavingsAccountTransactionDTO(fmt, transactionDate, transactionAmount,
                 paymentDetail, new Date(), user);
-        final SavingsAccountTransaction withdrawal = account.withdraw(transactionDTO, transactionBooleanValues.isApplyWithdrawFee());
+        final SavingsAccountTransaction withdrawal = account.withdraw(transactionDTO, transactionBooleanValues.isApplyWithdrawFee(), transactionReference);
 
         final MathContext mc = MathContext.DECIMAL64;
         if (account.isBeforeLastPostingPeriod(transactionDate)) {
             final LocalDate today = DateUtils.getLocalDateOfTenant();
             account.postInterest(mc, today, transactionBooleanValues.isInterestTransfer(), isSavingsInterestPostingAtCurrentPeriodEnd,
-                    financialYearBeginningMonth);
+                    financialYearBeginningMonth, transactionReference);
         } else {
             final LocalDate today = DateUtils.getLocalDateOfTenant();
             account.calculateInterestUsing(mc, today, transactionBooleanValues.isInterestTransfer(),
@@ -126,7 +127,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
     @Override
     public SavingsAccountTransaction handleDeposit(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final boolean isAccountTransfer, final boolean isRegularTransaction) {
+            final boolean isAccountTransfer, final boolean isRegularTransaction, final GlobalTransactionReference transactionReference) {
 
         AppUser user = getAppUserIfPresent();
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
@@ -142,12 +143,13 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
         final SavingsAccountTransactionDTO transactionDTO = new SavingsAccountTransactionDTO(fmt, transactionDate, transactionAmount,
                 paymentDetail, new Date(), user);
-        final SavingsAccountTransaction deposit = account.deposit(transactionDTO);
+        final SavingsAccountTransaction deposit = account.deposit(transactionDTO, transactionReference);
 
         final MathContext mc = MathContext.DECIMAL64;
         if (account.isBeforeLastPostingPeriod(transactionDate)) {
             final LocalDate today = DateUtils.getLocalDateOfTenant();
-            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth);
+            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, 
+                    transactionReference);
         } else {
             final LocalDate today = DateUtils.getLocalDateOfTenant();
             account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
@@ -192,5 +194,128 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
 
         final boolean isAccountTransfer = false;
         postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
+    }
+
+    @Override
+    public SavingsAccountTransaction handleDepositReversal(final SavingsAccount account, final GlobalTransactionReference transactionReference,
+            final SavingsAccountTransaction transactionToBeReversed) {
+
+        boolean isInterestTransfer = false;
+        final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
+                                .isSavingsInterestPostingAtCurrentPeriodEnd();
+        final Integer financialYearBeginningMonth = this.configurationDomainService
+                        .retrieveFinancialYearBeginningMonth();
+        
+        final LocalDate transactionDate = DateUtils.getLocalDateOfTenant();
+        final Set<Long> existingTransactionIds = new HashSet<>();
+        final Set<Long> existingReversedTransactionIds = new HashSet<>();
+        updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
+
+        final SavingsAccountTransaction depositReversal = account.depositReversal(transactionToBeReversed, transactionReference, transactionDate);
+
+        final MathContext mc = MathContext.DECIMAL64;
+        if (account.isBeforeLastPostingPeriod(transactionDate)) {
+            final LocalDate today = DateUtils.getLocalDateOfTenant();
+            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
+                        financialYearBeginningMonth, transactionReference);
+        } else {
+            final LocalDate today = DateUtils.getLocalDateOfTenant();
+            account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
+                        financialYearBeginningMonth);
+        }
+
+        saveTransactionToGenerateTransactionId(depositReversal);
+
+        // mark the original transaction as complete reversal
+        transactionToBeReversed.markAsCompleteReversal();
+        saveTransactionToGenerateTransactionId(transactionToBeReversed);
+
+        this.savingsAccountRepository.save(account);
+
+        // postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds);
+
+        return depositReversal;
+    }
+
+    @Override
+    public SavingsAccountTransaction handleWithdrawalReversal(final SavingsAccount account, final GlobalTransactionReference transactionReference,
+            final SavingsAccountTransaction transactionToBeReversed) {
+        
+        boolean isInterestTransfer = false;
+        final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
+                                .isSavingsInterestPostingAtCurrentPeriodEnd();
+        final Integer financialYearBeginningMonth = this.configurationDomainService
+                        .retrieveFinancialYearBeginningMonth();
+        
+        final LocalDate transactionDate = DateUtils.getLocalDateOfTenant();
+        final Set<Long> existingTransactionIds = new HashSet<>();
+        final Set<Long> existingReversedTransactionIds = new HashSet<>();
+        updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
+
+        final SavingsAccountTransaction withdrawalReversal = account.withdrawalReversal(transactionToBeReversed, transactionReference, transactionDate);
+
+        final MathContext mc = MathContext.DECIMAL64;
+        if (account.isBeforeLastPostingPeriod(transactionDate)) {
+            final LocalDate today = DateUtils.getLocalDateOfTenant();
+            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
+                        financialYearBeginningMonth, transactionReference);
+        } else {
+            final LocalDate today = DateUtils.getLocalDateOfTenant();
+            account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
+                        financialYearBeginningMonth);
+        }
+
+        saveTransactionToGenerateTransactionId(withdrawalReversal);
+
+        // mark the original transaction as complete reversal
+        transactionToBeReversed.markAsCompleteReversal();
+        saveTransactionToGenerateTransactionId(transactionToBeReversed);
+
+        this.savingsAccountRepository.save(account);
+
+        // postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds);
+
+        return withdrawalReversal;
+    }
+
+    @Override
+    public SavingsAccountTransaction handleChargeReversal(final SavingsAccount account, final GlobalTransactionReference transactionReference,
+            final SavingsAccountTransaction transactionToBeReversed) {
+        
+        boolean isInterestTransfer = false;
+        final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
+                                .isSavingsInterestPostingAtCurrentPeriodEnd();
+        final Integer financialYearBeginningMonth = this.configurationDomainService
+                        .retrieveFinancialYearBeginningMonth();
+        
+        final LocalDate transactionDate = DateUtils.getLocalDateOfTenant();
+        final Set<Long> existingTransactionIds = new HashSet<>();
+        final Set<Long> existingReversedTransactionIds = new HashSet<>();
+        updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
+
+        final SavingsAccountTransaction chargeReversal = account.chargeReversal(transactionToBeReversed, transactionReference, transactionDate);
+
+        final MathContext mc = MathContext.DECIMAL64;
+        if (account.isBeforeLastPostingPeriod(transactionDate)) {
+            final LocalDate today = DateUtils.getLocalDateOfTenant();
+            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
+                        financialYearBeginningMonth, transactionReference);
+        } else {
+            final LocalDate today = DateUtils.getLocalDateOfTenant();
+            account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
+                        financialYearBeginningMonth);
+        }
+
+        saveTransactionToGenerateTransactionId(chargeReversal);
+
+        // mark the original transaction as complete reversal
+        transactionToBeReversed.markAsCompleteReversal();
+        saveTransactionToGenerateTransactionId(transactionToBeReversed);
+
+        this.savingsAccountRepository.save(account);
+
+        // postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds);
+
+        return chargeReversal;
     }
 }

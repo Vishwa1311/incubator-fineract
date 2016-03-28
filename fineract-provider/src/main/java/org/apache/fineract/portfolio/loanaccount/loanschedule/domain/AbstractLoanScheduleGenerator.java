@@ -40,6 +40,7 @@ import org.apache.fineract.portfolio.calendar.domain.CalendarInstance;
 import org.apache.fineract.portfolio.calendar.service.CalendarUtils;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.floatingrates.data.FloatingRateDTO;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
@@ -764,6 +765,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                                     currentTransactions, currency, scheduleParams.getInstallments());
                             Money arrears = fetchCompoundedArrears(loanApplicationTerms, currency, detail.getTransaction());
                             if (unprocessed.isGreaterThanZero()) {
+                                GlobalTransactionReference transactionReference = null;
                                 arrears = getTotalAmount(scheduleParams.getLatePaymentMap(), currency);
                                 updateMapWithAmount(scheduleParams.getPrincipalPortionMap(), unprocessed, applicableDate);
                                 currentPeriodParams.plusEarlyPaidAmount(unprocessed);
@@ -796,14 +798,14 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                                         currentPeriodParams.minusEarlyPaidAmount(unprocessed);
                                         updateMapWithAmount(scheduleParams.getPrincipalPortionMap(), unprocessed.negated(), applicableDate);
                                         LoanTransaction loanTransaction = LoanTransaction.repayment(null, unprocessed, null,
-                                                transactionDate, null, DateUtils.getLocalDateTimeOfTenant(), null);
+                                                transactionDate, null, DateUtils.getLocalDateTimeOfTenant(), null, transactionReference);
                                         RecalculationDetail recalculationDetail = new RecalculationDetail(transactionDate, loanTransaction);
                                         unprocessedTransactions.add(recalculationDetail);
                                         break;
                                     }
                                 }
                                 LoanTransaction loanTransaction = LoanTransaction.repayment(null, unprocessed, null, scheduledDueDate,
-                                        null, DateUtils.getLocalDateTimeOfTenant(), null);
+                                        null, DateUtils.getLocalDateTimeOfTenant(), null, transactionReference);
                                 RecalculationDetail recalculationDetail = new RecalculationDetail(scheduledDueDate, loanTransaction);
                                 unprocessedTransactions.add(recalculationDetail);
                                 checkForOutstanding = false;

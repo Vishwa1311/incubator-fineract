@@ -89,6 +89,7 @@ import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.floatingrates.data.FloatingRateDTO;
 import org.apache.fineract.portfolio.floatingrates.data.FloatingRatePeriodData;
 import org.apache.fineract.portfolio.fund.domain.Fund;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.command.LoanChargeCommand;
@@ -645,7 +646,7 @@ public class Loan extends AbstractPersistable<Long> {
      * @return
      */
     public LoanTransaction handleChargeAppliedTransaction(final LoanCharge loanCharge, final LocalDate suppliedTransactionDate,
-            final AppUser currentUser) {
+            final AppUser currentUser, final GlobalTransactionReference transactionReference) {
         final Money chargeAmount = loanCharge.getAmount(getCurrency());
         Money feeCharges = chargeAmount;
         Money penaltyCharges = Money.zero(loanCurrency());
@@ -670,7 +671,8 @@ public class Loan extends AbstractPersistable<Long> {
         }
 
         final LoanTransaction applyLoanChargeTransaction = LoanTransaction.accrueLoanCharge(this, getOffice(), chargeAmount,
-                transactionDate, feeCharges, penaltyCharges, DateUtils.getLocalDateTimeOfTenant(), currentUser);
+                transactionDate, feeCharges, penaltyCharges, DateUtils.getLocalDateTimeOfTenant(), currentUser, 
+                transactionReference);
         Integer installmentNumber = null;
         final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(applyLoanChargeTransaction, loanCharge, loanCharge.getAmount(
                 getCurrency()).getAmount(), installmentNumber);
@@ -931,7 +933,7 @@ public class Loan extends AbstractPersistable<Long> {
     public LoanTransaction waiveLoanCharge(final LoanCharge loanCharge, final LoanLifecycleStateMachine loanLifecycleStateMachine,
             final Map<String, Object> changes, final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds,
             final Integer loanInstallmentNumber, final ScheduleGeneratorDTO scheduleGeneratorDTO, final Money accruedCharge,
-            final AppUser currentUser) {
+            final AppUser currentUser, final GlobalTransactionReference transactionReference) {
 
         validateLoanIsNotClosed(loanCharge);
 
@@ -977,7 +979,7 @@ public class Loan extends AbstractPersistable<Long> {
 
         final LoanTransaction waiveLoanChargeTransaction = LoanTransaction.waiveLoanCharge(this, getOffice(), amountWaived,
                 transactionDate, feeChargesWaived, penaltyChargesWaived, unrecognizedIncome, DateUtils.getLocalDateTimeOfTenant(),
-                currentUser);
+                currentUser, transactionReference);
         final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(waiveLoanChargeTransaction, loanCharge, waiveLoanChargeTransaction
                 .getAmount(getCurrency()).getAmount(), loanInstallmentNumber);
         waiveLoanChargeTransaction.getLoanChargesPaid().add(loanChargePaidBy);
@@ -1203,7 +1205,7 @@ public class Loan extends AbstractPersistable<Long> {
                     loanTransaction.reverse();
                     final LocalDateTime currentDateTime = DateUtils.getLocalDateTimeOfTenant();
                     final LoanTransaction interestAppliedTransaction = LoanTransaction.accrueInterest(getOffice(), this, interestApplied,
-                            getDisbursementDate(), currentDateTime, currentUser);
+                            getDisbursementDate(), currentDateTime, currentUser, loanTransaction.transactionReference());
                     this.loanTransactions.add(interestAppliedTransaction);
                 }
             } else {
@@ -1213,7 +1215,8 @@ public class Loan extends AbstractPersistable<Long> {
                     Money chargeAmount = loanCharge.getAmount(getCurrency());
                     if (chargeAmount.isNotEqualTo(loanTransaction.getAmount(getCurrency()))) {
                         loanTransaction.reverse();
-                        handleChargeAppliedTransaction(loanCharge, loanTransaction.getTransactionDate(), currentUser);
+                        handleChargeAppliedTransaction(loanCharge, loanTransaction.getTransactionDate(), currentUser, 
+                                loanTransaction.transactionReference());
                     }
 
                 }
@@ -2288,7 +2291,7 @@ public class Loan extends AbstractPersistable<Long> {
     }
 
     public ChangedTransactionDetail disburse(final AppUser currentUser, final JsonCommand command, final Map<String, Object> actualChanges,
-            final ScheduleGeneratorDTO scheduleGeneratorDTO,final PaymentDetail paymentDetail) {
+            final ScheduleGeneratorDTO scheduleGeneratorDTO,final PaymentDetail paymentDetail, final GlobalTransactionReference transactionReference) {
 
         final LoanStatus statusEnum = this.loanLifecycleStateMachine.transition(LoanEvent.LOAN_DISBURSED,
                 LoanStatus.fromInt(this.loanStatus));
@@ -2319,7 +2322,7 @@ public class Loan extends AbstractPersistable<Long> {
         updateSummaryWithTotalFeeChargesDueAtDisbursement(deriveSumTotalOfChargesDueAtDisbursement());
         updateLoanRepaymentPeriodsDerivedFields(actualDisbursementDate);
         LocalDateTime createdDate = DateUtils.getLocalDateTimeOfTenant();
-        handleDisbursementTransaction(actualDisbursementDate, createdDate, currentUser,paymentDetail);
+        handleDisbursementTransaction(actualDisbursementDate, createdDate, currentUser, paymentDetail, transactionReference);
         updateLoanSummaryDerivedFields();
         final Money interestApplied = Money.of(getCurrency(), this.summary.getTotalInterestCharged());
 
@@ -2331,7 +2334,7 @@ public class Loan extends AbstractPersistable<Long> {
 
         if (isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
             final LoanTransaction interestAppliedTransaction = LoanTransaction.accrueInterest(getOffice(), this, interestApplied,
-                    actualDisbursementDate, createdDate, currentUser);
+                    actualDisbursementDate, createdDate, currentUser, transactionReference);
             this.loanTransactions.add(interestAppliedTransaction);
         }
 
@@ -2617,7 +2620,8 @@ public class Loan extends AbstractPersistable<Long> {
         return interestRate;
     }
 
-    private void handleDisbursementTransaction(final LocalDate disbursedOn, final LocalDateTime createdDate, final AppUser currentUser, final PaymentDetail paymentDetail) {
+    private void handleDisbursementTransaction(final LocalDate disbursedOn, final LocalDateTime createdDate, final AppUser currentUser, final PaymentDetail paymentDetail, 
+            final GlobalTransactionReference transactionReference) {
 
         // add repayment transaction to track incoming money from client to mfi
         // for (charges due at time of disbursement)
@@ -2636,7 +2640,7 @@ public class Loan extends AbstractPersistable<Long> {
 
         Money disbursentMoney = Money.zero(getCurrency());
         final LoanTransaction chargesPayment = LoanTransaction.repaymentAtDisbursement(getOffice(), disbursentMoney, paymentDetail, disbursedOn,
-                null, createdDate, currentUser);
+                null, createdDate, currentUser, transactionReference);
         final Integer installmentNumber = null;
         for (final LoanCharge charge : charges()) {
             Date actualDisbursementDate = getActualDisbursementDate(charge);
@@ -2660,7 +2664,7 @@ public class Loan extends AbstractPersistable<Long> {
                  * or Cash based accounting is enabled
                  **/
                 if (isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
-                    handleChargeAppliedTransaction(charge, disbursedOn, currentUser);
+                    handleChargeAppliedTransaction(charge, disbursedOn, currentUser, transactionReference);
                 }
             }
         }
@@ -3259,6 +3263,7 @@ public class Loan extends AbstractPersistable<Long> {
         final Money totalInterestOutstanding = getTotalInterestOutstandingOnLoan();
         Money possibleInterestToWaive = totalInterestOutstanding.copy();
         LocalDate transactionDate = new LocalDate();
+        final GlobalTransactionReference transactionReference = null;
 
         if (totalInterestOutstanding.isGreaterThanZero()) {
             // find earliest known instance of overdue interest and default to
@@ -3276,7 +3281,7 @@ public class Loan extends AbstractPersistable<Long> {
         }
 
         return LoanTransaction.waiver(getOffice(), this, possibleInterestToWaive, transactionDate, possibleInterestToWaive,
-                possibleInterestToWaive.zero(), createdDate, currentUser);
+                possibleInterestToWaive.zero(), createdDate, currentUser, transactionReference);
     }
 
     public ChangedTransactionDetail adjustExistingTransaction(final LoanTransaction newTransactionDetail,
@@ -3405,7 +3410,7 @@ public class Loan extends AbstractPersistable<Long> {
 
     public ChangedTransactionDetail closeAsWrittenOff(final JsonCommand command, final LoanLifecycleStateMachine loanLifecycleStateMachine,
             final Map<String, Object> changes, final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds,
-            final AppUser currentUser, final ScheduleGeneratorDTO scheduleGeneratorDTO) {
+            final AppUser currentUser, final ScheduleGeneratorDTO scheduleGeneratorDTO, final GlobalTransactionReference transactionReference) {
 
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
                 .determineProcessor(this.transactionProcessingStrategy);
@@ -3449,7 +3454,8 @@ public class Loan extends AbstractPersistable<Long> {
             }
 
             LocalDateTime createdDate = DateUtils.getLocalDateTimeOfTenant();
-            loanTransaction = LoanTransaction.writeoff(this, getOffice(), writtenOffOnLocalDate, txnExternalId, createdDate, currentUser);
+            loanTransaction = LoanTransaction.writeoff(this, getOffice(), writtenOffOnLocalDate, txnExternalId, createdDate, currentUser, 
+                    transactionReference);
             LocalDate lastTransactionDate = getLastUserTransactionDate();
             if (lastTransactionDate.isAfter(writtenOffOnLocalDate)) {
                 final String errorMessage = "The date of the writeoff transaction must occur on or before previous transactions.";
@@ -3507,7 +3513,7 @@ public class Loan extends AbstractPersistable<Long> {
 
     public ChangedTransactionDetail close(final JsonCommand command, final LoanLifecycleStateMachine loanLifecycleStateMachine,
             final Map<String, Object> changes, final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds,
-            final ScheduleGeneratorDTO scheduleGeneratorDTO, final AppUser currentUser) {
+            final ScheduleGeneratorDTO scheduleGeneratorDTO, final AppUser currentUser, final GlobalTransactionReference transactionReference) {
 
         validateAccountStatus(LoanEvent.LOAN_CLOSED);
 
@@ -3550,7 +3556,7 @@ public class Loan extends AbstractPersistable<Long> {
                 }
                 this.closedOnDate = closureDate.toDate();
                 loanTransaction = LoanTransaction.writeoff(this, getOffice(), closureDate, txnExternalId,
-                        DateUtils.getLocalDateTimeOfTenant(), currentUser);
+                        DateUtils.getLocalDateTimeOfTenant(), currentUser, transactionReference);
                 final boolean isLastTransaction = isChronologicallyLatestTransaction(loanTransaction, this.loanTransactions);
                 if (!isLastTransaction) {
                     final String errorMessage = "The closing date of the loan must be on or after latest transaction date.";

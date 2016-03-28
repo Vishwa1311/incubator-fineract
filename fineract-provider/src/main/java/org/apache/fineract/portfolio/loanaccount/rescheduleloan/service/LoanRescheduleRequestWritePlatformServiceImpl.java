@@ -56,6 +56,8 @@ import org.apache.fineract.portfolio.floatingrates.data.FloatingRateDTO;
 import org.apache.fineract.portfolio.floatingrates.data.FloatingRatePeriodData;
 import org.apache.fineract.portfolio.floatingrates.exception.FloatingRateNotFoundException;
 import org.apache.fineract.portfolio.floatingrates.service.FloatingRatesReadPlatformService;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
+import org.apache.fineract.portfolio.globaltransaction.service.GlobalTransactionReferenceIdGenerateHelper;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
@@ -124,6 +126,7 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
     private final LoanAssembler loanAssembler;
     private final FloatingRatesReadPlatformService floatingRatesReadPlatformService;
     private final LoanUtilService loanUtilService;
+    private final GlobalTransactionReferenceIdGenerateHelper transactionReferenceIdGenerateHelper;
 
     /**
      * LoanRescheduleRequestWritePlatformServiceImpl constructor
@@ -143,7 +146,7 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
             final LoanTransactionRepository loanTransactionRepository,
             final JournalEntryWritePlatformService journalEntryWritePlatformService, final LoanRepository loanRepository,
             final LoanAssembler loanAssembler, final FloatingRatesReadPlatformService floatingRatesReadPlatformService,
-            final LoanUtilService loanUtilService) {
+            final LoanUtilService loanUtilService, final GlobalTransactionReferenceIdGenerateHelper transactionReferenceIdGenerateHelper) {
         this.loanRepositoryWrapper = loanRepositoryWrapper;
         this.codeValueRepositoryWrapper = codeValueRepositoryWrapper;
         this.platformSecurityContext = platformSecurityContext;
@@ -163,6 +166,7 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
         this.loanAssembler = loanAssembler;
         this.floatingRatesReadPlatformService = floatingRatesReadPlatformService;
         this.loanUtilService = loanUtilService;
+        this.transactionReferenceIdGenerateHelper = transactionReferenceIdGenerateHelper;
     }
 
     /**
@@ -409,9 +413,10 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
 
                 loan.updateRescheduledByUser(appUser);
                 loan.updateRescheduledOnDate(new LocalDate());
-
+                GlobalTransactionReference transactionReference = this.transactionReferenceIdGenerateHelper
+                        .getGlobalTransactionReference(approvedOnDate);
                 // waive all loan charges of zero instalments
-                waiveLoanCharges(loan, waiveLoanCharges);
+                waiveLoanCharges(loan, waiveLoanCharges, transactionReference);
 
                 // update the Loan summary
                 loanSummary
@@ -461,7 +466,7 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
      *            collection of LoanCharge objects
      * @return void
      **/
-    private void waiveLoanCharges(Loan loan, Collection<LoanCharge> loanCharges) {
+    private void waiveLoanCharges(Loan loan, Collection<LoanCharge> loanCharges, GlobalTransactionReference transactionReference) {
         AppUser currentUser = this.platformSecurityContext.authenticatedUser();
         this.loanAssembler.setHelpers(loan);
 
@@ -500,7 +505,7 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
 
                 final LoanTransaction loanTransaction = loan.waiveLoanCharge(loanCharge, defaultLoanLifecycleStateMachine(), changes,
                         existingTransactionIds, existingReversedTransactionIds, loanInstallmentNumber, scheduleGeneratorDTO, accruedCharge,
-                        currentUser);
+                        currentUser, transactionReference);
 
                 this.loanTransactionRepository.save(loanTransaction);
 

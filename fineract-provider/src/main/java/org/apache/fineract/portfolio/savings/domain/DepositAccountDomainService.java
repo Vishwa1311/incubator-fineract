@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.joda.time.LocalDate;
@@ -30,23 +31,24 @@ import org.joda.time.format.DateTimeFormatter;
 public interface DepositAccountDomainService {
 
     SavingsAccountTransaction handleWithdrawal(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
-            BigDecimal transactionAmount, PaymentDetail paymentDetail, boolean applyWithdrawFee, boolean isRegularTransaction);
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, boolean applyWithdrawFee, boolean isRegularTransaction, 
+            GlobalTransactionReference transactionReference);
 
     SavingsAccountTransaction handleFDDeposit(FixedDepositAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
-            BigDecimal transactionAmount, PaymentDetail paymentDetail);
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, GlobalTransactionReference transactionReference);
 
     SavingsAccountTransaction handleRDDeposit(RecurringDepositAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
-            BigDecimal transactionAmount, PaymentDetail paymentDetail, boolean isRegularTransaction);
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, boolean isRegularTransaction, GlobalTransactionReference transactionReference);
 
     Long handleFDAccountClosure(FixedDepositAccount account, PaymentDetail paymentDetail, AppUser user, JsonCommand command,
-            LocalDate tenantsTodayDate, Map<String, Object> changes);
+            LocalDate tenantsTodayDate, Map<String, Object> changes, GlobalTransactionReference transactionReference);
 
     Long handleRDAccountClosure(RecurringDepositAccount account, PaymentDetail paymentDetail, AppUser user, JsonCommand command,
-            LocalDate tenantsTodayDate, Map<String, Object> changes);
+            LocalDate tenantsTodayDate, Map<String, Object> changes, GlobalTransactionReference transactionReference);
 
     Long handleFDAccountPreMatureClosure(FixedDepositAccount account, PaymentDetail paymentDetail, AppUser user, JsonCommand command,
-            LocalDate tenantsTodayDate, Map<String, Object> changes);
+            LocalDate tenantsTodayDate, Map<String, Object> changes, GlobalTransactionReference transactionReference);
 
     Long handleRDAccountPreMatureClosure(RecurringDepositAccount account, PaymentDetail paymentDetail, AppUser user, JsonCommand command,
-            LocalDate tenantsTodayDate, Map<String, Object> changes);
+            LocalDate tenantsTodayDate, Map<String, Object> changes, GlobalTransactionReference transactionReference);
 }

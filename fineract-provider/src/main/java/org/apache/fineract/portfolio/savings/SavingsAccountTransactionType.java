@@ -37,8 +37,14 @@ public enum SavingsAccountTransactionType {
     INITIATE_TRANSFER(12, "savingsAccountTransactionType.initiateTransfer"), //
     APPROVE_TRANSFER(13, "savingsAccountTransactionType.approveTransfer"), //
     WITHDRAW_TRANSFER(14, "savingsAccountTransactionType.withdrawTransfer"), //
-    REJECT_TRANSFER(15, "savingsAccountTransactionType.rejectTransfer"), WRITTEN_OFF(16, "savingsAccountTransactionType.writtenoff"), //
-    OVERDRAFT_INTEREST(17, "savingsAccountTransactionType.overdraftInterest"); //
+    REJECT_TRANSFER(15, "savingsAccountTransactionType.rejectTransfer"), // 
+    WRITTEN_OFF(16, "savingsAccountTransactionType.writtenoff"), //
+    OVERDRAFT_INTEREST(17, "savingsAccountTransactionType.overdraftInterest"), //
+    WITHDRAWAL_REVERSAL(18, "savingsAccountTransactionType.withdrawalreversal"), //
+    DEPOSIT_REVERSAL(19, "savingsAccountTransactionType.depositreversal"), //
+    WITHDRAWAL_FEE_REVERSAL(20, "savingsAccountTransactionType.withdrawalfeereversal"), //
+    PAY_CHARGE_REVERSAL(21, "savingsAccountTransactionType.paychargereversal"), //
+    ANNUAL_FEE_REVERSAL(22, "savingsAccountTransactionType.annualFee");
 
     private final Integer value;
     private final String code;
@@ -168,4 +174,21 @@ public enum SavingsAccountTransactionType {
     public boolean isCredit() {
         return isDeposit() || isInterestPosting();
     }
+
+    public boolean isDepositReversal() {
+        return this.value.equals(SavingsAccountTransactionType.DEPOSIT_REVERSAL.getValue());
+    }
+
+    public boolean isWithdrawalReversal() {
+        return this.value.equals(SavingsAccountTransactionType.WITHDRAWAL_REVERSAL.getValue());
+    }
+
+    public boolean isWithdrawalFeeReversal() {
+        return this.value.equals(SavingsAccountTransactionType.WITHDRAWAL_FEE_REVERSAL.getValue());
+    }
+
+    public boolean isPayChargeReversal() {
+        return this.value.equals(SavingsAccountTransactionType.PAY_CHARGE_REVERSAL.getValue());
+    }
+
 }
