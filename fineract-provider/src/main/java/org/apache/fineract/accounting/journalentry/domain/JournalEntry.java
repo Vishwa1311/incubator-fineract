@@ -21,6 +21,7 @@ package org.apache.fineract.accounting.journalentry.domain;
 import java.math.BigDecimal;
 import java.util.Date;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -35,6 +36,7 @@ import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableCustom;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.client.domain.ClientTransaction;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
@@ -106,14 +108,19 @@ public class JournalEntry extends AbstractAuditableCustom<AppUser, Long> {
     @Column(name = "ref_num")
     private String referenceNumber;
 
+    @ManyToOne(optional = true, cascade = CascadeType.ALL)
+    @JoinColumn(name = "global_transaction_ref_id", nullable = true)
+    private GlobalTransactionReference transactionReference;
+
     public static JournalEntry createNew(final Office office, final PaymentDetail paymentDetail, final GLAccount glAccount,
             final String currencyCode, final String transactionId, final boolean manualEntry, final Date transactionDate,
             final JournalEntryType journalEntryType, final BigDecimal amount, final String description, final Integer entityType,
             final Long entityId, final String referenceNumber, final LoanTransaction loanTransaction,
-            final SavingsAccountTransaction savingsTransaction, final ClientTransaction clientTransaction) {
+            final SavingsAccountTransaction savingsTransaction, final ClientTransaction clientTransaction, 
+            final GlobalTransactionReference transactionReference) {
         return new JournalEntry(office, paymentDetail, glAccount, currencyCode, transactionId, manualEntry, transactionDate,
                 journalEntryType.getValue(), amount, description, entityType, entityId, referenceNumber, loanTransaction,
-                savingsTransaction, clientTransaction);
+                savingsTransaction, clientTransaction, transactionReference);
     }
 
     protected JournalEntry() {
@@ -124,7 +131,7 @@ public class JournalEntry extends AbstractAuditableCustom<AppUser, Long> {
             final String transactionId, final boolean manualEntry, final Date transactionDate, final Integer type, final BigDecimal amount,
             final String description, final Integer entityType, final Long entityId, final String referenceNumber,
             final LoanTransaction loanTransaction, final SavingsAccountTransaction savingsTransaction,
-            final ClientTransaction clientTransaction) {
+            final ClientTransaction clientTransaction, final GlobalTransactionReference transactionReference) {
         this.office = office;
         this.glAccount = glAccount;
         this.reversalJournalEntry = null;
@@ -143,6 +150,7 @@ public class JournalEntry extends AbstractAuditableCustom<AppUser, Long> {
         this.savingsTransaction = savingsTransaction;
         this.clientTransaction = clientTransaction;
         this.paymentDetail = paymentDetail;
+        this.transactionReference = transactionReference;
     }
 
     public boolean isDebitEntry() {
@@ -206,11 +214,18 @@ public class JournalEntry extends AbstractAuditableCustom<AppUser, Long> {
     }
 
     public Long getEntityId() {
-        return this.entityId ;
+        return this.entityId;
     }
-    
+
     public Integer getEntityType() {
-        return this.entityType ;
+        return this.entityType;
     }
-    
+
+    public boolean isReversed() {
+        return this.reversed;
+    }
+
+    public GlobalTransactionReference getTransactionReference() {
+        return this.transactionReference;
+    }
 }

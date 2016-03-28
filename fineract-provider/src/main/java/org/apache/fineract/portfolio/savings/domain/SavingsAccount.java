@@ -85,6 +85,7 @@ import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.exception.SavingsAccountChargeNotFoundException;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
@@ -450,7 +451,7 @@ public class SavingsAccount extends AbstractPersistable<Long> {
     }
 
     public void postInterest(final MathContext mc, final LocalDate interestPostingUpToDate, final boolean isInterestTransfer,
-            final boolean isSavingsInterestPostingAtCurrentPeriodEnd, final Integer financialYearBeginningMonth) {
+            final boolean isSavingsInterestPostingAtCurrentPeriodEnd, final Integer financialYearBeginningMonth, GlobalTransactionReference transactionReference) {
 
         final List<PostingPeriod> postingPeriods = calculateInterestUsing(mc, interestPostingUpToDate, isInterestTransfer,
                 isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth);
@@ -473,10 +474,10 @@ public class SavingsAccount extends AbstractPersistable<Long> {
                     SavingsAccountTransaction newPostingTransaction;
                     if (interestEarnedToBePostedForPeriod.isGreaterThanOrEqualTo(Money.zero(currency))) {
                         newPostingTransaction = SavingsAccountTransaction.interestPosting(this, office(), interestPostingTransactionDate,
-                                interestEarnedToBePostedForPeriod);
+                                interestEarnedToBePostedForPeriod, transactionReference);
                     } else {
                         newPostingTransaction = SavingsAccountTransaction.overdraftInterest(this, office(), interestPostingTransactionDate,
-                                interestEarnedToBePostedForPeriod.negated());
+                                interestEarnedToBePostedForPeriod.negated(), transactionReference);
                     }
                     this.transactions.add(newPostingTransaction);
                     recalucateDailyBalanceDetails = true;
@@ -492,10 +493,10 @@ public class SavingsAccount extends AbstractPersistable<Long> {
                         SavingsAccountTransaction newPostingTransaction;
                         if (interestEarnedToBePostedForPeriod.isGreaterThanOrEqualTo(Money.zero(currency))) {
                             newPostingTransaction = SavingsAccountTransaction.interestPosting(this, office(),
-                                    interestPostingTransactionDate, interestEarnedToBePostedForPeriod);
+                                    interestPostingTransactionDate, interestEarnedToBePostedForPeriod, transactionReference);
                         } else {
                             newPostingTransaction = SavingsAccountTransaction.overdraftInterest(this, office(),
-                                    interestPostingTransactionDate, interestEarnedToBePostedForPeriod.negated());
+                                    interestPostingTransactionDate, interestEarnedToBePostedForPeriod.negated(), transactionReference);
                         }
                         this.transactions.add(newPostingTransaction);
                         recalucateDailyBalanceDetails = true;
@@ -752,7 +753,7 @@ public class SavingsAccount extends AbstractPersistable<Long> {
         }
     }
 
-    public SavingsAccountTransaction deposit(final SavingsAccountTransactionDTO transactionDTO) {
+    public SavingsAccountTransaction deposit(final SavingsAccountTransactionDTO transactionDTO, final GlobalTransactionReference transactionReference) {
         final String resourceTypeName = depositAccountType().resourceName();
         if (isNotActive()) {
             final String defaultUserMessage = "Transaction is not allowed. Account is not active.";
@@ -795,7 +796,7 @@ public class SavingsAccount extends AbstractPersistable<Long> {
         final Money amount = Money.of(this.currency, transactionDTO.getTransactionAmount());
 
         final SavingsAccountTransaction transaction = SavingsAccountTransaction.deposit(this, office(), transactionDTO.getPaymentDetail(),
-                transactionDTO.getTransactionDate(), amount, transactionDTO.getCreatedDate(), transactionDTO.getAppUser());
+                transactionDTO.getTransactionDate(), amount, transactionDTO.getCreatedDate(), transactionDTO.getAppUser(), transactionReference);
         this.transactions.add(transaction);
 
         this.summary.updateSummary(this.currency, this.savingsAccountTransactionSummaryWrapper, this.transactions);
@@ -822,7 +823,8 @@ public class SavingsAccount extends AbstractPersistable<Long> {
         return startInterestCalculationLocalDate;
     }
 
-    public SavingsAccountTransaction withdraw(final SavingsAccountTransactionDTO transactionDTO, final boolean applyWithdrawFee) {
+    public SavingsAccountTransaction withdraw(final SavingsAccountTransactionDTO transactionDTO, final boolean applyWithdrawFee, 
+            final GlobalTransactionReference transactionReference) {
 
         if (!isTransactionsAllowed()) {
 
@@ -878,21 +880,22 @@ public class SavingsAccount extends AbstractPersistable<Long> {
         final Money transactionAmountMoney = Money.of(this.currency, transactionDTO.getTransactionAmount());
         final SavingsAccountTransaction transaction = SavingsAccountTransaction.withdrawal(this, office(),
                 transactionDTO.getPaymentDetail(), transactionDTO.getTransactionDate(), transactionAmountMoney,
-                transactionDTO.getCreatedDate(), transactionDTO.getAppUser());
+                transactionDTO.getCreatedDate(), transactionDTO.getAppUser(), transactionReference);
         this.transactions.add(transaction);
 
         if (applyWithdrawFee) {
             // auto pay withdrawal fee
-            payWithdrawalFee(transactionDTO.getTransactionAmount(), transactionDTO.getTransactionDate(), transactionDTO.getAppUser());
+            payWithdrawalFee(transactionDTO.getTransactionAmount(), transactionDTO.getTransactionDate(), transactionDTO.getAppUser(), transactionReference);
         }
         return transaction;
     }
 
-    private void payWithdrawalFee(final BigDecimal transactionAmoount, final LocalDate transactionDate, final AppUser user) {
+    private void payWithdrawalFee(final BigDecimal transactionAmoount, final LocalDate transactionDate, final AppUser user, 
+            final GlobalTransactionReference transactionReference) {
         for (SavingsAccountCharge charge : this.charges()) {
             if (charge.isWithdrawalFee() && charge.isActive()) {
                 charge.updateWithdralFeeAmount(transactionAmoount);
-                this.payCharge(charge, charge.getAmountOutstanding(this.getCurrency()), transactionDate, user);
+                this.payCharge(charge, charge.getAmountOutstanding(this.getCurrency()), transactionDate, user, transactionReference);
             }
         }
     }
@@ -1969,7 +1972,7 @@ public class SavingsAccount extends AbstractPersistable<Long> {
     }
 
     public void processAccountUponActivation(final boolean isSavingsInterestPostingAtCurrentPeriodEnd,
-            final Integer financialYearBeginningMonth, final AppUser user) {
+            final Integer financialYearBeginningMonth, final AppUser user, final GlobalTransactionReference transactionReference) {
 
         // update annual fee due date
         for (SavingsAccountCharge charge : this.charges()) {
@@ -1977,7 +1980,7 @@ public class SavingsAccount extends AbstractPersistable<Long> {
         }
 
         // auto pay the activation time charges
-        this.payActivationCharges(isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, user);
+        this.payActivationCharges(isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, user, transactionReference);
         // TODO : AA add activation charges to actual changes list
     }
 
@@ -2001,12 +2004,13 @@ public class SavingsAccount extends AbstractPersistable<Long> {
     }
 
     private void payActivationCharges(final boolean isSavingsInterestPostingAtCurrentPeriodEnd, final Integer financialYearBeginningMonth,
-            final AppUser user) {
+            final AppUser user, final GlobalTransactionReference transactionReference) {
         boolean isSavingsChargeApplied = false;
         for (SavingsAccountCharge savingsAccountCharge : this.charges()) {
             if (savingsAccountCharge.isSavingsActivation()) {
                 isSavingsChargeApplied = true;
-                payCharge(savingsAccountCharge, savingsAccountCharge.getAmountOutstanding(getCurrency()), getActivationLocalDate(), user);
+                payCharge(savingsAccountCharge, savingsAccountCharge.getAmountOutstanding(getCurrency()), getActivationLocalDate(), user,
+                        transactionReference);
             }
         }
 
@@ -2015,7 +2019,8 @@ public class SavingsAccount extends AbstractPersistable<Long> {
             boolean isInterestTransfer = false;
             if (this.isBeforeLastPostingPeriod(getActivationLocalDate())) {
                 final LocalDate today = DateUtils.getLocalDateOfTenant();
-                this.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth);
+                this.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
+                        transactionReference);
             } else {
                 final LocalDate today = DateUtils.getLocalDateOfTenant();
                 this.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
@@ -2190,7 +2195,7 @@ public class SavingsAccount extends AbstractPersistable<Long> {
         this.charges.remove(charge);
     }
 
-    public void waiveCharge(final Long savingsAccountChargeId, final AppUser user) {
+    public void waiveCharge(final Long savingsAccountChargeId, final AppUser user, final GlobalTransactionReference transactionReference) {
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
@@ -2229,7 +2234,7 @@ public class SavingsAccount extends AbstractPersistable<Long> {
 
         // waive charge
         final Money amountWaived = savingsAccountCharge.waive(getCurrency());
-        handleWaiverChargeTransactions(savingsAccountCharge, amountWaived, user);
+        handleWaiverChargeTransactions(savingsAccountCharge, amountWaived, user, transactionReference);
 
     }
 
@@ -2320,7 +2325,7 @@ public class SavingsAccount extends AbstractPersistable<Long> {
     }
 
     public void payCharge(final SavingsAccountCharge savingsAccountCharge, final BigDecimal amountPaid, final LocalDate transactionDate,
-            final DateTimeFormatter formatter, final AppUser user) {
+            final DateTimeFormatter formatter, final AppUser user, final GlobalTransactionReference transactionReference) {
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
@@ -2395,33 +2400,34 @@ public class SavingsAccount extends AbstractPersistable<Long> {
             if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }
         }
 
-        this.payCharge(savingsAccountCharge, chargePaid, transactionDate, user);
+        this.payCharge(savingsAccountCharge, chargePaid, transactionDate, user, transactionReference);
     }
 
     public void payCharge(final SavingsAccountCharge savingsAccountCharge, final Money amountPaid, final LocalDate transactionDate,
-            final AppUser user) {
+            final AppUser user, final GlobalTransactionReference transactionReference) {
         savingsAccountCharge.pay(getCurrency(), amountPaid);
-        handlePayChargeTransactions(savingsAccountCharge, amountPaid, transactionDate, user);
+        handlePayChargeTransactions(savingsAccountCharge, amountPaid, transactionDate, user, transactionReference);
     }
 
     private void handlePayChargeTransactions(SavingsAccountCharge savingsAccountCharge, Money transactionAmount,
-            final LocalDate transactionDate, final AppUser user) {
+            final LocalDate transactionDate, final AppUser user, final GlobalTransactionReference transactionReference) {
         SavingsAccountTransaction chargeTransaction = null;
 
         if (savingsAccountCharge.isWithdrawalFee()) {
-            chargeTransaction = SavingsAccountTransaction.withdrawalFee(this, office(), transactionDate, transactionAmount, user);
+            chargeTransaction = SavingsAccountTransaction.withdrawalFee(this, office(), transactionDate, transactionAmount, user, transactionReference);
         } else if (savingsAccountCharge.isAnnualFee()) {
-            chargeTransaction = SavingsAccountTransaction.annualFee(this, office(), transactionDate, transactionAmount, user);
+            chargeTransaction = SavingsAccountTransaction.annualFee(this, office(), transactionDate, transactionAmount, user, transactionReference);
         } else {
-            chargeTransaction = SavingsAccountTransaction.charge(this, office(), transactionDate, transactionAmount, user);
+            chargeTransaction = SavingsAccountTransaction.charge(this, office(), transactionDate, transactionAmount, user, transactionReference);
         }
 
         handleChargeTransactions(savingsAccountCharge, chargeTransaction);
     }
 
-    private void handleWaiverChargeTransactions(SavingsAccountCharge savingsAccountCharge, Money transactionAmount, AppUser user) {
+    private void handleWaiverChargeTransactions(SavingsAccountCharge savingsAccountCharge, Money transactionAmount, AppUser user, 
+            final GlobalTransactionReference transactionReference) {
         final SavingsAccountTransaction chargeTransaction = SavingsAccountTransaction.waiver(this, office(),
-                DateUtils.getLocalDateOfTenant(), transactionAmount, user);
+                DateUtils.getLocalDateOfTenant(), transactionAmount, user, transactionReference);
         handleChargeTransactions(savingsAccountCharge, chargeTransaction);
     }
 
@@ -2604,5 +2610,160 @@ public class SavingsAccount extends AbstractPersistable<Long> {
 
     public BigDecimal getWithdrawableBalance() {
         return getAccountBalance().subtract(minRequiredBalanceDerived(getCurrency()).getAmount()).subtract(this.getOnHoldFunds());
+    }
+
+    public void validateAccountBalanceDoesNotBecomeNegative(final String transactionAction) {
+
+        final List<SavingsAccountTransaction> transactionsSortedByDate = retreiveListOfTransactions();
+        Money runningBalance = Money.zero(this.currency);
+
+        for (final SavingsAccountTransaction transaction : transactionsSortedByDate) {
+            if (transaction.isNotReversed() && transaction.isCredit()) {
+                runningBalance = runningBalance.plus(transaction.getAmount(this.currency));
+            } else if (transaction.isNotReversed() && transaction.isDebit()) {
+                runningBalance = runningBalance.minus(transaction.getAmount(this.currency));
+            }
+
+            if (runningBalance.isLessThanZero()) {
+                //
+                final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+                final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource(depositAccountType()
+                        .resourceName() + transactionAction);
+
+                if (this.allowOverdraft) {
+                    Money limit = runningBalance.zero();
+                    if (this.overdraftLimit != null) {
+                        limit = limit.plus(this.overdraftLimit);
+                    }
+                    if (limit.plus(runningBalance).isLessThanZero()) {
+                        baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode("results.in.balance.exceeding.overdraft.limit");
+                    }
+                } else {
+                    baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode("results.in.balance.going.negative");
+                }
+                if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }
+            }
+        }
+    }
+
+    public void updateMetadata(final Map<String, BigDecimal> metadata) {
+        metadata.put(this.accountNumber(), this.summary.getAccountBalance());
+    }
+
+    public String accountNumber() {
+        return this.accountNumber;
+    }
+
+    public SavingsAccountTransaction depositReversal(final SavingsAccountTransaction transactionToBeReversed,
+            final GlobalTransactionReference transactionReference, final LocalDate transactionDate) {
+
+        final String resourceTypeName = depositAccountType().resourceName();
+        if (isNotActive()) {
+            final String defaultUserMessage = "Transaction is not allowed. Account is not active.";
+            final ApiParameterError error = ApiParameterError.parameterError("error.msg." + resourceTypeName
+                    + ".transaction.account.is.not.active", defaultUserMessage, "accountNumber", accountNumber());
+
+            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+            dataValidationErrors.add(error);
+
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+
+        validateActivityNotBeforeClientOrGroupTransferDate(SavingsEvent.SAVINGS_DEPOSIT_REVERSAL, transactionDate);
+
+        final SavingsAccountTransaction depositreversalTransaction = SavingsAccountTransaction.depositReversal(transactionReference,
+                transactionToBeReversed, transactionDate);
+        this.transactions.add(depositreversalTransaction);
+
+        this.summary.updateSummary(this.currency, this.savingsAccountTransactionSummaryWrapper, this.transactions);
+
+        return depositreversalTransaction;
+    }
+
+    public SavingsAccountTransaction findByTransactionId(final Long transactionId) {
+        SavingsAccountTransaction transaction = null;
+        for (final SavingsAccountTransaction existingTransaction : this.transactions) {
+            if (existingTransaction.isIdentifiedBy(transactionId)) {
+                transaction = existingTransaction;
+                break;
+            }
+        }
+        return transaction;
+    }
+
+    public SavingsAccountTransaction withdrawalReversal(final SavingsAccountTransaction transactionToBeReversed,
+            final GlobalTransactionReference transactionReference, final LocalDate transactionDate) {
+
+        final String resourceTypeName = depositAccountType().resourceName();
+        if (isNotActive()) {
+            final String defaultUserMessage = "Transaction is not allowed. Account is not active.";
+            final ApiParameterError error = ApiParameterError.parameterError("error.msg." + resourceTypeName
+                    + ".transaction.account.is.not.active", defaultUserMessage, "accountNumber", accountNumber());
+
+            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+            dataValidationErrors.add(error);
+
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+
+        validateActivityNotBeforeClientOrGroupTransferDate(SavingsEvent.SAVINGS_WITHDRAWAL_REVERSAL, transactionDate);
+
+        final SavingsAccountTransaction withdrawalReversalTransaction = SavingsAccountTransaction.withdrawalReversal(transactionReference,
+                transactionToBeReversed, transactionDate);
+        this.transactions.add(withdrawalReversalTransaction);
+
+        this.summary.updateSummary(this.currency, this.savingsAccountTransactionSummaryWrapper, this.transactions);
+
+        return withdrawalReversalTransaction;
+    }
+
+    public SavingsAccountTransaction chargeReversal(final SavingsAccountTransaction transactionToBeReversed,
+            final GlobalTransactionReference transactionReference, final LocalDate transactionDate) {
+
+        final String resourceTypeName = depositAccountType().resourceName();
+        if (isNotActive()) {
+            final String defaultUserMessage = "Transaction is not allowed. Account is not active.";
+            final ApiParameterError error = ApiParameterError.parameterError("error.msg." + resourceTypeName
+                    + ".transaction.account.is.not.active", defaultUserMessage, "accountNumber", accountNumber());
+
+            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+            dataValidationErrors.add(error);
+
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+
+        final SavingsAccountTransaction chargeReversalTransaction = this.handleChargeReversals(transactionReference,
+                transactionToBeReversed, transactionDate);
+
+        this.summary.updateSummary(this.currency, this.savingsAccountTransactionSummaryWrapper, this.transactions);
+
+        return chargeReversalTransaction;
+    }
+
+    private SavingsAccountTransaction handleChargeReversals(final GlobalTransactionReference transactionReference,
+            final SavingsAccountTransaction transactionToBeReversed, final LocalDate transactionDate) {
+
+        SavingsAccountTransaction chargeReversalTransaction = null;
+
+        if (transactionToBeReversed.isChargeTransaction()) {
+            // undo charge payment summary details
+            final SavingsAccountChargePaidBy savingsAccountChargePaidBy = transactionToBeReversed.getSavingsAccountChargePaidBy();
+            final SavingsAccountCharge chargeToUndo = savingsAccountChargePaidBy.getSavingsAccountCharge();
+
+            chargeToUndo.undoPayment(this.getCurrency(), transactionToBeReversed.getAmount(this.getCurrency()));
+            if (chargeToUndo.isWithdrawalFee()) {
+                chargeReversalTransaction = SavingsAccountTransaction.withdrawalFeeReversal(transactionReference, transactionToBeReversed,
+                        transactionDate);
+            } else if (chargeToUndo.isAnnualFee()) {
+                chargeReversalTransaction = SavingsAccountTransaction.annualFeeReversal(transactionReference, transactionToBeReversed,
+                        transactionDate);
+            } else {
+                chargeReversalTransaction = SavingsAccountTransaction.chargeReversal(transactionReference, transactionToBeReversed,
+                        transactionDate);
+            }
+
+            handleChargeTransactions(chargeToUndo, chargeReversalTransaction);
+        }
+        return chargeReversalTransaction;
     }
 }

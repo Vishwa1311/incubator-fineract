@@ -19,11 +19,15 @@
 package org.apache.fineract.accounting.journalentry.service;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.fineract.accounting.journalentry.domain.JournalEntry;
 import org.apache.fineract.accounting.provisioning.domain.ProvisioningEntry;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 
 public interface JournalEntryWritePlatformService {
 
@@ -41,5 +45,14 @@ public interface JournalEntryWritePlatformService {
     
     public String revertProvisioningJournalEntries(final Date reversalTransactionDate, final Long entityId, final Integer entityType) ;
 
-    public String createProvisioningJournalEntries(ProvisioningEntry entry) ;
+    public String createProvisioningJournalEntries(ProvisioningEntry entry);
+
+    String revertJournalEntries(final List<JournalEntry> journalEntries, final boolean manualEntry);
+
+    void revertJournalEntriesForReversedTransactions(final List<JournalEntry> nonReversedJournalEntryTransactions,
+            final GlobalTransactionReference newTransactionReference, final List<SavingsAccountTransaction> reversedTransactions);
+
+    String revertJournalEntriesWithNewReference(final List<JournalEntry> journalEntries, final boolean manualEntry,
+            final GlobalTransactionReference transactionReference);
+
 }

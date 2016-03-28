@@ -24,6 +24,7 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.joda.time.LocalDate;
@@ -76,7 +77,7 @@ public interface SavingsAccountWritePlatformService {
     void applyChargeDue(final Long savingsAccountChargeId, final Long accountId);
 
     void processPostActiveActions(SavingsAccount account, DateTimeFormatter fmt, Set<Long> existingTransactionIds,
-            Set<Long> existingReversedTransactionIds);
+            Set<Long> existingReversedTransactionIds, GlobalTransactionReference transactionReference);
 
     void postInterest(SavingsAccount account);
 }

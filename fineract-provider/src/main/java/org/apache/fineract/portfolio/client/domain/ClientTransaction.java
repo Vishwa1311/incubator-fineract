@@ -46,6 +46,7 @@ import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OrganisationCurrency;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.hibernate.annotations.LazyCollection;
@@ -102,6 +103,10 @@ public class ClientTransaction extends AbstractPersistable<Long> {
 
     @Transient
     private OrganisationCurrency currency;
+
+    @ManyToOne(optional = true, cascade = CascadeType.ALL)
+    @JoinColumn(name = "global_transaction_ref_id", nullable = true)
+    private GlobalTransactionReference transactionReference;
 
     protected ClientTransaction() {}
 
@@ -231,4 +236,7 @@ public class ClientTransaction extends AbstractPersistable<Long> {
         return new LocalDate(this.dateOf);
     }
 
+    public GlobalTransactionReference getTransactionReference() {
+        return this.transactionReference;
+    }
 }

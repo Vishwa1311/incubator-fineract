@@ -25,6 +25,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -49,6 +50,7 @@ import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
+import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.office.data.OfficeData;
 import org.apache.fineract.organisation.office.service.OfficeReadPlatformService;
@@ -77,15 +79,17 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
 
     private final PaginationHelper<JournalEntryData> paginationHelper = new PaginationHelper<>();
+    private final PlatformSecurityContext context;
 
     @Autowired
     public JournalEntryReadPlatformServiceImpl(final RoutingDataSource dataSource,
             final GLAccountReadPlatformService glAccountReadPlatformService, final OfficeReadPlatformService officeReadPlatformService,
-            final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper) {
+            final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper, final PlatformSecurityContext context) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.glAccountReadPlatformService = glAccountReadPlatformService;
         this.officeReadPlatformService = officeReadPlatformService;
         this.financialActivityAccountRepositoryWrapper = financialActivityAccountRepositoryWrapper;
+        this.context = context;
     }
 
     private static final class GLJournalEntryMapper implements RowMapper<JournalEntryData> {
@@ -528,6 +532,22 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
             return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlCountRows, sql, data, rm);
         } catch (final EmptyResultDataAccessException e) {
             throw new JournalEntriesNotFoundException(entityId);
+        }
+    }
+
+    @Override
+    public Collection<JournalEntryData> retrieveGLJournalEntriesByTransactionRefId(Long transactionRefId) {
+        try {
+            final String userOfficeHierarchy = this.context.officeHierarchy();
+            final String underHierarchySearchString = userOfficeHierarchy + "%";
+            JournalEntryAssociationParametersData associationParametersData = new JournalEntryAssociationParametersData();
+            final GLJournalEntryMapper rm = new GLJournalEntryMapper(associationParametersData);
+            final String sql = "select " + rm.schema() + " where journalEntry.global_transaction_ref_id = ? and office.hierarchy like ? ";
+
+            return this.jdbcTemplate.query(sql, rm, new Object[] { transactionRefId, underHierarchySearchString });
+        } catch (final EmptyResultDataAccessException e) {
+            // do nothing
+            throw new JournalEntriesNotFoundException(transactionRefId);
         }
     }
 }

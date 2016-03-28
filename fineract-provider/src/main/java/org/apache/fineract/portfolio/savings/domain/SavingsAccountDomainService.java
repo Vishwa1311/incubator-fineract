@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.savings.domain;
 import java.math.BigDecimal;
 import java.util.Set;
 
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.joda.time.LocalDate;
@@ -29,10 +30,21 @@ import org.joda.time.format.DateTimeFormatter;
 public interface SavingsAccountDomainService {
 
     SavingsAccountTransaction handleWithdrawal(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
-            BigDecimal transactionAmount, PaymentDetail paymentDetail, SavingsTransactionBooleanValues transactionBooleanValues);
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, SavingsTransactionBooleanValues transactionBooleanValues, 
+            GlobalTransactionReference transactionReference);
 
     SavingsAccountTransaction handleDeposit(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
-            BigDecimal transactionAmount, PaymentDetail paymentDetail, boolean isAccountTransfer, boolean isRegularTransaction);
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, boolean isAccountTransfer, boolean isRegularTransaction, 
+            GlobalTransactionReference transactionReference);
 
     void postJournalEntries(SavingsAccount savingsAccount, Set<Long> existingTransactionIds, Set<Long> existingReversedTransactionIds);
+
+    SavingsAccountTransaction handleDepositReversal(SavingsAccount account, GlobalTransactionReference transactionReference,
+            SavingsAccountTransaction transactionToBeReversed);
+
+    SavingsAccountTransaction handleWithdrawalReversal(SavingsAccount account, GlobalTransactionReference transactionReference,
+            SavingsAccountTransaction transactionToBeReversed);
+
+    SavingsAccountTransaction handleChargeReversal(SavingsAccount account, GlobalTransactionReference transactionReference,
+            SavingsAccountTransaction transactionToBeReversed);
 }

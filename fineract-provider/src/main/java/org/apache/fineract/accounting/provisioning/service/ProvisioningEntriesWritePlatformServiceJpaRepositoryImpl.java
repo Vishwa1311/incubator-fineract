@@ -54,6 +54,7 @@ import org.apache.fineract.organisation.provisioning.data.ProvisioningCriteriaDa
 import org.apache.fineract.organisation.provisioning.domain.ProvisioningCategory;
 import org.apache.fineract.organisation.provisioning.domain.ProvisioningCategoryRepository;
 import org.apache.fineract.organisation.provisioning.service.ProvisioningCriteriaReadPlatformService;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReferenceAssembler;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -82,6 +83,7 @@ public class ProvisioningEntriesWritePlatformServiceJpaRepositoryImpl implements
     private final JournalEntryWritePlatformService journalEntryWritePlatformService;
     private final ProvisioningEntriesDefinitionJsonDeserializer fromApiJsonDeserializer;
     private final FromJsonHelper fromApiJsonHelper;
+    private final GlobalTransactionReferenceAssembler transactionReferenceAssembler;
     
     @Autowired
     public ProvisioningEntriesWritePlatformServiceJpaRepositoryImpl(
@@ -91,7 +93,8 @@ public class ProvisioningEntriesWritePlatformServiceJpaRepositoryImpl implements
             final OfficeRepository officeRepository, final ProvisioningCategoryRepository provisioningCategoryRepository,
             final PlatformSecurityContext platformSecurityContext, final ProvisioningEntryRepository provisioningEntryRepository,
             final JournalEntryWritePlatformService journalEntryWritePlatformService,
-            final ProvisioningEntriesDefinitionJsonDeserializer fromApiJsonDeserializer, final FromJsonHelper fromApiJsonHelper) {
+            final ProvisioningEntriesDefinitionJsonDeserializer fromApiJsonDeserializer, final FromJsonHelper fromApiJsonHelper, 
+            final GlobalTransactionReferenceAssembler transactionReferenceAssembler) {
         this.provisioningEntriesReadPlatformService = provisioningEntriesReadPlatformService;
         this.provisioningCriteriaReadPlatformService = provisioningCriteriaReadPlatformService ;
         this.loanProductRepository = loanProductRepository;
@@ -103,6 +106,7 @@ public class ProvisioningEntriesWritePlatformServiceJpaRepositoryImpl implements
         this.journalEntryWritePlatformService = journalEntryWritePlatformService;
         this.fromApiJsonDeserializer = fromApiJsonDeserializer;
         this.fromApiJsonHelper = fromApiJsonHelper;
+        this.transactionReferenceAssembler = transactionReferenceAssembler;
     }
 
     @Override

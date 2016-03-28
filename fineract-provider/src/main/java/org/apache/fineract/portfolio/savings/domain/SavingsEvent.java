@@ -36,7 +36,9 @@ public enum SavingsEvent {
     SAVINGS_APPLY_CHARGE("charge.apply"), //
     SAVINGS_WAIVE_CHARGE("charge.waive"), //
     SAVINGS_PAY_CHARGE("charge.pay"), //
-    SAVINGS_CLOSE_ACCOUNT("account.close");
+    SAVINGS_CLOSE_ACCOUNT("account.close"), //
+    SAVINGS_DEPOSIT_REVERSAL("deposit.reversal"), //
+    SAVINGS_WITHDRAWAL_REVERSAL("withdrawal.reversal");
 
     private final String value;
 

@@ -53,6 +53,7 @@ import org.apache.fineract.portfolio.calendar.domain.CalendarType;
 import org.apache.fineract.portfolio.calendar.service.CalendarUtils;
 import org.apache.fineract.portfolio.client.domain.AccountNumberGenerator;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
+import org.apache.fineract.portfolio.globaltransaction.domain.GlobalTransactionReference;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.DepositAccountOnClosureType;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
@@ -106,7 +107,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Override
     public SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final boolean applyWithdrawFee, final boolean isRegularTransaction) {
+            final boolean applyWithdrawFee, final boolean isRegularTransaction, final GlobalTransactionReference transactionReference) {
         boolean isAccountTransfer = false;
         boolean isInterestTransfer = false;
         boolean isWithdrawBalance = false;
@@ -114,24 +115,25 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
         SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(isAccountTransfer,
                 isRegularTransaction, applyWithdrawFee, isInterestTransfer, isWithdrawBalance);
         return this.savingsAccountDomainService.handleWithdrawal(account, fmt, transactionDate, transactionAmount, paymentDetail,
-                transactionBooleanValues);
+                transactionBooleanValues, transactionReference);
     }
 
     @Transactional
     @Override
     public SavingsAccountTransaction handleFDDeposit(final FixedDepositAccount account, final DateTimeFormatter fmt,
-            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail) {
+            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail, 
+            final GlobalTransactionReference transactionReference) {
         boolean isAccountTransfer = false;
         boolean isRegularTransaction = false;
         return this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail,
-                isAccountTransfer, isRegularTransaction);
+                isAccountTransfer, isRegularTransaction, transactionReference);
     }
 
     @Transactional
     @Override
     public SavingsAccountTransaction handleRDDeposit(final RecurringDepositAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final boolean isRegularTransaction) {
+            final boolean isRegularTransaction, final GlobalTransactionReference transactionReference) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -142,7 +144,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
         final MathContext mc = MathContext.DECIMAL64;
         account.updateDepositAmount(transactionAmount);
         final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction);
+                transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction, transactionReference);
 
         account.handleScheduleInstallments(deposit);
         account.updateMaturityDateAndAmount(mc, isPreMatureClosure, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth);
@@ -153,7 +155,8 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Transactional
     @Override
     public Long handleFDAccountClosure(final FixedDepositAccount account, final PaymentDetail paymentDetail, final AppUser user,
-            final JsonCommand command, final LocalDate tenantsTodayDate, final Map<String, Object> changes) {
+            final JsonCommand command, final LocalDate tenantsTodayDate, final Map<String, Object> changes, 
+            final GlobalTransactionReference transactionReference) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -183,7 +186,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
         final DateTimeFormatter fmt = DateTimeFormat.forPattern(command.dateFormat()).withLocale(locale);
         final LocalDate closedDate = command.localDateValueOfParameterNamed(SavingsApiConstants.closedOnDateParamName);
         Long savingsTransactionId = null;
-        account.postMaturityInterest(isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth);
+        account.postMaturityInterest(isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, transactionReference);
         final Integer onAccountClosureId = command.integerValueOfParameterNamed(onAccountClosureIdParamName);
         final DepositAccountOnClosureType onClosureType = DepositAccountOnClosureType.fromInt(onAccountClosureId);
         if (onClosureType.isReinvest()) {
@@ -194,7 +197,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             this.savingsAccountRepository.save(reinvestedDeposit);
             autoGenerateAccountNumber(reinvestedDeposit);
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, transactionReference);
             savingsTransactionId = withdrawal.getId();
         } else if (onClosureType.isTransferToSavings()) {
             final Long toSavingsId = command.longValueOfParameterNamed(toSavingsAccountIdParamName);
@@ -209,7 +212,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             this.accountTransfersWritePlatformService.transferFunds(accountTransferDTO);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, transactionReference);
             savingsTransactionId = withdrawal.getId();
         }
 
@@ -228,7 +231,8 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Transactional
     @Override
     public Long handleRDAccountClosure(final RecurringDepositAccount account, final PaymentDetail paymentDetail, final AppUser user,
-            final JsonCommand command, final LocalDate tenantsTodayDate, final Map<String, Object> changes) {
+            final JsonCommand command, final LocalDate tenantsTodayDate, final Map<String, Object> changes, 
+            final GlobalTransactionReference transactionReference) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -246,7 +250,8 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
         final DateTimeFormatter fmt = DateTimeFormat.forPattern(command.dateFormat()).withLocale(locale);
         final LocalDate closedDate = command.localDateValueOfParameterNamed(SavingsApiConstants.closedOnDateParamName);
         Long savingsTransactionId = null;
-        account.postMaturityInterest(isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, closedDate);
+        account.postMaturityInterest(isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, closedDate, 
+                transactionReference);
         final BigDecimal transactionAmount = account.getAccountBalance();
         final Integer onAccountClosureId = command.integerValueOfParameterNamed(onAccountClosureIdParamName);
         final DepositAccountOnClosureType onClosureType = DepositAccountOnClosureType.fromInt(onAccountClosureId);
@@ -261,14 +266,14 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             Integer frequency = CalendarUtils.getInterval(calendar.getRecurrence());
             frequency = frequency == -1 ? 1 : frequency;
             reinvestedDeposit.generateSchedule(frequencyType, frequency, calendar);
-            reinvestedDeposit.processAccountUponActivation(fmt, user);
+            reinvestedDeposit.processAccountUponActivation(fmt, user, transactionReference);
             reinvestedDeposit.updateMaturityDateAndAmount(mc, isPreMatureClosure, isSavingsInterestPostingAtCurrentPeriodEnd,
                     financialYearBeginningMonth);
             this.savingsAccountRepository.save(reinvestedDeposit);
             autoGenerateAccountNumber(reinvestedDeposit);
 
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, transactionReference);
             savingsTransactionId = withdrawal.getId();
 
         } else if (onClosureType.isTransferToSavings()) {
@@ -284,7 +289,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             this.accountTransfersWritePlatformService.transferFunds(accountTransferDTO);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, transactionReference);
             savingsTransactionId = withdrawal.getId();
         }
 
@@ -337,7 +342,8 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Transactional
     @Override
     public Long handleFDAccountPreMatureClosure(final FixedDepositAccount account, final PaymentDetail paymentDetail, final AppUser user,
-            final JsonCommand command, final LocalDate tenantsTodayDate, final Map<String, Object> changes) {
+            final JsonCommand command, final LocalDate tenantsTodayDate, final Map<String, Object> changes, 
+            final GlobalTransactionReference transactionReference) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -356,7 +362,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
         Long savingsTransactionId = null;
         // post interest
         account.postPreMaturityInterest(closedDate, isPreMatureClosure, isSavingsInterestPostingAtCurrentPeriodEnd,
-                financialYearBeginningMonth);
+                financialYearBeginningMonth, transactionReference);
 
         final Integer closureTypeValue = command.integerValueOfParameterNamed(DepositsApiConstants.onAccountClosureIdParamName);
         DepositAccountOnClosureType closureType = DepositAccountOnClosureType.fromInt(closureTypeValue);
@@ -374,7 +380,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             this.accountTransfersWritePlatformService.transferFunds(accountTransferDTO);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, transactionReference);
             savingsTransactionId = withdrawal.getId();
         }
 
@@ -393,7 +399,8 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
     @Transactional
     @Override
     public Long handleRDAccountPreMatureClosure(final RecurringDepositAccount account, final PaymentDetail paymentDetail,
-            final AppUser user, final JsonCommand command, final LocalDate tenantsTodayDate, final Map<String, Object> changes) {
+            final AppUser user, final JsonCommand command, final LocalDate tenantsTodayDate, final Map<String, Object> changes, 
+            final GlobalTransactionReference transactionReference) {
 
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
@@ -412,7 +419,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
         Long savingsTransactionId = null;
         // post interest
         account.postPreMaturityInterest(closedDate, isPreMatureClosure, isSavingsInterestPostingAtCurrentPeriodEnd,
-                financialYearBeginningMonth);
+                financialYearBeginningMonth, transactionReference);
 
         final Integer closureTypeValue = command.integerValueOfParameterNamed(DepositsApiConstants.onAccountClosureIdParamName);
         DepositAccountOnClosureType closureType = DepositAccountOnClosureType.fromInt(closureTypeValue);
@@ -430,7 +437,7 @@ public class DepositAccountDomainServiceJpa implements DepositAccountDomainServi
             this.accountTransfersWritePlatformService.transferFunds(accountTransferDTO);
         } else {
             final SavingsAccountTransaction withdrawal = this.handleWithdrawal(account, fmt, closedDate, account.getAccountBalance(),
-                    paymentDetail, false, isRegularTransaction);
+                    paymentDetail, false, isRegularTransaction, transactionReference);
             savingsTransactionId = withdrawal.getId();
         }
 

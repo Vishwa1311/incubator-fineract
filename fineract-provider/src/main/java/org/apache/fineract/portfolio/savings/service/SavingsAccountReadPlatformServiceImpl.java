@@ -52,6 +52,7 @@ import org.apache.fineract.portfolio.savings.SavingsInterestCalculationDaysInYea
 import org.apache.fineract.portfolio.savings.SavingsInterestCalculationType;
 import org.apache.fineract.portfolio.savings.SavingsPeriodFrequencyType;
 import org.apache.fineract.portfolio.savings.SavingsPostingInterestPeriodType;
+import org.apache.fineract.portfolio.savings.SavingsReversalType;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountApplicationTimelineData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
@@ -673,6 +674,7 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
             sqlBuilder.append("tr.transaction_date as transactionDate, tr.amount as transactionAmount,");
             sqlBuilder.append("tr.created_date as submittedOnDate,");
             sqlBuilder.append("tr.running_balance_derived as runningBalance, tr.is_reversed as reversed,");
+            sqlBuilder.append("tr.reversal_of_id as reversalOfId, tr.reversal_type as reversalType,");
             sqlBuilder.append("fromtran.id as fromTransferId, fromtran.is_reversed as fromTransferReversed,");
             sqlBuilder.append("fromtran.transaction_date as fromTransferDate, fromtran.amount as fromTransferAmount,");
             sqlBuilder.append("fromtran.description as fromTransferDescription,");
@@ -686,9 +688,11 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                     .append("sa.currency_code as currencyCode, sa.currency_digits as currencyDigits, sa.currency_multiplesof as inMultiplesOf, ");
             sqlBuilder.append("curr.name as currencyName, curr.internationalized_name_code as currencyNameCode, ");
             sqlBuilder.append("curr.display_symbol as currencyDisplaySymbol, ");
-            sqlBuilder.append("pt.value as paymentTypeName ");
+            sqlBuilder.append("pt.value as paymentTypeName, ");
+            sqlBuilder.append("gt.transaction_ref_no as transactionRefNo, gt.external_ref_no as externalRefNo ");
             sqlBuilder.append("from m_savings_account sa ");
             sqlBuilder.append("join m_savings_account_transaction tr on tr.savings_account_id = sa.id ");
+            sqlBuilder.append("left join m_global_transaction_reference gt on gt.id=tr.global_transaction_ref_id ");
             sqlBuilder.append("join m_currency curr on curr.code = sa.currency_code ");
             sqlBuilder.append("left join m_account_transfer_transaction fromtran on fromtran.from_savings_transaction_id = tr.id ");
             sqlBuilder.append("left join m_account_transfer_transaction totran on totran.to_savings_transaction_id = tr.id ");
@@ -716,6 +720,8 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
 
             final Long savingsId = rs.getLong("savingsId");
             final String accountNo = rs.getString("accountNo");
+            final String transactionRefNo = rs.getString("transactionRefNo");
+            final String externalRefNo = rs.getString("externalRefNo");
 
             PaymentDetailData paymentDetailData = null;
             if (transactionType.isDepositOrWithdrawal()) {
@@ -762,9 +768,11 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                 transfer = AccountTransferData.transferBasicDetails(toTransferId, currency, toTransferAmount, toTransferDate,
                         toTransferDescription, toTransferReversed);
             }
-
+            final Long reversalOfId = JdbcSupport.getLong(rs, "reversalOfId");
+            final EnumOptionData reversalType = SavingsEnumerations.reversalType(SavingsReversalType.fromInt(JdbcSupport.getInteger(rs,
+                    "reversalType")));
             return SavingsAccountTransactionData.create(id, transactionType, paymentDetailData, savingsId, accountNo, date, currency,
-                    amount, runningBalance, reversed, transfer, submittedOnDate);
+                    amount, runningBalance, reversed, transfer, submittedOnDate, transactionRefNo, externalRefNo, reversalOfId, reversalType);
         }
     }
 
@@ -1010,4 +1018,11 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
      * return SavingsAccountAnnualFeeData.instance(id, accountNo,
      * annualFeeNextDueDate); } }
      */
+
+    @Override
+    public Collection<SavingsAccountTransactionData> retrieveTransactionsByGlobalTransactionRefId(Long transactionRefId) {
+        final String sql = "select " + this.transactionsMapper.schema()
+                + " where tr.global_transaction_ref_id = ? order by tr.transaction_date DESC, tr.created_date DESC, tr.id DESC";
+        return this.jdbcTemplate.query(sql, this.transactionsMapper, new Object[] { transactionRefId });
+    }
 }

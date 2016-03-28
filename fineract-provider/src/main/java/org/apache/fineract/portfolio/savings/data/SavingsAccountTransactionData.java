@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.portfolio.account.data.AccountTransferData;
@@ -49,6 +50,10 @@ public class SavingsAccountTransactionData {
     private final boolean reversed;
     private final AccountTransferData transfer;
     private final LocalDate submittedOnDate;
+    private final String transactionRefNo;
+    private final String externalRefNo;
+    private final Long reversalOfTransactionId;
+    private final EnumOptionData reversalType;
 
     // templates
     final Collection<PaymentTypeData> paymentTypeOptions;
@@ -56,19 +61,22 @@ public class SavingsAccountTransactionData {
     public static SavingsAccountTransactionData create(final Long id, final SavingsAccountTransactionEnumData transactionType,
             final PaymentDetailData paymentDetailData, final Long savingsId, final String savingsAccountNo, final LocalDate date,
             final CurrencyData currency, final BigDecimal amount, final BigDecimal runningBalance, final boolean reversed,
-            final AccountTransferData transfer) {
+            final AccountTransferData transfer, final String transactionRefNo, final String externalRefNo,
+            final Long reversalOfTransactionId, final EnumOptionData reversalType) {
         final Collection<PaymentTypeData> paymentTypeOptions = null;
         return new SavingsAccountTransactionData(id, transactionType, paymentDetailData, savingsId, savingsAccountNo, date, currency,
-                amount, runningBalance, reversed, transfer, paymentTypeOptions);
+                amount, runningBalance, reversed, transfer, paymentTypeOptions, transactionRefNo, externalRefNo, reversalOfTransactionId,
+                reversalType);
     }
 
     public static SavingsAccountTransactionData create(final Long id, final SavingsAccountTransactionEnumData transactionType,
                                                        final PaymentDetailData paymentDetailData, final Long savingsId, final String savingsAccountNo, final LocalDate date,
                                                        final CurrencyData currency, final BigDecimal amount, final BigDecimal runningBalance, final boolean reversed,
-                                                       final AccountTransferData transfer,final LocalDate submittedOnDate) {
+                                                       final AccountTransferData transfer,final LocalDate submittedOnDate, final String transactionRefNo, final String externalRefNo,
+                                                       final Long reversalOfTransactionId, final EnumOptionData reversalType) {
         final Collection<PaymentTypeData> paymentTypeOptions = null;
         return new SavingsAccountTransactionData(id, transactionType, paymentDetailData, savingsId, savingsAccountNo, date, currency,
-                amount, runningBalance, reversed, transfer, paymentTypeOptions,submittedOnDate);
+                amount, runningBalance, reversed, transfer, paymentTypeOptions,submittedOnDate, transactionRefNo, externalRefNo, reversalOfTransactionId, reversalType);
     }
 
     public static SavingsAccountTransactionData template(final Long savingsId, final String savingsAccountNo,
@@ -80,8 +88,12 @@ public class SavingsAccountTransactionData {
         final boolean reversed = false;
         final PaymentDetailData paymentDetailData = null;
         final Collection<CodeValueData> paymentTypeOptions = null;
+        final String transactionRefNo = null;
+        final String externalRefNo = null;
+        final Long reversalOfTransactionId = null;
+        final EnumOptionData reversalType = null;
         return new SavingsAccountTransactionData(id, transactionType, paymentDetailData, savingsId, savingsAccountNo, defaultLocalDate,
-                currency, amount, runningBalance, reversed, null, null);
+                currency, amount, runningBalance, reversed, null, null, transactionRefNo, externalRefNo, reversalOfTransactionId, reversalType);
     }
 
     public static SavingsAccountTransactionData templateOnTop(final SavingsAccountTransactionData savingsAccountTransactionData,
@@ -90,24 +102,30 @@ public class SavingsAccountTransactionData {
                 savingsAccountTransactionData.paymentDetailData, savingsAccountTransactionData.accountId,
                 savingsAccountTransactionData.accountNo, savingsAccountTransactionData.date, savingsAccountTransactionData.currency,
                 savingsAccountTransactionData.amount, savingsAccountTransactionData.runningBalance, savingsAccountTransactionData.reversed,
-                savingsAccountTransactionData.transfer, paymentTypeOptions);
+                savingsAccountTransactionData.transfer, paymentTypeOptions, savingsAccountTransactionData.transactionRefNo,
+                savingsAccountTransactionData.externalRefNo, savingsAccountTransactionData.reversalOfTransactionId,
+                savingsAccountTransactionData.reversalType);
     }
 
     private SavingsAccountTransactionData(final Long id, final SavingsAccountTransactionEnumData transactionType,
             final PaymentDetailData paymentDetailData, final Long savingsId, final String savingsAccountNo, final LocalDate date,
             final CurrencyData currency, final BigDecimal amount, final BigDecimal runningBalance, final boolean reversed,
-            final AccountTransferData transfer, final Collection<PaymentTypeData> paymentTypeOptions) {
+            final AccountTransferData transfer, final Collection<PaymentTypeData> paymentTypeOptions, final String transactionRefNo, final String externalRefNo,
+            final Long reversalOfTransactionId, final EnumOptionData reversalType) {
 
         this(id,transactionType,paymentDetailData,savingsId, savingsAccountNo,date,
         currency,amount,runningBalance, reversed,
-        transfer, paymentTypeOptions,null);
+        transfer, paymentTypeOptions, null, transactionRefNo,
+        externalRefNo, reversalOfTransactionId, reversalType);
 
     }
 
     private SavingsAccountTransactionData(final Long id, final SavingsAccountTransactionEnumData transactionType,
                                           final PaymentDetailData paymentDetailData, final Long savingsId, final String savingsAccountNo, final LocalDate date,
                                           final CurrencyData currency, final BigDecimal amount, final BigDecimal runningBalance, final boolean reversed,
-                                          final AccountTransferData transfer, final Collection<PaymentTypeData> paymentTypeOptions,final LocalDate submittedOnDate) {
+                                          final AccountTransferData transfer, final Collection<PaymentTypeData> paymentTypeOptions,final LocalDate submittedOnDate, 
+                                          final String transactionRefNo, final String externalRefNo,
+                                          final Long reversalOfTransactionId, final EnumOptionData reversalType) {
         this.id = id;
         this.transactionType = transactionType;
         this.paymentDetailData = paymentDetailData;
@@ -121,6 +139,10 @@ public class SavingsAccountTransactionData {
         this.transfer = transfer;
         this.paymentTypeOptions = paymentTypeOptions;
         this.submittedOnDate = submittedOnDate;
+        this.transactionRefNo = transactionRefNo;
+        this.externalRefNo = externalRefNo;
+        this.reversalOfTransactionId = reversalOfTransactionId;
+        this.reversalType = reversalType;
     }
 
     public static SavingsAccountTransactionData withWithDrawalTransactionDetails(
@@ -135,6 +157,8 @@ public class SavingsAccountTransactionData {
                 savingsAccountTransactionData.accountNo, currentDate, savingsAccountTransactionData.currency,
                 savingsAccountTransactionData.runningBalance, savingsAccountTransactionData.runningBalance,
                 savingsAccountTransactionData.reversed, savingsAccountTransactionData.transfer,
-                savingsAccountTransactionData.paymentTypeOptions);
+                savingsAccountTransactionData.paymentTypeOptions, savingsAccountTransactionData.transactionRefNo,
+                savingsAccountTransactionData.externalRefNo, savingsAccountTransactionData.reversalOfTransactionId,
+                savingsAccountTransactionData.reversalType);
     }
 }

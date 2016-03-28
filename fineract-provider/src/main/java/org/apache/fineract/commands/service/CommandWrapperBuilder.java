@@ -2616,4 +2616,21 @@ public class CommandWrapperBuilder {
         this.href = "/accounts/" + accountType+"/"+accountId;
         return this;
     }
+
+    public CommandWrapperBuilder createTransactionReference() {
+        this.actionName = "CREATE";
+        this.entityName = "GLOBALTRANSACTIONREFERENCE";
+        this.entityId = null;
+        this.href = "/globaltransactionreferences";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoGlobalTransactionReference(final Long transactionId) {
+        this.actionName = "UNDOTRANSACTION";
+        this.entityName = "GLOBALTRANSACTIONREFERENCE";
+        this.entityId = null;
+        this.entityId = transactionId;
+        this.href = "/globaltransactionreferences/" + transactionId + "?command=undo";
+        return this;
+    }
 }

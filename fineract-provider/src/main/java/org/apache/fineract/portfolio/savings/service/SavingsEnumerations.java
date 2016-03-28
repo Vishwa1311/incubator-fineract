@@ -34,6 +34,7 @@ import org.apache.fineract.portfolio.savings.SavingsInterestCalculationDaysInYea
 import org.apache.fineract.portfolio.savings.SavingsInterestCalculationType;
 import org.apache.fineract.portfolio.savings.SavingsPeriodFrequencyType;
 import org.apache.fineract.portfolio.savings.SavingsPostingInterestPeriodType;
+import org.apache.fineract.portfolio.savings.SavingsReversalType;
 import org.apache.fineract.portfolio.savings.SavingsWithdrawalFeesType;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountStatusEnumData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionEnumData;
@@ -766,4 +767,23 @@ public class SavingsEnumerations {
         return optionData;
     }
 
+    public static EnumOptionData reversalType(final SavingsReversalType type) {
+        EnumOptionData optionData = new EnumOptionData(SavingsReversalType.NOT_REVERSED.getValue().longValue(),
+                SavingsReversalType.NOT_REVERSED.getCode(), "Not reversed");
+        switch (type) {
+            case COMPLETE:
+                optionData = new EnumOptionData(SavingsReversalType.COMPLETE.getValue().longValue(),
+                        SavingsReversalType.COMPLETE.getCode(), "Complete reversal");
+            break;
+            case NOT_REVERSED:
+                optionData = new EnumOptionData(SavingsReversalType.NOT_REVERSED.getValue().longValue(),
+                        SavingsReversalType.NOT_REVERSED.getCode(), "Not reversed");
+            break;
+            case PARTIAL:
+                optionData = new EnumOptionData(SavingsReversalType.PARTIAL.getValue().longValue(), SavingsReversalType.PARTIAL.getCode(),
+                        "Partial reversal");
+            break;
+        }
+        return optionData;
+    }
 }
