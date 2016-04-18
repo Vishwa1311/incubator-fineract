@@ -460,4 +460,8 @@ public class LoanScheduleParams {
     public void minusUnCompoundedAmount(Money unCompoundedAmount) {
         this.unCompoundedAmount = this.unCompoundedAmount.minus(unCompoundedAmount);
     }
+    
+    public void setUnCompoundedAmount(Money unCompoundedAmount) {
+        this.unCompoundedAmount = unCompoundedAmount;
+    }
 }
