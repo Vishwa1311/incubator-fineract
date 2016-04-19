@@ -105,8 +105,8 @@ public class LoanScheduleHistoryReadPlatformServiceImpl implements LoanScheduleH
             StringBuilder stringBuilder = new StringBuilder(200);
             stringBuilder.append(" ls.installment as period, ls.fromdate as fromDate, ls.duedate as dueDate, ");
             stringBuilder
-                    .append("ls.principal_amount as principalDue, ls.interest_amount as interestDue, ls.fee_charges_amount as feeChargesDue, ls.penalty_charges_amount as penaltyChargesDue ");
-            stringBuilder.append(" from m_loan_repayment_schedule_history ls ");
+                    .append("ls.principal_amount as principalDue, ls.interest_amount as interestDue, ls.fee_charges_amount as feeChargesDue, ls.penalty_charges_amount as penaltyChargesDue, ");
+            stringBuilder.append(" ls.recalculated_interest_component as recalculatedInterestComponent from m_loan_repayment_schedule_history ls ");
             return stringBuilder.toString();
         }
 
@@ -200,10 +200,12 @@ public class LoanScheduleHistoryReadPlatformServiceImpl implements LoanScheduleH
                 // update based on current period values
                 this.lastDueDate = dueDate;
                 this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.subtract(principalDue);
+                
+                final Boolean recalculatedInterestComponent = rs.getBoolean("recalculatedInterestComponent");
 
                 final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.repaymentOnlyPeriod(period, fromDate, dueDate,
                         principalDue, outstandingPrincipalBalanceOfLoan, interestExpectedDue, feeChargesExpectedDue,
-                        penaltyChargesExpectedDue, totalDueForPeriod, totalInstallmentAmount);
+                        penaltyChargesExpectedDue, totalDueForPeriod, totalInstallmentAmount, recalculatedInterestComponent);
 
                 periods.add(periodData);
             }
@@ -214,5 +216,4 @@ public class LoanScheduleHistoryReadPlatformServiceImpl implements LoanScheduleH
         }
 
     }
-
 }
