@@ -1168,12 +1168,12 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                     outstanding = updateBalanceForInterestCalculation(params.getPrincipalPortionMap(), params.getPeriodStartDate(),
                             outstanding, false);
                 }
-                if (params.getLatePaymentMap().isEmpty() && !outstanding.isGreaterThanZero()) {
+                if (params.getLatePaymentMap().isEmpty() && outstanding.isZero()) {
                     break;
                 }
             }
 
-            if (outstanding.isGreaterThanZero()) {
+            if (!outstanding.isZero()) {
                 PrincipalInterest principalInterestForThisPeriod = calculatePrincipalInterestComponentsForPeriod(
                         this.paymentPeriodsInOneYearCalculator, interestCalculationGraceOnRepaymentPeriodFraction, totalInterest.zero(),
                         totalInterest.zero(), totalInterest.zero(), totalInterest.zero(), outstanding, loanApplicationTerms,
@@ -1195,7 +1195,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
 
             }
             params.setPeriodStartDate(params.getActualRepaymentDate());
-        } while (params.getActualRepaymentDate().isBefore(currentDate) && outstanding.isGreaterThanZero());
+        } while (params.getActualRepaymentDate().isBefore(currentDate) && !outstanding.isZero());
 
         if (totalInterest.isGreaterThanZero()) {
             LoanScheduleModelRepaymentPeriod installment = LoanScheduleModelRepaymentPeriod.repayment(params.getInstalmentNumber(),
