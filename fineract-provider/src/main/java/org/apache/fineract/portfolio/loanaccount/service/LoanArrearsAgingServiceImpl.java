@@ -19,7 +19,6 @@
 package org.apache.fineract.portfolio.loanaccount.service;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -457,7 +456,7 @@ public class LoanArrearsAgingServiceImpl implements LoanArrearsAgingService, Bus
             final BigDecimal totalDueForPeriod = null;
             return LoanSchedulePeriodData.repaymentOnlyPeriod(periodNumber, fromDate, dueDate, principalDue, principalOutstanding,
                     interestDueOnPrincipalOutstanding, feeChargesDueForPeriod, penaltyChargesDueForPeriod, totalDueForPeriod,
-                    totalInstallmentAmount);
+                    totalInstallmentAmount, false);
 
         }
     }
