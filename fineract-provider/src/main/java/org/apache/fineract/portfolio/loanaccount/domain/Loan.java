@@ -5072,6 +5072,7 @@ public class Loan extends AbstractPersistable<Long> {
         if(interestChargedFromDate == null && scheduleGeneratorDTO.isInterestChargedFromDateAsDisbursementDateEnabled()){
             interestChargedFromDate = getDisbursementDate();
         }
+        final Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled = scheduleGeneratorDTO.isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled();
 
         final LoanApplicationTerms loanApplicationTerms = LoanApplicationTerms.assembleFrom(scheduleGeneratorDTO.getApplicationCurrency(),
                 loanTermFrequency, loanTermPeriodFrequencyType, nthDayType, dayOfWeekType, getDisbursementDate(),
@@ -5081,7 +5082,8 @@ public class Loan extends AbstractPersistable<Long> {
                 this.loanProduct.getInstallmentAmountInMultiplesOf(), recalculationFrequencyType, restCalendarInstance, compoundingMethod,
                 compoundingCalendarInstance, compoundingFrequencyType, this.loanProduct.preCloseInterestCalculationStrategy(),
                 rescheduleStrategyMethod, calendar, getApprovedPrincipal(), annualNominalInterestRate, loanTermVariations, calendarHistoryDataWrapper,
-				scheduleGeneratorDTO.getNumberOfdays(), scheduleGeneratorDTO.isSkipRepaymentOnFirstDayofMonth());
+		scheduleGeneratorDTO.getNumberOfdays(), scheduleGeneratorDTO.isSkipRepaymentOnFirstDayofMonth(),
+		isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled);
         return loanApplicationTerms;
     }
 
@@ -5238,6 +5240,7 @@ public class Loan extends AbstractPersistable<Long> {
      *            TODO
      * @param floatingRateDTO
      *            TODO
+     * @param isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled 
      * @param loanCalendarInstance
      *            Used for accessing the loan's calendar object
      * @return application terms of the Loan object
@@ -5245,7 +5248,8 @@ public class Loan extends AbstractPersistable<Long> {
     @SuppressWarnings({ "unused" })
     public LoanApplicationTerms getLoanApplicationTerms(final ApplicationCurrency applicationCurrency,
             final CalendarInstance restCalendarInstance, CalendarInstance compoundingCalendarInstance, final Calendar loanCalendar,
-            final FloatingRateDTO floatingRateDTO, final boolean isSkipRepaymentonmonthFirst, final Integer numberofdays) {
+            final FloatingRateDTO floatingRateDTO, final boolean isSkipRepaymentonmonthFirst, final Integer numberofdays, 
+            final Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled) {
         LoanProduct loanProduct = loanProduct();
         // LoanProductRelatedDetail loanProductRelatedDetail =
         // getLoanRepaymentScheduleDetail();
@@ -5325,7 +5329,7 @@ public class Loan extends AbstractPersistable<Long> {
                 this.loanProduct.getInstallmentAmountInMultiplesOf(), recalculationFrequencyType, restCalendarInstance, compoundingMethod,
                 compoundingCalendarInstance, compoundingFrequencyType, this.loanProduct.preCloseInterestCalculationStrategy(),
                 rescheduleStrategyMethod, loanCalendar, getApprovedPrincipal(), annualNominalInterestRate, loanTermVariations, 
-                calendarHistoryDataWrapper, numberofdays, isSkipRepaymentonmonthFirst);
+                calendarHistoryDataWrapper, numberofdays, isSkipRepaymentonmonthFirst, isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled);
     }
 
     /**
