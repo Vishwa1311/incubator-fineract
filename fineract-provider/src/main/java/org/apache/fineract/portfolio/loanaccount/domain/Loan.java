@@ -111,6 +111,8 @@ import org.apache.fineract.portfolio.loanaccount.exception.LoanOfficerUnassignme
 import org.apache.fineract.portfolio.loanaccount.exception.MultiDisbursementDataRequiredException;
 import org.apache.fineract.portfolio.loanaccount.exception.UndoLastTrancheDisbursementException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleDTO;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleData;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanSchedulePeriodData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.AprCalculator;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanApplicationTerms;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleGenerator;
@@ -3889,7 +3891,7 @@ public class Loan extends AbstractPersistable<Long> {
         return cumulativeInterestOverdue;
     }
 
-    private Money getInArrearsTolerance() {
+    Money getInArrearsTolerance() {
         return this.loanRepaymentScheduleDetail.getInArrearsTolerance();
     }
 
@@ -5924,5 +5926,42 @@ public class Loan extends AbstractPersistable<Long> {
         }
         return amount;
     }
+    
+    public BigDecimal getTransactionAmountOnOrBeforeGivenDate(LocalDate onDate) {
+    	         BigDecimal transactionAmount = BigDecimal.ZERO;
+    	         LocalDate actualDuedateWithGrace = onDate.plusDays(this.loanRepaymentScheduleDetail.getGraceOnDueDate());
+    	         if (!this.loanTransactions.isEmpty()) {
+    	             for (LoanTransaction loanTransaction : this.loanTransactions) {
+    	                 if (!(loanTransaction.getTransactionDate().isAfter(actualDuedateWithGrace)) && loanTransaction.isRepayment() && !(loanTransaction.isReversed())) {
+    	                     transactionAmount=transactionAmount.add(loanTransaction.getAmount());
+    	                 }
+    	             }
+    	         }
+    	         return transactionAmount;
+    	     }
+    	 
+    	     public BigDecimal getDueAmountOnOrBeforeGivenDate(LocalDate ondate, LoanScheduleData loanrepaymetnscheduleHistory) {
+    	         BigDecimal dueAmount = BigDecimal.ZERO;
+    	         if (loanrepaymetnscheduleHistory != null) {
+    	             for (LoanSchedulePeriodData loanRepaymentScheduleInstallment : loanrepaymetnscheduleHistory.getPeriods()) {
+    	                 if (!(loanRepaymentScheduleInstallment.periodDueDate().isAfter(ondate))
+    	                         && (loanRepaymentScheduleInstallment.totalOutstandingDueforPeriod() != null)) {
+    	                     if (loanRepaymentScheduleInstallment.principalDue().intValue() == 0) {
+    	                         LocalDate lastDateOfMonthpreviousinstalmentdate = loanRepaymentScheduleInstallment.periodDueDate().minusMonths(1)
+    	                                 .dayOfMonth().withMaximumValue();
+    	                         for (LoanTransaction loanTransaction : this.loanTransactions) {
+    	                             if (loanTransaction.getTransactionDate().equals(lastDateOfMonthpreviousinstalmentdate)
+    	                                     && loanTransaction.isIncomePosting() && !(loanTransaction.isReversed())) {
+    	                                 dueAmount = dueAmount.add(loanTransaction.getAmount());
+    	                             }
+    	                         }
+    	                     } else {
+    	                         dueAmount = dueAmount.add(loanRepaymentScheduleInstallment.totalOutstandingDueforPeriod());
+    	                     }
+    	                 }
+    	             }
+    	         }
+    	         return dueAmount;
+    	     }
 
 }

@@ -53,6 +53,7 @@ import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.LoanChargeWithoutMandatoryFieldException;
 import org.apache.fineract.portfolio.loanaccount.command.LoanChargeCommand;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidDetail;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleData;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
 import org.joda.time.LocalDate;
@@ -135,13 +136,15 @@ public class LoanCharge extends AbstractPersistable<Long> {
     @OneToOne(mappedBy = "loancharge", cascade = CascadeType.ALL, optional = true, orphanRemoval = true, fetch = FetchType.LAZY)
     private LoanTrancheDisbursementCharge loanTrancheDisbursementCharge;
 
-    public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition, final JsonCommand command) {
-        final LocalDate dueDate = command.localDateValueOfParameterNamed("dueDate");
-        return createNewFromJson(loan, chargeDefinition, command, dueDate);
-    }
+	public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition,
+			final JsonCommand command) {
+		final LocalDate dueDate = command.localDateValueOfParameterNamed("dueDate");
+		LoanScheduleData loanrepaymetnscheduleHistory = null;
+		return createNewFromJson(loan, chargeDefinition, command, dueDate, loanrepaymetnscheduleHistory);
+	}
 
     public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition, final JsonCommand command,
-            final LocalDate dueDate) {
+            final LocalDate dueDate, LoanScheduleData loanrepaymetnscheduleHistory) {
         final BigDecimal amount = command.bigDecimalValueOfParameterNamed("amount");
 
         final ChargeTimeType chargeTime = null;
@@ -150,9 +153,14 @@ public class LoanCharge extends AbstractPersistable<Long> {
         BigDecimal amountPercentageAppliedTo = BigDecimal.ZERO;
         switch (ChargeCalculationType.fromInt(chargeDefinition.getChargeCalculation())) {
             case PERCENT_OF_AMOUNT:
-                if (command.hasParameter("principal")) {
-                    amountPercentageAppliedTo = command.bigDecimalValueOfParameterNamed("principal");
-                } else {
+			if (command.hasParameter("principal")) {
+				amountPercentageAppliedTo = loan.getDueAmountOnOrBeforeGivenDate(dueDate, loanrepaymetnscheduleHistory)
+						.subtract(loan.getTransactionAmountOnOrBeforeGivenDate(dueDate))
+						.subtract(loan.getInArrearsTolerance().getAmount());
+				if (amountPercentageAppliedTo.intValue() <= 0) {
+					amountPercentageAppliedTo = BigDecimal.ZERO;
+				}
+			} else {
                     amountPercentageAppliedTo = loan.getPrincpal().getAmount();
                 }
             break;
@@ -184,9 +192,11 @@ public class LoanCharge extends AbstractPersistable<Long> {
             loanCharge = loan.calculatePerInstallmentChargeAmount(ChargeCalculationType.fromInt(chargeDefinition.getChargeCalculation()),
                     percentage);
         }
-
-        return new LoanCharge(loan, chargeDefinition, amountPercentageAppliedTo, amount, chargeTime, chargeCalculation, dueDate,
-                chargePaymentMode, null, loanCharge);
+		if (!(amountPercentageAppliedTo.intValue() == 0)) {
+			return new LoanCharge(loan, chargeDefinition, amountPercentageAppliedTo, amount, chargeTime,
+					chargeCalculation, dueDate, chargePaymentMode, null, loanCharge);
+		}
+        return null;
     }
 
     /*
@@ -585,8 +595,9 @@ public class LoanCharge extends AbstractPersistable<Long> {
 
         if (isGreaterThanZero(value)) {
             final MathContext mc = new MathContext(8, MoneyHelper.getRoundingMode());
-            final BigDecimal multiplicand = percentage.divide(BigDecimal.valueOf(100l), mc);
-            percentageOf = value.multiply(multiplicand, mc);
+            final BigDecimal multiplicand = percentage.divide(BigDecimal.valueOf(100), mc);
+            final BigDecimal newMultiplicand = multiplicand.divide(BigDecimal.valueOf(365),mc);
+            percentageOf = value.multiply(newMultiplicand, mc);
         }
         return percentageOf;
     }

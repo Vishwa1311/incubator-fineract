@@ -450,4 +450,8 @@ public class LoanSchedulePeriodData {
     public Boolean getComplete() {
         return this.complete;
     }
+
+	public BigDecimal totalOutstandingDueforPeriod() {
+		return this.totalOutstandingForPeriod;
+	}
 }

@@ -112,10 +112,13 @@ import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.group.exception.GroupNotActiveException;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.command.LoanUpdateCommand;
+import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
+import org.apache.fineract.portfolio.loanaccount.data.LoanAccountData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargeData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanInstallmentChargeData;
+import org.apache.fineract.portfolio.loanaccount.data.RepaymentScheduleRelatedLoanData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
 import org.apache.fineract.portfolio.loanaccount.domain.DefaultLoanLifecycleStateMachine;
@@ -148,11 +151,13 @@ import org.apache.fineract.portfolio.loanaccount.exception.LoanOfficerUnassignme
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.exception.MultiDisbursementDataRequiredException;
 import org.apache.fineract.portfolio.loanaccount.guarantor.service.GuarantorDomainService;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.OverdueLoanScheduleData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.DefaultScheduledDateGenerator;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModel;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModelPeriod;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.ScheduledDateGenerator;
+import org.apache.fineract.portfolio.loanaccount.loanschedule.service.LoanScheduleHistoryReadPlatformService;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.service.LoanScheduleHistoryWritePlatformService;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanApplicationCommandFromApiJsonHelper;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanEventApiJsonValidator;
@@ -224,6 +229,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     private final LoanUtilService loanUtilService;
     private final LoanSummaryWrapper loanSummaryWrapper;
     private final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy;
+    private final LoanScheduleHistoryReadPlatformService loanScheduleHistoryReadPlatformService;
 
     @Autowired
     public LoanWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
@@ -251,7 +257,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final AccountTransferDetailRepository accountTransferDetailRepository,
             final BusinessEventNotifierService businessEventNotifierService, final GuarantorDomainService guarantorDomainService,
             final LoanUtilService loanUtilService, final LoanSummaryWrapper loanSummaryWrapper,
-            final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy) {
+            final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy,
+            final LoanScheduleHistoryReadPlatformService loanScheduleHistoryReadPlatformService) {
         this.context = context;
         this.loanEventApiJsonValidator = loanEventApiJsonValidator;
         this.loanAssembler = loanAssembler;
@@ -288,6 +295,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         this.loanUtilService = loanUtilService;
         this.loanSummaryWrapper = loanSummaryWrapper;
         this.transactionProcessingStrategy = transactionProcessingStrategy;
+        this.loanScheduleHistoryReadPlatformService = loanScheduleHistoryReadPlatformService;
     }
 
     private LoanLifecycleStateMachine defaultLoanLifecycleStateMachine() {
@@ -1273,12 +1281,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             loanCharge = LoanCharge.createNewFromJson(loan, chargeDefinition, command);
             this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_ADD_CHARGE,
                     constructEntityMap(BUSINESS_ENTITY.LOAN_CHARGE, loanCharge));
-
+            if(loanCharge != null){
             validateAddLoanCharge(loan, chargeDefinition, loanCharge);
             isAppliedOnBackDate = addCharge(loan, chargeDefinition, loanCharge);
             if (loanCharge.getDueLocalDate() == null || recalculateFrom.isAfter(loanCharge.getDueLocalDate())) {
                 isAppliedOnBackDate = true;
                 recalculateFrom = loanCharge.getDueLocalDate();
+            }
             }
         }
 
@@ -2270,8 +2279,9 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final JsonElement parsedCommand = this.fromApiJsonHelper.parse(overdueInstallment.toString());
             final JsonCommand command = JsonCommand.from(overdueInstallment.toString(), parsedCommand, this.fromApiJsonHelper, null, null,
                     null, null, null, loanId, null, null, null, null);
-            LoanOverdueDTO overdueDTO = applyChargeToOverdueLoanInstallment(loanId, overdueInstallment.getChargeId(),
-                    overdueInstallment.getPeriodNumber(), command, loan, existingTransactionIds, existingReversedTransactionIds);
+			LoanOverdueDTO overdueDTO = applyChargeToOverdueLoanInstallment(loanId, overdueInstallment.getChargeId(),
+					overdueInstallment.getPeriodNumber(), command, loan, existingTransactionIds,
+					existingReversedTransactionIds, overdueInstallment.getDueDate());
             loan = overdueDTO.getLoan();
             runInterestRecalculation = runInterestRecalculation || overdueDTO.isRunInterestRecalculation();
             if (recalculateFrom.isAfter(overdueDTO.getRecalculateFrom())) {
@@ -2346,11 +2356,15 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         }
     }
 
-    public LoanOverdueDTO applyChargeToOverdueLoanInstallment(final Long loanId, final Long loanChargeId, final Integer periodNumber,
-            final JsonCommand command, Loan loan, final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds) {
+	public LoanOverdueDTO applyChargeToOverdueLoanInstallment(final Long loanId, final Long loanChargeId,
+			final Integer periodNumber, final JsonCommand command, Loan loan, final List<Long> existingTransactionIds,
+			final List<Long> existingReversedTransactionIds, String installmentDueDate) {
         boolean runInterestRecalculation = false;
         final Charge chargeDefinition = this.chargeRepository.findOneWithNotFoundDetection(loanChargeId);
-
+        LoanAccountData loanBasicDetails = this.loanReadPlatformService.retrieveOne(loanId);
+        final RepaymentScheduleRelatedLoanData repaymentScheduleRelatedData = loanBasicDetails.repaymentScheduleRelatedData();
+        Collection<DisbursementData> disbursementData = this.loanReadPlatformService.retrieveLoanDisbursementDetails(loanId);
+        final LoanScheduleData loanrepaymetnscheduleHistory = this.loanScheduleHistoryReadPlatformService.retrieveRepaymentArchiveSchedule(loanId, repaymentScheduleRelatedData, disbursementData);
         Collection<Integer> frequencyNumbers = loanChargeReadPlatformService.retrieveOverdueInstallmentChargeFrequencyNumber(loanId,
                 chargeDefinition.getId(), periodNumber);
 
@@ -2369,13 +2383,18 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         if (feeFrequency == null) {
             scheduleDates.put(frequencyNunber++, startDate.minusDays(diff.intValue()));
         } else {
-            while (DateUtils.getLocalDateOfTenant().isAfter(startDate)) {
-                scheduleDates.put(frequencyNunber++, startDate.minusDays(diff.intValue()));
-                LocalDate scheduleDate = scheduledDateGenerator.getRepaymentPeriodDate(PeriodFrequencyType.fromInt(feeFrequency),
-                        chargeDefinition.feeInterval(), startDate, null, null);
+			while (DateUtils.getLocalDateOfTenant().isAfter(startDate)) {
+				LocalDate installmentDate = new LocalDate(installmentDueDate);
+				if ((installmentDate.getMonthOfYear() == startDate.getMonthOfYear())
+						&& (installmentDate.getYear() == startDate.getYear())) {
+					scheduleDates.put(frequencyNunber++, startDate.minusDays(diff.intValue()));
+				}
+				LocalDate scheduleDate = scheduledDateGenerator.getRepaymentPeriodDate(
+						PeriodFrequencyType.fromInt(feeFrequency), chargeDefinition.feeInterval(), startDate, null,
+						null);
 
-                startDate = scheduleDate;
-            }
+				startDate = scheduleDate;
+			}
         }
 
         for (Integer frequency : frequencyNumbers) {
@@ -2400,18 +2419,18 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_APPLY_OVERDUE_CHARGE,
                     constructEntityMap(BUSINESS_ENTITY.LOAN, loan));
             for (Map.Entry<Integer, LocalDate> entry : scheduleDates.entrySet()) {
+                final LoanCharge loanCharge = LoanCharge.createNewFromJson(loan, chargeDefinition, command, entry.getValue(), loanrepaymetnscheduleHistory);
+				if (loanCharge != null) {
+					LoanOverdueInstallmentCharge overdueInstallmentCharge = new LoanOverdueInstallmentCharge(loanCharge,
+							installment, entry.getKey());
+					loanCharge.updateOverdueInstallmentCharge(overdueInstallmentCharge);
 
-                final LoanCharge loanCharge = LoanCharge.createNewFromJson(loan, chargeDefinition, command, entry.getValue());
-
-                LoanOverdueInstallmentCharge overdueInstallmentCharge = new LoanOverdueInstallmentCharge(loanCharge, installment,
-                        entry.getKey());
-                loanCharge.updateOverdueInstallmentCharge(overdueInstallmentCharge);
-
-                boolean isAppliedOnBackDate = addCharge(loan, chargeDefinition, loanCharge);
-                runInterestRecalculation = runInterestRecalculation || isAppliedOnBackDate;
-                if (entry.getValue().isBefore(recalculateFrom)) {
-                    recalculateFrom = entry.getValue();
-                }
+					boolean isAppliedOnBackDate = addCharge(loan, chargeDefinition, loanCharge);
+					runInterestRecalculation = runInterestRecalculation || isAppliedOnBackDate;
+					if (entry.getValue().isBefore(recalculateFrom)) {
+						recalculateFrom = entry.getValue();
+					}
+				}
                 if (entry.getValue().isAfter(lastChargeAppliedDate)) {
                     lastChargeAppliedDate = entry.getValue();
                 }

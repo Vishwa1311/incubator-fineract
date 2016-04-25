@@ -454,8 +454,12 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     public Money getAmount(final MonetaryCurrency currency) {
         return Money.of(currency, this.amount);
     }
-
-    public LocalDate getTransactionDate() {
+    
+	public BigDecimal getAmount() {
+		return this.amount;
+	}
+    
+	public LocalDate getTransactionDate() {
         return new LocalDate(this.dateOf);
     }
 
