@@ -5130,6 +5130,13 @@ public class Loan extends AbstractPersistable<Long> {
         } else {
             interestRecalculatedOn = new LocalDate(this.interestRecalculatedOn);
         }
+        //Fix to check in case the Overdue date is after the interest recalculatedOn Date then that needs to be taken
+        //as the interest recalculated Date        
+        LocalDate overdueSince = this.loanSummaryWrapper.determineOverdueSince(getRepaymentScheduleInstallments());
+        if(overdueSince != null && overdueSince.isAfter(interestRecalculatedOn)){
+            interestRecalculatedOn = overdueSince;
+        }
+
         return interestRecalculatedOn;
     }
 

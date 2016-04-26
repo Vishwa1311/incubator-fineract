@@ -203,7 +203,10 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
 
         postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
 
-        recalculateAccruals(loan);
+        //Fix to recalculate Accruals only in case of back dated entries.
+        if (!DateUtils.getLocalDateOfTenant().isEqual(transactionDate)) {
+        	recalculateAccruals(loan);
+        }
 
         this.businessEventNotifierService.notifyBusinessEventWasExecuted(BUSINESS_EVENTS.LOAN_MAKE_REPAYMENT,
                 constructEntityMap(BUSINESS_ENTITY.LOAN_TRANSACTION, newRepaymentTransaction));
