@@ -133,10 +133,9 @@ public class LoanReschedulePreviewPlatformServiceImpl implements LoanRescheduleP
             if(isSkipRepaymentOnFirstMonth) { numberOfDays = configurationDomainService.retreivePeroidInNumberOfDaysForSkipMeetingDate().intValue(); }
             
         }
-        final Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled = this.configurationDomainService.isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled();
         LoanRescheduleModel loanRescheduleModel = new DefaultLoanReschedulerFactory().reschedule(mathContext, interestMethod,
                 loanRescheduleRequest, applicationCurrency, holidayDetailDTO, restCalendarInstance, compoundingCalendarInstance,
-                loanCalendar, floatingRateDTO, isSkipRepaymentOnFirstMonth, numberOfDays, isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled);
+                loanCalendar, floatingRateDTO, isSkipRepaymentOnFirstMonth, numberOfDays);
         LoanRescheduleModel loanRescheduleModelWithOldPeriods = LoanRescheduleModel.createWithSchedulehistory(loanRescheduleModel,
                 oldPeriods);
         return loanRescheduleModelWithOldPeriods;

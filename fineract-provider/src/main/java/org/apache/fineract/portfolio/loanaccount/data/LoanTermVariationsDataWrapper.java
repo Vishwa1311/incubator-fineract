@@ -55,34 +55,26 @@ public class LoanTermVariationsDataWrapper {
         dueDateIterator = this.dueDateVariation.listIterator();
     }
 
-    public boolean hasVariation(final LocalDate date, final Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled) {
+    public boolean hasVariation(final LocalDate date) {
         ListIterator<LoanTermVariationsData> iterator = this.iterator;
-        return hasNext(date, iterator, isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled);
+        return hasNext(date, iterator);
     }
 
-    private boolean hasNext(final LocalDate date, ListIterator<LoanTermVariationsData> iterator, 
-            final Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled) {
+    private boolean hasNext(final LocalDate date, ListIterator<LoanTermVariationsData> iterator) {
         boolean hasVariation = false;
         if (iterator.hasNext()) {
             LoanTermVariationsData loanTermVariationsData = iterator.next();
-            if (!isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled) {
-                if (!loanTermVariationsData.getTermApplicableFrom().isAfter(date) && !loanTermVariationsData.getTermApplicableFrom().equals(date)) {
-                    hasVariation = true;
-                }
-            } else {
-                if (!loanTermVariationsData.getTermApplicableFrom().isAfter(date)) {
-                    hasVariation = true;
-                }
+            if (!loanTermVariationsData.getTermApplicableFrom().isAfter(date)) {
+                hasVariation = true;
             }
-            
             iterator.previous();
         }
         return hasVariation;
     }
 
-    public boolean hasDueDateVariation(final LocalDate date, final Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled) {
+    public boolean hasDueDateVariation(final LocalDate date) {
         ListIterator<LoanTermVariationsData> iterator = this.dueDateIterator;
-        return hasNext(date, iterator, isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled);
+        return hasNext(date, iterator);
     }
 
     public LoanTermVariationsData nextVariation() {
