@@ -5710,14 +5710,14 @@ public class Loan extends AbstractPersistable<Long> {
     /*
      * get the next repayment date for rescheduling at the time of disbursement
      */
-    public LocalDate getNextPossibleRepaymentDateForRescheduling() {
+    public LocalDate getNextPossibleRepaymentDateForRescheduling(Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled) {
         Set<LoanDisbursementDetails> loanDisbursementDetails = this.disbursementDetails;
         LocalDate nextRepaymentDate = new LocalDate();
         if(this.isMultiDisburmentLoan()){
             for (LoanDisbursementDetails loanDisbursementDetail : loanDisbursementDetails) {
                 if (loanDisbursementDetail.actualDisbursementDate() == null) {
                     for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
-                        if (installment.getDueDate().isEqual(loanDisbursementDetail.expectedDisbursementDateAsLocalDate())
+                        if ((isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled && installment.getDueDate().isEqual(loanDisbursementDetail.expectedDisbursementDateAsLocalDate()))
                                 || installment.getDueDate().isAfter(loanDisbursementDetail.expectedDisbursementDateAsLocalDate())
                                 && installment.isNotFullyPaidOff()) {
                             nextRepaymentDate = installment.getDueDate();
@@ -5729,7 +5729,7 @@ public class Loan extends AbstractPersistable<Long> {
             }
         }else {
                 for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
-                    if (installment.getDueDate().isEqual(this.getExpectedDisbursedOnLocalDate())
+                    if ((isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled && installment.getDueDate().isEqual(this.getExpectedDisbursedOnLocalDate()))
                             || installment.getDueDate().isAfter(this.getExpectedDisbursedOnLocalDate())
                             && installment.isNotFullyPaidOff()) {
                         nextRepaymentDate = installment.getDueDate();
