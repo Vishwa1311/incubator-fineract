@@ -4916,13 +4916,18 @@ public class Loan extends AbstractPersistable<Long> {
          * recalculateFrom = loanTransaction.getTransactionDate(); } }
          * generatorDTO.setRecalculateFrom(recalculateFrom);
          */
+        return recalculateScheduleFromLastTransaction(generatorDTO, currentUser);
+
+    }
+
+    private ChangedTransactionDetail recalculateScheduleFromLastTransaction(final ScheduleGeneratorDTO generatorDTO,
+            final AppUser currentUser) {
         if (this.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
             regenerateRepaymentScheduleWithInterestRecalculation(generatorDTO, currentUser);
         } else {
             regenerateRepaymentSchedule(generatorDTO, currentUser);
         }
         return processTransactions();
-
     }
 
     public ChangedTransactionDetail handleRegenerateRepaymentScheduleWithInterestRecalculation(final ScheduleGeneratorDTO generatorDTO,
@@ -5577,12 +5582,9 @@ public class Loan extends AbstractPersistable<Long> {
         }
     }
 
-    public Map<String, Object> undoLastDisbursal(ScheduleGeneratorDTO scheduleGeneratorDTO, List<Long> existingTransactionIds,
-            List<Long> existingReversedTransactionIds, AppUser currentUser, Loan loan) {
+    public Map<String, Object> undoLastDisbursal(ScheduleGeneratorDTO scheduleGeneratorDTO, AppUser currentUser) {
 
         validateAccountStatus(LoanEvent.LOAN_DISBURSAL_UNDO_LAST);
-        existingTransactionIds.addAll(findExistingTransactionIds());
-        existingReversedTransactionIds.addAll(findExistingReversedTransactionIds());
         final Map<String, Object> actualChanges = new LinkedHashMap<>();
         validateActivityNotBeforeClientOrGroupTransferDate(LoanEvent.LOAN_DISBURSAL_UNDO_LAST, getDisbursementDate());
         LocalDate actualDisbursementDate = null;
@@ -5603,15 +5605,16 @@ public class Loan extends AbstractPersistable<Long> {
         updateLoanToLastDisbursalState(actualDisbursementDate);
         for (Iterator<LoanTermVariations> iterator = this.loanTermVariations.iterator(); iterator.hasNext();) {
             LoanTermVariations loanTermVariations = iterator.next();
-            if (loanTermVariations.getTermType().isDueDateVariation() && loanTermVariations.fetchDateValue().isAfter(actualDisbursementDate) ||
-                    loanTermVariations.getTermType().isEMIAmountVariation() && loanTermVariations.getTermApplicableFrom().equals(actualDisbursementDate.toDate())
+            if (loanTermVariations.getTermType().isDueDateVariation()
+                    && loanTermVariations.fetchDateValue().isAfter(actualDisbursementDate)
+                    || loanTermVariations.getTermType().isEMIAmountVariation()
+                    && loanTermVariations.getTermApplicableFrom().equals(actualDisbursementDate.toDate())
                     || loanTermVariations.getTermApplicableFrom().after(actualDisbursementDate.toDate())) {
                 iterator.remove();
             }
         }
         reverseExistingTransactionsTillLastDisbursal(actualDisbursementDate);
-        loan.recalculateScheduleFromLastTransaction(scheduleGeneratorDTO, existingTransactionIds, existingReversedTransactionIds,
-                currentUser);
+        recalculateScheduleFromLastTransaction(scheduleGeneratorDTO, currentUser);
         actualChanges.put("undolastdisbursal", "true");
         actualChanges.put("disbursedAmount", this.getDisbursedAmount());
         updateLoanSummaryDerivedFields();
