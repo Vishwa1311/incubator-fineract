@@ -2380,7 +2380,8 @@ public class Loan extends AbstractPersistable<Long> {
         }
 
         if (isRepaymentScheduleRegenerationRequiredForDisbursement(actualDisbursementDate) || recalculateSchedule || isEmiAmountChanged
-                || rescheduledRepaymentDate != null) {
+                || rescheduledRepaymentDate != null
+                || fetchRepaymentScheduleInstallment(1).getDueDate().isBefore(DateUtils.getLocalDateOfTenant()) || isDisbursementMissed()) {
             recalculateSchedule(scheduleGeneratorDTO, currentUser);
         }
     }
@@ -2526,7 +2527,7 @@ public class Loan extends AbstractPersistable<Long> {
         boolean isDisbursementMissed = false;
         for (LoanDisbursementDetails disbursementDetail : this.disbursementDetails) {
             if (disbursementDetail.actualDisbursementDate() == null
-                    && LocalDate.now().isAfter(disbursementDetail.expectedDisbursementDateAsLocalDate())) {
+                    && DateUtils.getLocalDateOfTenant().isAfter(disbursementDetail.expectedDisbursementDateAsLocalDate())) {
                 isDisbursementMissed = true;
                 break;
             }
