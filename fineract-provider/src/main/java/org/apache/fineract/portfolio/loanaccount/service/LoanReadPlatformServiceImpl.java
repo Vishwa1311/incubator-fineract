@@ -1767,6 +1767,10 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     @Override
     public Collection<Long> fetchLoansForInterestRecalculation() {
         StringBuilder sqlBuilder = new StringBuilder();
+        StringBuilder sql = new StringBuilder();
+        Collection<Long> loanIds = null;
+        sql.append("SELECT loan_no from deleteme ");
+        loanIds = this.jdbcTemplate.queryForList(sql.toString(), Long.class);
         sqlBuilder.append("SELECT ml.id FROM m_loan ml ");
         sqlBuilder.append(" INNER JOIN m_loan_repayment_schedule mr on mr.loan_id = ml.id ");
         sqlBuilder.append(" LEFT JOIN m_loan_disbursement_detail dd on dd.loan_id=ml.id and dd.disbursedon_date is null ");
@@ -1795,15 +1799,20 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         sqlBuilder.append("and lrr.loan_id is null");
         sqlBuilder.append(" ))");
         sqlBuilder.append(" group by ml.id");
-        try {
-            String currentdate = formatter.print(DateUtils.getLocalDateOfTenant());
-            // will look only for yesterday modified rates
-            String yesterday = formatter.print(DateUtils.getLocalDateOfTenant().minusDays(1));
-            return this.jdbcTemplate.queryForList(sqlBuilder.toString(), Long.class, new Object[] { yesterday,
-                    LoanStatus.ACTIVE.getValue(), currentdate, currentdate, currentdate, yesterday });
-        } catch (final EmptyResultDataAccessException e) {
-            return null;
-        }
+        
+        if (loanIds != null && loanIds.size() > 0) {
+        	return loanIds;
+    	} else {
+	        try {
+	            String currentdate = formatter.print(DateUtils.getLocalDateOfTenant());
+	            // will look only for yesterday modified rates
+	            String yesterday = formatter.print(DateUtils.getLocalDateOfTenant().minusDays(1));
+	            return this.jdbcTemplate.queryForList(sqlBuilder.toString(), Long.class, new Object[] { yesterday,
+	                    LoanStatus.ACTIVE.getValue(), currentdate, currentdate, currentdate, yesterday });
+	        } catch (final EmptyResultDataAccessException e) {
+	            return null;
+	        }
+    	}
     }
 
     @Override
