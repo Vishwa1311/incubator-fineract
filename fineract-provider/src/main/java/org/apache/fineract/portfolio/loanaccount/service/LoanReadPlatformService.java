@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.loanaccount.service;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
@@ -107,7 +108,7 @@ public interface LoanReadPlatformService {
 
     LoanTransactionData retrieveLoanWriteoffTemplate(Long loanId);
 
-    Collection<LoanScheduleAccrualData> retrivePeriodicAccrualData(LocalDate tillDate);
+    Collection<LoanScheduleAccrualData> retrivePeriodicAccrualData(LocalDate tillDate, List<Long> loanList);
 
     Collection<Long> fetchLoansForInterestRecalculation();
 
@@ -126,4 +127,5 @@ public interface LoanReadPlatformService {
     LoanTransactionData retrieveRefundByCashTemplate(Long loanId);
     
     Collection<InterestRatePeriodData> retrieveLoanInterestRatePeriodData(Long loanId);
+	
 }

@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.loanaccount.service;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformServiceImpl;
@@ -82,13 +83,14 @@ public class LoanAccrualPlatformServiceImpl implements LoanAccrualPlatformServic
     @Override
     @CronTarget(jobName = JobName.ADD_PERIODIC_ACCRUAL_ENTRIES)
     public void addPeriodicAccruals() throws JobExecutionException {
-        String errors = addPeriodicAccruals(LocalDate.now());
+    	List<Long> loanList = null;
+        String errors = addPeriodicAccruals(LocalDate.now(), loanList);
         if (errors.length() > 0) { throw new JobExecutionException(errors); }
     }
 
     @Override
-    public String addPeriodicAccruals(final LocalDate tilldate) {
-        Collection<LoanScheduleAccrualData> loanScheduleAccrualDatas = this.loanReadPlatformService.retrivePeriodicAccrualData(tilldate);
+    public String addPeriodicAccruals(final LocalDate tilldate, List<Long> loanList) {
+        Collection<LoanScheduleAccrualData> loanScheduleAccrualDatas = this.loanReadPlatformService.retrivePeriodicAccrualData(tilldate, loanList);
         return addPeriodicAccruals(tilldate, loanScheduleAccrualDatas);
     }
 

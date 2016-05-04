@@ -21,6 +21,7 @@ package org.apache.fineract.accounting.accrual.service;
 import static org.apache.fineract.accounting.accrual.api.AccrualAccountingConstants.PERIODIC_ACCRUAL_ACCOUNTING_EXECUTION_ERROR_CODE;
 import static org.apache.fineract.accounting.accrual.api.AccrualAccountingConstants.PERIODIC_ACCRUAL_ACCOUNTING_RESOURCE_NAME;
 import static org.apache.fineract.accounting.accrual.api.AccrualAccountingConstants.accrueTillParamName;
+import static org.apache.fineract.accounting.accrual.api.AccrualAccountingConstants.loanListParamName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,8 @@ import org.apache.fineract.portfolio.loanaccount.service.LoanAccrualPlatformServ
 import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.google.gson.JsonArray;
 
 @Service
 public class AccrualAccountingWritePlatformServiceImpl implements AccrualAccountingWritePlatformService {
@@ -53,7 +56,15 @@ public class AccrualAccountingWritePlatformServiceImpl implements AccrualAccount
     public CommandProcessingResult executeLoansPeriodicAccrual(JsonCommand command) {
         this.accountingDataValidator.validateLoanPeriodicAccrualData(command.json());
         LocalDate tilldate = command.localDateValueOfParameterNamed(accrueTillParamName);
-        String errorlog = this.loanAccrualPlatformService.addPeriodicAccruals(tilldate);
+        String[] loanList = command.arrayValueOfParameterNamed(loanListParamName);   
+        List<Long> list = new ArrayList<Long>();
+        if(loanList != null){
+	        for (int i=0; i< loanList.length; i++) {
+	            list.add( new Long(loanList[i]));
+	        }
+        }
+        
+        String errorlog = this.loanAccrualPlatformService.addPeriodicAccruals(tilldate, list);
         if (errorlog.length() > 0) {
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
