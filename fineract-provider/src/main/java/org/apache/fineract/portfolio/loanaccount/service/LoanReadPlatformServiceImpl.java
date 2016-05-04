@@ -26,6 +26,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +34,7 @@ import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.fineract.accounting.common.AccountingRuleType;
+import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformServiceImpl;
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.codes.service.CodeValueReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
@@ -116,6 +118,8 @@ import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -128,7 +132,7 @@ import org.springframework.util.CollectionUtils;
 
 @Service
 public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
-
+	
     private final JdbcTemplate jdbcTemplate;
     private final PlatformSecurityContext context;
     private final LoanRepository loanRepository;
@@ -153,6 +157,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     private final LoanUtilService loanUtilService;
     private final PledgeReadPlatformService pledgeReadPlatformService;
     private final ConfigurationDomainService configurationDomainService;
+    private final static Logger logger = LoggerFactory.getLogger(LoanReadPlatformServiceImpl.class);
 
     @Autowired
     public LoanReadPlatformServiceImpl(final PlatformSecurityContext context, final LoanRepository loanRepository,
@@ -1592,7 +1597,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     }
 
     @Override
-    public Collection<LoanScheduleAccrualData> retrivePeriodicAccrualData(final LocalDate tillDate) {
+    public Collection<LoanScheduleAccrualData> retrivePeriodicAccrualData(final LocalDate tillDate, List<Long> loanList) {
 
         LoanSchedulePeriodicAccrualMapper mapper = new LoanSchedulePeriodicAccrualMapper();
         Date organisationStartDate = this.configurationDomainService.retrieveOrganisationStartDate();
@@ -1608,12 +1613,21 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         if(organisationStartDate != null){
             sqlBuilder.append(" and ls.duedate > :organisationstartdate ");
         }
+        
+        if(loanList != null && !loanList.isEmpty()){
+        	sqlBuilder.append(" and loan.id in (:loanid) ");       
+        }
             sqlBuilder.append(" order by loan.id,ls.duedate ");
         Map<String, Object> paramMap = new HashMap<>(4);
         paramMap.put("active", LoanStatus.ACTIVE.getValue());
         paramMap.put("type", AccountingRuleType.ACCRUAL_PERIODIC.getValue());
         paramMap.put("tilldate", formatter.print(tillDate));
         paramMap.put("organisationstartdate", formatter.print(new LocalDate(organisationStartDate)));
+        if(loanList != null && !loanList.isEmpty()){
+        	paramMap.put("loanid", loanList);
+        }
+        logger.info(sqlBuilder.toString());
+        
 
         return this.namedParameterJdbcTemplate.query(sqlBuilder.toString(), paramMap, mapper);
     }
