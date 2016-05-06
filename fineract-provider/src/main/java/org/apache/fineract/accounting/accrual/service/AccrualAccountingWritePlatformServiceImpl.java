@@ -32,24 +32,26 @@ import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.jobs.service.JobName;
+import org.apache.fineract.infrastructure.jobs.service.SchedularWritePlatformService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAccrualPlatformService;
 import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import com.google.gson.JsonArray;
 
 @Service
 public class AccrualAccountingWritePlatformServiceImpl implements AccrualAccountingWritePlatformService {
 
     private final LoanAccrualPlatformService loanAccrualPlatformService;
     private final AccrualAccountingDataValidator accountingDataValidator;
+    private final SchedularWritePlatformService schedularWritePlatformService;
 
     @Autowired
     public AccrualAccountingWritePlatformServiceImpl(final LoanAccrualPlatformService loanAccrualPlatformService,
-            final AccrualAccountingDataValidator accountingDataValidator) {
+            final AccrualAccountingDataValidator accountingDataValidator, final SchedularWritePlatformService schedularWritePlatformService) {
         this.loanAccrualPlatformService = loanAccrualPlatformService;
         this.accountingDataValidator = accountingDataValidator;
+        this.schedularWritePlatformService = schedularWritePlatformService;
     }
 
     @Override
@@ -63,14 +65,22 @@ public class AccrualAccountingWritePlatformServiceImpl implements AccrualAccount
 	            list.add( new Long(loanList[i]));
 	        }
         }
-        
-        String errorlog = this.loanAccrualPlatformService.addPeriodicAccruals(tilldate, list);
-        if (errorlog.length() > 0) {
-            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
-            final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
-                    .resource(PERIODIC_ACCRUAL_ACCOUNTING_RESOURCE_NAME);
-            baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode(PERIODIC_ACCRUAL_ACCOUNTING_EXECUTION_ERROR_CODE, errorlog);
-            throw new PlatformApiDataValidationException(dataValidationErrors);
+        boolean updated = this.schedularWritePlatformService.updateCurrentlyRunningStatus(JobName.ADD_PERIODIC_ACCRUAL_ENTRIES.toString(),
+                true);
+        // if the current running status updated which means system is not
+        // running this job so we will start the job
+        if (updated) {
+            String errorlog = this.loanAccrualPlatformService.addPeriodicAccruals(tilldate, list);
+            this.schedularWritePlatformService.updateCurrentlyRunningStatus(JobName.ADD_PERIODIC_ACCRUAL_ENTRIES.toString(), false);
+
+            if (errorlog.length() > 0) {
+                final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+                final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
+                        .resource(PERIODIC_ACCRUAL_ACCOUNTING_RESOURCE_NAME);
+                baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode(PERIODIC_ACCRUAL_ACCOUNTING_EXECUTION_ERROR_CODE,
+                        errorlog);
+                throw new PlatformApiDataValidationException(dataValidationErrors);
+            }
         }
         return CommandProcessingResult.empty();
     }
