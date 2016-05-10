@@ -488,7 +488,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
             final Set<LoanCharge> loanCharges, final LoanRepaymentScheduleInstallment installment) {
         
         if (!accruedTill.isBefore(installment.getDueDate())
-                || (accruedTill.isAfter(installment.getFromDate()) && !accruedTill.isAfter(installment.getDueDate()))) {
+               /* || (accruedTill.isAfter(installment.getFromDate()) && !accruedTill.isAfter(installment.getDueDate()))*/) {
             BigDecimal dueDateFeeIncome = BigDecimal.ZERO;
             BigDecimal dueDatePenaltyIncome = BigDecimal.ZERO;
             LocalDate chargesTillDate = installment.getDueDate();
