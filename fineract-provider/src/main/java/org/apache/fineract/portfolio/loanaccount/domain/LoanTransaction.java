@@ -34,6 +34,8 @@ import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.jpa.domain.AbstractPersistable;
 
 import javax.persistence.CascadeType;
@@ -63,6 +65,8 @@ import java.util.Set;
 @Entity
 @Table(name = "m_loan_transaction", uniqueConstraints = { @UniqueConstraint(columnNames = { "external_id" }, name = "external_id_UNIQUE") })
 public final class LoanTransaction extends AbstractPersistable<Long> {
+	
+	private final static Logger logger = LoggerFactory.getLogger(LoanTransaction.class);
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "loan_id", nullable = false)
@@ -330,6 +334,13 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     }
 
     public void reverse() {
+    	if(this.isAnyTypeOfRepayment() && !this.isManuallyAdjustedOrReversed()){
+	    	logger.debug("Reversal for Loan[" + this.loan.getId() + "] transactionId[" + this.getId() + "]");
+	    	StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
+			for(StackTraceElement element: stackTraceElements){
+				logger.debug(element.toString());
+			}
+    	}
         this.reversed = true;
         this.loanTransactionToRepaymentScheduleMappings.clear();
     }
