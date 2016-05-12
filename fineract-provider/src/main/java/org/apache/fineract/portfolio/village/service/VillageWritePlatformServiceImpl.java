@@ -35,8 +35,11 @@ import org.apache.fineract.organisation.office.exception.OfficeNotFoundException
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.group.domain.GroupRepository;
 import org.apache.fineract.portfolio.group.exception.CenterNotFoundException;
+import org.apache.fineract.portfolio.village.exception.DuplicateVillageNameException;
+import org.apache.fineract.portfolio.loanproduct.exception.LoanProductCannotBeModifiedDueToNonClosedLoansException;
 import org.apache.fineract.portfolio.village.api.VillageTypeApiConstants;
 import org.apache.fineract.portfolio.village.domain.Village;
+import org.apache.fineract.portfolio.village.domain.VillageRepository;
 import org.apache.fineract.portfolio.village.domain.VillageRepositoryWrapper;
 import org.apache.fineract.portfolio.village.exception.InvalidVillageStateTransitionException;
 import org.apache.fineract.portfolio.village.exception.VillageMustBePendingToBeDeletedException;
@@ -60,9 +63,10 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
     private final OfficeRepository officeRepository;
     private final GroupRepository centerRepository;
     private final CommandProcessingService commandProcessingService;
+    private final VillageRepository villageRepo;
     @Autowired
     public VillageWritePlatformServiceImpl(PlatformSecurityContext context, VillageDataValidator fromApiJsonDeserializer, VillageRepositoryWrapper villageRepository, 
-            OfficeRepository officeRepository, GroupRepository centerRepository, CommandProcessingService commandProcessingService) {
+            OfficeRepository officeRepository, GroupRepository centerRepository, CommandProcessingService commandProcessingService,VillageRepository villageRepo) {
 
         this.context = context;
         this.fromApiJsonDeserializer = fromApiJsonDeserializer;
@@ -70,6 +74,7 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
         this.officeRepository = officeRepository;
         this.centerRepository = centerRepository;
         this.commandProcessingService = commandProcessingService;
+        this.villageRepo=villageRepo;
     }
     
     
@@ -126,6 +131,10 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
             if (newVillage.isActive()) {
                 final CommandWrapper commandWrapper = new CommandWrapperBuilder().activateVillage(null).build();
                 rollbackTransaction = this.commandProcessingService.validateCommand(commandWrapper, currentUser);
+            }
+            Integer VillageNameCount=this.villageRepo.retrieveVillageNameCount(villageName,officeId);
+            if(VillageNameCount!=0){
+                throw new DuplicateVillageNameException(villageName);
             }
             this.villageRepository.save(newVillage);
             
