@@ -5568,10 +5568,9 @@ public class Loan extends AbstractPersistable<Long> {
         }
     }
 
-    public Map<String, Object> undoLastDisbursal(ScheduleGeneratorDTO scheduleGeneratorDTO, AppUser currentUser) {
+    public ChangedTransactionDetail undoLastDisbursal(ScheduleGeneratorDTO scheduleGeneratorDTO, AppUser currentUser, Map<String, Object> actualChanges) {
 
         validateAccountStatus(LoanEvent.LOAN_DISBURSAL_UNDO_LAST);
-        final Map<String, Object> actualChanges = new LinkedHashMap<>();
         validateActivityNotBeforeClientOrGroupTransferDate(LoanEvent.LOAN_DISBURSAL_UNDO_LAST, getDisbursementDate());
         LocalDate actualDisbursementDate = null;
         LocalDate lastTransactionDate = getDisbursementDate();
@@ -5600,12 +5599,12 @@ public class Loan extends AbstractPersistable<Long> {
             }
         }
         reverseExistingTransactionsTillLastDisbursal(actualDisbursementDate);
-        recalculateScheduleFromLastTransaction(scheduleGeneratorDTO, currentUser);
+        ChangedTransactionDetail changedTransactionDetail = recalculateScheduleFromLastTransaction(scheduleGeneratorDTO, currentUser);
         actualChanges.put("undolastdisbursal", "true");
         actualChanges.put("disbursedAmount", this.getDisbursedAmount());
         updateLoanSummaryDerivedFields();
 
-        return actualChanges;
+        return changedTransactionDetail;
     }
 
     /**
