@@ -1814,7 +1814,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         sqlBuilder.append(" group by ml.id");
         
         if (loanIds != null && loanIds.size() > 0) {
-            ThreadLocalContextUtil.setIgnoreOverdue(false);
+            ThreadLocalContextUtil.setIgnoreOverdue(true);
             return loanIds;
     	} else {
 	        try {
