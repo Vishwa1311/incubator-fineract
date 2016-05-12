@@ -34,6 +34,7 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuild
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.portfolio.calendar.CalendarConstants.CALENDAR_SUPPORTED_PARAMETERS;
+import org.apache.fineract.portfolio.calendar.data.CalendarHistoryDataWrapper;
 import org.apache.fineract.portfolio.calendar.domain.Calendar;
 import org.apache.fineract.portfolio.calendar.domain.CalendarEntityType;
 import org.apache.fineract.portfolio.calendar.domain.CalendarHistory;
@@ -287,17 +288,36 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
         if (!changes.isEmpty()) {
             // update calendar history table only if there is a change in
             // calendar start date.
-            if (reschedulebasedOnMeetingDates == null){
-            presentMeetingDate = command.localDateValueOfParameterNamed(CALENDAR_SUPPORTED_PARAMETERS.START_DATE.getValue());
-            }
-            if (null != newMeetingDate) {
-                final Date endDate = presentMeetingDate.minusDays(1).toDate();
-                calendarHistory.updateEndDate(endDate);
+            Set<CalendarHistory> historys = calendarForUpdate.getCalendarHistory();
+            CalendarHistoryDataWrapper calendarHistoryDataWrapper = new CalendarHistoryDataWrapper(historys);
+            LocalDate endDate = null;
+            if (reschedulebasedOnMeetingDates == null) {
+                newMeetingDate = command.localDateValueOfParameterNamed(CALENDAR_SUPPORTED_PARAMETERS.START_DATE.getValue());
+                presentMeetingDate = new LocalDate(oldStartDate);
+                if (newMeetingDate.isBefore(new LocalDate(oldStartDate))) {
+                    endDate = newMeetingDate.minusDays(1);
+                    updateCalendarHistory(calendarHistory, calendarHistoryDataWrapper, endDate);
+                    if(calendarHistoryDataWrapper.getCalendarHistoryList().isEmpty()){
+                        calendarHistory.updateEndDate(null);
+                        calendarHistory.updateIsActive(false);
+                    }
+                } else {
+                    endDate = newMeetingDate.minusDays(1);
+                    calendarHistory.updateEndDate(endDate.toDate());
+                }
+            } else {
+                if (newMeetingDate != null && newMeetingDate.isBefore(presentMeetingDate)) {
+                    endDate = newMeetingDate.minusDays(1);
+                    calendarHistory.updateEndDate(endDate.toDate());
+                    updateCalendarHistory(calendarHistory, calendarHistoryDataWrapper, endDate);
+                } else {
+                    endDate = presentMeetingDate.minusDays(1);
+                    calendarHistory.updateEndDate(endDate.toDate());
+                }
             }
             this.calendarHistoryRepository.save(calendarHistory);
-            Set<CalendarHistory> history = calendarForUpdate.getCalendarHistory();
-            history.add(calendarHistory);
-            calendarForUpdate.updateCalendarHistory(history);
+            historys.add(calendarHistory);
+            calendarForUpdate.updateCalendarHistory(historys);
             this.calendarRepository.saveAndFlush(calendarForUpdate);
 
             if (this.configurationDomainService.isRescheduleFutureRepaymentsEnabled() && calendarForUpdate.isRepeating()) {
@@ -321,6 +341,38 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
                 .with(changes) //
                 .build();
     }
+
+    private void updateCalendarHistory(final CalendarHistory calendarHistory, CalendarHistoryDataWrapper calendarHistoryDataWrapper,
+            LocalDate endDate) {
+        CalendarHistory calendarHistoryData = getCalendarHistoryByEndDate(calendarHistoryDataWrapper.getCalendarHistoryList(), endDate);
+        for (CalendarHistory history : calendarHistoryDataWrapper.getCalendarHistoryList()) {
+            LocalDate calendarHistoryEndDate = history.getEndDateLocalDate();
+            if (history.isActive() && endDate.isBefore(calendarHistoryEndDate)) {
+                if (calendarHistoryData != null && history.getStartDateLocalDate().equals(calendarHistoryData.getStartDateLocalDate())) {
+                    history.updateEndDate(endDate.toDate());
+                    calendarHistory.updateEndDate(null);
+                    calendarHistory.updateIsActive(false);
+                } else {
+                    history.updateEndDate(null);
+                    history.updateIsActive(false);
+                }
+            } else if (calendarHistoryEndDate == null) {
+                calendarHistory.updateEndDate(null);
+                calendarHistory.updateIsActive(false);
+            }
+        }
+    }
+    
+    public CalendarHistory getCalendarHistoryByEndDate(List<CalendarHistory> calendarHistory, final LocalDate endDate) {
+        CalendarHistory calendarHistoryData = null;
+        for (CalendarHistory history : calendarHistory) {
+            if (history.isActive() && history.getStartDateLocalDate().isBefore(endDate)) {
+                calendarHistoryData = history;
+            }
+        }
+        return calendarHistoryData;
+    }
+
 
     @Override
     public CommandProcessingResult deleteCalendar(final Long calendarId) {
