@@ -26,7 +26,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +33,6 @@ import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.fineract.accounting.common.AccountingRuleType;
-import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformServiceImpl;
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.codes.service.CodeValueReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
@@ -45,6 +43,7 @@ import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
+import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
@@ -1815,7 +1814,8 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         sqlBuilder.append(" group by ml.id");
         
         if (loanIds != null && loanIds.size() > 0) {
-        	return loanIds;
+            ThreadLocalContextUtil.setIgnoreOverdue(false);
+            return loanIds;
     	} else {
 	        try {
 	            String currentdate = formatter.print(DateUtils.getLocalDateOfTenant());
@@ -2062,5 +2062,5 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
             rate.setFromDate(loan.getDisbursementDate().toDate());
         }
     }
-
+    
 }
