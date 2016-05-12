@@ -43,6 +43,7 @@ import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidati
 import org.apache.fineract.infrastructure.core.exception.PlatformServiceUnavailableException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.jobs.annotation.CronTarget;
 import org.apache.fineract.infrastructure.jobs.exception.JobExecutionException;
 import org.apache.fineract.infrastructure.jobs.service.JobName;
@@ -2725,6 +2726,12 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         ChangedTransactionDetail changedTransactionDetail = loan.recalculateScheduleFromLastTransaction(generatorDTO,
                 existingTransactionIds, existingReversedTransactionIds, currentUser);
+        
+        //creating original schedule while picking up loans from delete me table 
+        final Boolean ignoreOverdue = ThreadLocalContextUtil.getIgnoreOverdue();
+        if(ignoreOverdue != null && ignoreOverdue){
+            createAndSaveLoanScheduleArchive(loan, generatorDTO);
+        }
 
         saveLoanWithDataIntegrityViolationChecks(loan);
 
