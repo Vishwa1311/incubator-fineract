@@ -2033,8 +2033,17 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
                     ScheduleGeneratorDTO scheduleGeneratorDTO = loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
                     loan.setHelpers(null, this.loanSummaryWrapper, this.transactionProcessingStrategy);
-                    loan.recalculateScheduleFromLastTransaction(scheduleGeneratorDTO, existingTransactionIds,
+                    ChangedTransactionDetail changedTransactionDetail = loan.recalculateScheduleFromLastTransaction(scheduleGeneratorDTO, existingTransactionIds,
                             existingReversedTransactionIds, currentUser);
+                    if (changedTransactionDetail != null) {
+                        for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
+                            this.loanTransactionRepository.save(mapEntry.getValue());
+                            // update loan with references to the newly created
+                            // transactions
+                            loan.getLoanTransactions().add(mapEntry.getValue());
+                            this.accountTransfersWritePlatformService.updateLoanTransaction(mapEntry.getKey(), mapEntry.getValue());
+                        }
+                    } 
                     createAndSaveLoanScheduleArchive(loan, scheduleGeneratorDTO);
                 } else if (reschedulebasedOnMeetingDates != null && reschedulebasedOnMeetingDates) {
                     loan.updateLoanRepaymentScheduleDates(calendar.getStartDateLocalDate(), calendar.getRecurrence(), isHolidayEnabled,
@@ -2852,6 +2861,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         checkClientOrGroupActive(loan);
         final List<Long> existingTransactionIds = new ArrayList<>(loan.findExistingTransactionIds());
         final List<Long> existingReversedTransactionIds = new ArrayList<>(loan.findExistingReversedTransactionIds());
+        final Map<String, Object> changes = new LinkedHashMap<>();
         
         this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_UNDO_LASTDISBURSAL,
                 constructEntityMap(BUSINESS_ENTITY.LOAN, loan));
@@ -2862,7 +2872,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFromDate);
 
-        final Map<String, Object> changes = loan.undoLastDisbursal(scheduleGeneratorDTO, currentUser);
+        final ChangedTransactionDetail changedTransactionDetail = loan.undoLastDisbursal(scheduleGeneratorDTO, currentUser, changes);
         if (!changes.isEmpty()) {
             saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
             String noteText = null;
@@ -2873,6 +2883,15 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                     this.noteRepository.save(note);
                 }
             }
+            if (changedTransactionDetail != null) {
+                for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
+                    this.loanTransactionRepository.save(mapEntry.getValue());
+                    // update loan with references to the newly created
+                    // transactions
+                    loan.getLoanTransactions().add(mapEntry.getValue());
+                    this.accountTransfersWritePlatformService.updateLoanTransaction(mapEntry.getKey(), mapEntry.getValue());
+                }
+            } 
             boolean isAccountTransfer = false;
             final Map<String, Object> accountingBridgeData = loan.deriveAccountingBridgeData(applicationCurrency.toData(),
                     existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
