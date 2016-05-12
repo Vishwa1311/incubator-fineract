@@ -5304,7 +5304,7 @@ public class Loan extends AbstractPersistable<Long> {
         
         CalendarHistoryDataWrapper calendarHistoryDataWrapper = null;
         if (loanCalendar != null) {
-            Set<CalendarHistory> calendarHistory = loanCalendar.getCalendarHistory();
+            Set<CalendarHistory> calendarHistory = loanCalendar.getActiveCalendarHistory();
             calendarHistoryDataWrapper = new CalendarHistoryDataWrapper(calendarHistory);
         }
 
