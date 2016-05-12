@@ -59,6 +59,7 @@ import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.JsonParserHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.security.service.RandomPasswordGenerator;
 import org.apache.fineract.organisation.holiday.domain.Holiday;
 import org.apache.fineract.organisation.holiday.service.HolidayUtil;
@@ -5124,12 +5125,19 @@ public class Loan extends AbstractPersistable<Long> {
         } else {
             interestRecalculatedOn = new LocalDate(this.interestRecalculatedOn);
         }
-        //Fix to check in case the Overdue date is after the interest recalculatedOn Date then that needs to be taken
-        //as the interest recalculated Date        
-        LocalDate overdueSince = this.loanSummaryWrapper.determineOverdueSince(getRepaymentScheduleInstallments());
-        if(overdueSince != null && overdueSince.isAfter(interestRecalculatedOn)){
-            interestRecalculatedOn = overdueSince;
+        
+        // ignoring overdue check for interest recalculation job when picking up loans from delete me table
+        // for chaitanya
+        final Boolean ignoreOverdue = ThreadLocalContextUtil.getIgnoreOverdue();
+        if (ignoreOverdue == null || !ignoreOverdue) {
+            //Fix to check in case the Overdue date is after the interest recalculatedOn Date then that needs to be taken
+            //as the interest recalculated Date 
+            LocalDate overdueSince = this.loanSummaryWrapper.determineOverdueSince(getRepaymentScheduleInstallments());
+            if(overdueSince != null && overdueSince.isAfter(interestRecalculatedOn)){
+                interestRecalculatedOn = overdueSince;
+            }
         }
+        
 
         return interestRecalculatedOn;
     }
