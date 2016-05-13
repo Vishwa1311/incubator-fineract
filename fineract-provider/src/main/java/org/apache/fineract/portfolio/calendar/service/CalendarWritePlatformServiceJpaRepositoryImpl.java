@@ -294,7 +294,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
             if (reschedulebasedOnMeetingDates == null) {
                 newMeetingDate = command.localDateValueOfParameterNamed(CALENDAR_SUPPORTED_PARAMETERS.START_DATE.getValue());
                 presentMeetingDate = new LocalDate(oldStartDate);
-                if (newMeetingDate.isBefore(new LocalDate(oldStartDate))) {
+                if (newMeetingDate.isBefore(new LocalDate(oldStartDate)) || newMeetingDate.equals(new LocalDate(oldStartDate))) {
                     endDate = newMeetingDate.minusDays(1);
                     updateCalendarHistory(calendarHistory, calendarHistoryDataWrapper, endDate);
                     if(calendarHistoryDataWrapper.getCalendarHistoryList().isEmpty()){
@@ -306,7 +306,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
                     calendarHistory.updateEndDate(endDate.toDate());
                 }
             } else {
-                if (newMeetingDate != null && newMeetingDate.isBefore(presentMeetingDate)) {
+                if (newMeetingDate != null && newMeetingDate.isBefore(presentMeetingDate) || newMeetingDate.equals(new LocalDate(presentMeetingDate))) {
                     endDate = newMeetingDate.minusDays(1);
                     calendarHistory.updateEndDate(endDate.toDate());
                     updateCalendarHistory(calendarHistory, calendarHistoryDataWrapper, endDate);
@@ -348,7 +348,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
         CalendarHistory calendarHistoryData = getCalendarHistoryByEndDate(calendarHistoryDataWrapper.getCalendarHistoryList(), endDate);
         for (CalendarHistory history : calendarHistoryDataWrapper.getCalendarHistoryList()) {
             LocalDate calendarHistoryEndDate = history.getEndDateLocalDate();
-            if (history.isActive() && endDate.isBefore(calendarHistoryEndDate)) {
+            if (history.isActive() && endDate.isBefore(calendarHistoryEndDate) || endDate.equals(calendarHistoryEndDate)) {
                 if (calendarHistoryData != null && history.getStartDateLocalDate().equals(calendarHistoryData.getStartDateLocalDate())) {
                     history.updateEndDate(endDate.toDate());
                     calendarHistory.updateEndDate(null);
