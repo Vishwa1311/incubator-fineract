@@ -2350,6 +2350,25 @@ public class Loan extends AbstractPersistable<Long> {
 
     }
 
+    private void validateTrancheDisbursalDateMustBeUniqueAndNotBeforeLastTransactionDate(final LocalDate actualDisbursementDate) {
+        
+        if (!this.loanTransactions.isEmpty() && actualDisbursementDate.isBefore(getLastUserTransactionDate())) {
+            final String errorMessage = "The disbursement date cannot be before last transaction date.";
+            throw new InvalidLoanStateTransitionException("transaction", "cannot.be.before.last.transaction.date", errorMessage, actualDisbursementDate);
+        }
+        
+        if (!this.disbursementDetails.isEmpty()) {
+            for (LoanDisbursementDetails disbursementDetail : this.disbursementDetails) {
+                if (disbursementDetail.actualDisbursementDate() != null
+                        && disbursementDetail.actualDisbursementDate().equals(actualDisbursementDate.toDate())) {
+                    final String errorMessage = "The Tranche disbursement date must be unique.";
+                    throw new InvalidLoanStateTransitionException("transaction", "tranche.disbursement.date.must.be.unique", errorMessage, actualDisbursementDate);
+                }
+            }
+        }
+        
+    }
+
     public void regenerateScheduleOnDisbursement(final ScheduleGeneratorDTO scheduleGeneratorDTO, final boolean recalculateSchedule,
             final LocalDate actualDisbursementDate, BigDecimal emiAmount, final AppUser currentUser, LocalDate nextPossibleRepaymentDate,
             Date rescheduledRepaymentDate) {
@@ -2391,6 +2410,9 @@ public class Loan extends AbstractPersistable<Long> {
         Date lastDusburseDate = this.actualDisbursementDate;
         final LoanStatus statusEnum = this.loanLifecycleStateMachine.transition(LoanEvent.LOAN_DISBURSED,
                 LoanStatus.fromInt(this.loanStatus));
+        
+        // validate tranche disbursal dates must be unique and it cannot be before last transaction date
+        validateTrancheDisbursalDateMustBeUniqueAndNotBeforeLastTransactionDate(actualDisbursementDate);
 
         boolean isMultiTrancheDisburse = false;
         if (LoanStatus.fromInt(this.loanStatus).isActive() && isAllTranchesNotDisbursed()) {
