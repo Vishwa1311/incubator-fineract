@@ -2057,6 +2057,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 }
 
                 saveLoanWithDataIntegrityViolationChecks(loan);
+                postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds);
             }
         }
     }
