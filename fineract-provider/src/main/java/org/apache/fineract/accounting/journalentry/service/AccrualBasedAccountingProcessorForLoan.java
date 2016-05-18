@@ -51,8 +51,9 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
         for (final LoanTransactionDTO loanTransactionDTO : loanDTO.getNewLoanTransactions()) {
         	final Office office = this.helper.getOfficeById(loanTransactionDTO.getOfficeId());
             final Date transactionDate = loanTransactionDTO.getTransactionDate();
-            if(!loanTransactionDTO.getTransactionType().isAccrual())
+            if(!loanTransactionDTO.getTransactionType().isAccrual()){
             	this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            }
 
             /** Handle Disbursements **/
             if (loanTransactionDTO.getTransactionType().isDisbursement()) {
