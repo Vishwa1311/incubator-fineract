@@ -508,4 +508,11 @@ public class LoanAccrualWritePlatformServiceImpl implements LoanAccrualWritePlat
                 existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
         this.journalEntryWritePlatformService.createJournalEntriesForLoan(accountingBridgeData);
     }
+
+    @Override
+    public void postDueInterest(Map<String, Object> mapData, final StringBuilder exceptionReasons) {
+        String sql = "UPDATE `m_loan_repayment_schedule` SET `accrual_interest_posted_derived`=? WHERE  `id`=?;";
+        this.jdbcTemplate.update(sql, mapData.get("totalAccruedAmount"), mapData.get("scheduleId"));
+        this.journalEntryWritePlatformService.postIRDJournalEntry(exceptionReasons, mapData);
+    }
 }

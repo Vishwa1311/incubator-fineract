@@ -26,6 +26,7 @@ public class PaymentDetailConstants {
 
     // Code representing Payment Details
     public static final String paymentTypeCodeName = "PaymentType";
+    public static final String channelTypesCodeName = "ChannelTypes";
 
     // request parameters
     public static final String paymentTypeParamName = "paymentTypeId";

@@ -97,6 +97,7 @@ import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.command.LoanChargeCommand;
 import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
+import org.apache.fineract.portfolio.loanaccount.data.LoanForeClosureDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
@@ -131,6 +132,7 @@ import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
+import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
 import org.joda.time.format.DateTimeFormat;
@@ -5959,4 +5961,172 @@ public class Loan extends AbstractPersistable<Long> {
         return amount;
     }
 
+    public LoanRepaymentScheduleInstallment fetchLoanForeclosureDetail(final LocalDate closureDate) {
+        Money totalPrincipal = Money.of(getCurrency(), this.getSummary().getTotalPrincipalOutstanding());
+        Money[] receivables = retriveIncomeOutstandingTillDate(closureDate);
+        final List<LoanInterestRecalcualtionAdditionalDetails> compoundingDetails = null;
+        return new LoanRepaymentScheduleInstallment(null, 0, LocalDate.now(), LocalDate.now(), totalPrincipal.getAmount(),
+                receivables[0].getAmount(), receivables[1].getAmount(), receivables[2].getAmount(), false, compoundingDetails);
+    }
+
+    public Money[] retriveIncomeOutstandingTillDate(final LocalDate paymentDate) {
+        Money[] balances = new Money[3];
+        final MonetaryCurrency currency = getCurrency();
+        Money interest = Money.zero(currency);
+        Money fee = Money.zero(currency);
+        Money penalty = Money.zero(currency);
+        boolean isArrearsPresent = false;
+        for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
+            if (installment.isNotFullyPaidOff()) {
+                if (!installment.getDueDate().isBefore(paymentDate)) {
+                    int totalPeriodDays = Days.daysBetween(installment.getFromDate(), installment.getDueDate()).getDays();
+                    int tillDays = Days.daysBetween(installment.getFromDate(), paymentDate).getDays();
+                    if (isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
+                        interest = interest.plus(installment.getAccruedInterestOutstanding(currency));
+                    } else {
+                        interest = interest.plus(calculateInterestForDays(totalPeriodDays, installment.getInterestOutstanding(currency)
+                                .getAmount(), tillDays));
+                    }
+                    for (LoanCharge loanCharge : this.charges) {
+                        if (loanCharge.isActive()
+                                && loanCharge.isDueForCollectionFromAndUpToAndIncluding(installment.getFromDate(), paymentDate)) {
+                            if (loanCharge.isPenaltyCharge()) {
+                                penalty = penalty.plus(loanCharge.getAmountOutstanding(currency));
+                            } else {
+                                fee = fee.plus(loanCharge.getAmountOutstanding(currency));
+                            }
+                        }
+                    }
+                    break;
+                }
+                if (!isArrearsPresent || !installment.getDueDate().isAfter(paymentDate)) {
+                    if (isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
+                        interest = interest.plus(installment.getAccruedInterestOutstanding(currency));
+                    } else {
+                        interest = interest.plus(installment.getInterestOutstanding(currency));
+                    }
+                    fee = fee.plus(installment.getFeeChargesOutstanding(currency));
+                    penalty = penalty.plus(installment.getPenaltyChargesOutstanding(currency));
+                    isArrearsPresent = true;
+                } else if (installment.getFromDate().isBefore(paymentDate)) {
+                    int totalPeriodDays = Days.daysBetween(installment.getFromDate(), installment.getDueDate()).getDays();
+                    int tillDays = Days.daysBetween(installment.getFromDate(), paymentDate).getDays();
+                    if (isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
+                        interest = interest.plus(installment.getAccruedInterestOutstanding(currency));
+                    } else {
+                        interest = interest.plus(calculateInterestForDays(totalPeriodDays, installment.getInterestOutstanding(currency)
+                                .getAmount(), tillDays));
+                    }
+                    for (LoanCharge loanCharge : this.charges) {
+                        if (loanCharge.isActive()
+                                && loanCharge.isDueForCollectionFromAndUpToAndIncluding(installment.getFromDate(), paymentDate)) {
+                            if (loanCharge.isPenaltyCharge()) {
+                                penalty = penalty.plus(loanCharge.getAmountOutstanding(currency));
+                            } else {
+                                fee = fee.plus(loanCharge.getAmountOutstanding(currency));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        balances[0] = interest;
+        balances[1] = fee;
+        balances[2] = penalty;
+        return balances;
+    }
+
+    private double calculateInterestForDays(int daysInPeriod, BigDecimal interest, int days) {
+        if (interest.doubleValue() == 0) { return 0; }
+        return ((interest.doubleValue()) / daysInPeriod) * days;
+    }
+
+    public boolean canForecloseLoan() {
+        boolean canForecloseLoan = false;
+        if (isOpen()) {
+            canForecloseLoan = true;
+        }
+        return canForecloseLoan;
+    }
+
+    public Money[] getReceivableIncome(final LocalDate tillDate) {
+        MonetaryCurrency currency = getCurrency();
+        Money receivableInterest = Money.zero(currency);
+        Money receivableFee = Money.zero(currency);
+        Money receivablePenalty = Money.zero(currency);
+        Money[] receivables = new Money[3];
+        for (final LoanTransaction transaction : this.loanTransactions) {
+            if (transaction.isNotReversed() && !transaction.isRepaymentAtDisbursement() && !transaction.isDisbursement()
+                    && !transaction.getTransactionDate().isAfter(tillDate)) {
+                if (transaction.isAccrual()) {
+                    receivableInterest = receivableInterest.plus(transaction.getInterestPortion(currency));
+                    receivableFee = receivableFee.plus(transaction.getFeeChargesPortion(currency));
+                    receivablePenalty = receivablePenalty.plus(transaction.getPenaltyChargesPortion(currency));
+                } else if (transaction.isRepayment() || transaction.isChargePayment()) {
+                    receivableInterest = receivableInterest.minus(transaction.getInterestPortion(currency));
+                    receivableFee = receivableFee.minus(transaction.getFeeChargesPortion(currency));
+                    receivablePenalty = receivablePenalty.minus(transaction.getPenaltyChargesPortion(currency));
+                }
+            }
+            if (receivableInterest.isLessThanZero()) {
+                receivableInterest = receivableInterest.zero();
+            }
+            if (receivableFee.isLessThanZero()) {
+                receivableFee = receivableFee.zero();
+            }
+            if (receivablePenalty.isLessThanZero()) {
+                receivablePenalty = receivablePenalty.zero();
+            }
+        }
+        receivables[0] = receivableInterest;
+        receivables[1] = receivableFee;
+        receivables[2] = receivablePenalty;
+        return receivables;
+    }
+
+    public void handleForeClosureTransactions(final List<LoanTransaction> repaymentTransaction,
+            final LoanForeClosureDetailDTO foreClosureDetailDTO, final LoanLifecycleStateMachine loanLifecycleStateMachine) {
+
+        LoanEvent event = LoanEvent.LOAN_FORECLOSURE_REPAYMENT;
+
+        validateAccountStatus(event);
+
+        MonetaryCurrency currency = getCurrency();
+
+        final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
+                .determineProcessor(this.transactionProcessingStrategy);
+
+        loanRepaymentScheduleTransactionProcessor.processTransactionsFromDerivedFields(repaymentTransaction, currency,
+                this.repaymentScheduleInstallments, charges());
+        this.loanTransactions.addAll(repaymentTransaction);
+        LoanStatus statusEnum = loanLifecycleStateMachine.transition(event, LoanStatus.fromInt(this.loanStatus));
+        this.loanStatus = statusEnum.getValue();
+        updateLoanSummaryDerivedFields();
+        this.closedOnDate = foreClosureDetailDTO.getTransactionDate().toDate();
+    }
+
+    public Money retrieveAccruedAmountAfterDate(final LocalDate tillDate) {
+        Money totalAmountAccrued = Money.zero(getCurrency());
+        Money actualAmountTobeAccrued = Money.zero(getCurrency());
+        for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
+            totalAmountAccrued = totalAmountAccrued.plus(installment.getInterestAccrued(getCurrency()));
+
+            if (tillDate.isAfter(installment.getFromDate()) && tillDate.isBefore(installment.getDueDate())) {
+                int daysInPeriod = Days.daysBetween(installment.getFromDate(), installment.getDueDate()).getDays();
+                int tillDays = Days.daysBetween(installment.getFromDate(), tillDate).getDays();
+                double interest = calculateInterestForDays(daysInPeriod, installment.getInterestCharged(getCurrency()).getAmount(),
+                        tillDays);
+                actualAmountTobeAccrued = actualAmountTobeAccrued.plus(interest);
+            } else if ((tillDate.isAfter(installment.getFromDate()) && tillDate.isEqual(installment.getDueDate()))
+                    || (tillDate.isEqual(installment.getFromDate()) && tillDate.isEqual(installment.getDueDate()))
+                    || (tillDate.isAfter(installment.getFromDate()) && tillDate.isAfter(installment.getDueDate()))) {
+                actualAmountTobeAccrued = actualAmountTobeAccrued.plus(installment.getInterestAccrued(getCurrency()));
+            }
+        }
+        Money accredAmountAfterDate = totalAmountAccrued.minus(actualAmountTobeAccrued);
+        if (accredAmountAfterDate.isLessThanZero()) {
+            accredAmountAfterDate = Money.zero(getCurrency());
+        }
+        return accredAmountAfterDate;
+    }
 }

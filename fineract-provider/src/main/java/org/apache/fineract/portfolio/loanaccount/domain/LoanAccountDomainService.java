@@ -19,11 +19,19 @@
 package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
+import org.apache.fineract.portfolio.loanaccount.data.LoanForeClosureDetailDTO;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.joda.time.LocalDate;
+
+
+
+
+
+
 
 public interface LoanAccountDomainService {
 
@@ -56,4 +64,5 @@ public interface LoanAccountDomainService {
 
     void saveLoanWithDataIntegrityViolationChecks(Loan loan);
 
+    Map<String, Object> foreCloseLoan(LoanForeClosureDetailDTO loanForeClosureDetailDTO);
 }

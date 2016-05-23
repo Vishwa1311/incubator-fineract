@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.loanaccount.service;
 
 import java.util.Collection;
+import java.util.Map;
 
 import org.apache.fineract.infrastructure.jobs.exception.JobExecutionException;
 import org.apache.fineract.portfolio.loanaccount.data.LoanScheduleAccrualData;
@@ -34,5 +35,7 @@ public interface LoanAccrualPlatformService {
 
     void addPeriodicAccruals() throws JobExecutionException;
     void addPeriodicAccrualsForLoansWithIncomePostedAsTransactions() throws JobExecutionException;
+
+    void postDueInterest(Map<String, Object> mapData, StringBuilder exceptionReasons);
 
 }

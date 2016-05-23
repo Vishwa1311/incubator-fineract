@@ -115,6 +115,7 @@ import org.apache.fineract.portfolio.loanaccount.command.LoanUpdateCommand;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargeData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByData;
+import org.apache.fineract.portfolio.loanaccount.data.LoanForeClosureDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanInstallmentChargeData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
@@ -2867,6 +2868,49 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 .withClientId(loan.getClientId()) //
                 .withGroupId(loan.getGroupId()) //
                 .withLoanId(loanId) //
+                .with(changes) //
+                .build();
+    }
+
+    @Override
+    public CommandProcessingResult forecloseLoan(final JsonCommand command) {
+
+        final String json = command.json();
+        final JsonElement element = fromApiJsonHelper.parse(json);
+        final Long loanId = this.fromApiJsonHelper.extractLongNamed(LoanApiConstants.loanIdParamName, element);
+        final Loan loan = this.loanAssembler.assembleFrom(loanId);
+        final Client client = loan.client();
+
+        final LocalDate transactionDate = this.fromApiJsonHelper.extractLocalDateNamed(LoanApiConstants.transactionDateParamName, element);
+        final Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("transactionDate", transactionDate);
+
+        BigDecimal principalWrittenOff = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
+                LoanApiConstants.principalWrittenOffAmountParamName, element);
+        BigDecimal interestWaived = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(LoanApiConstants.interestWaivedAmountParamName,
+                element);
+        BigDecimal feeChargesWaived = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(LoanApiConstants.feeWaivedAmountParamName,
+                element);
+        BigDecimal penaltyChargesWaived = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(
+                LoanApiConstants.penaltyWaivedAmountParamName, element);
+
+        String noteText = "";
+        String noteTextByTO = this.fromApiJsonHelper.extractStringNamed(LoanApiConstants.noteParamName, element);
+        String noteTextByBM = this.fromApiJsonHelper.extractStringNamed(LoanApiConstants.notebybmParamName, element);
+        if (StringUtils.isNotBlank(noteTextByTO)) {
+            noteText += noteTextByTO;
+        }
+        if (StringUtils.isNotBlank(noteTextByBM)) {
+            noteText += "<br>" + noteTextByBM;
+        }
+
+        LoanForeClosureDetailDTO closureDetailDTO = new LoanForeClosureDetailDTO(loan, transactionDate, noteText);
+
+        final Map<String, Object> modifications = this.loanAccountDomainService.foreCloseLoan(closureDetailDTO);
+        changes.putAll(modifications);
+
+        final CommandProcessingResultBuilder commandProcessingResultBuilder = new CommandProcessingResultBuilder();
+        return commandProcessingResultBuilder.withLoanId(loanId) //
                 .with(changes) //
                 .build();
     }

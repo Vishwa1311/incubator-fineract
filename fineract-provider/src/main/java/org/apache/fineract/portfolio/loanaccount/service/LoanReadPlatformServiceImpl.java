@@ -58,6 +58,7 @@ import org.apache.fineract.portfolio.calendar.data.CalendarData;
 import org.apache.fineract.portfolio.calendar.domain.CalendarEntityType;
 import org.apache.fineract.portfolio.calendar.service.CalendarReadPlatformService;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
+import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
 import org.apache.fineract.portfolio.client.data.ClientData;
@@ -72,6 +73,7 @@ import org.apache.fineract.portfolio.fund.service.FundReadPlatformService;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.portfolio.group.data.GroupRoleData;
 import org.apache.fineract.portfolio.group.service.GroupReadPlatformService;
+import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanAccountData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanApplicationTimelineData;
@@ -103,6 +105,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.data.OverdueLoanSc
 import org.apache.fineract.portfolio.loanproduct.data.LoanProductData;
 import org.apache.fineract.portfolio.loanproduct.data.TransactionProcessingStrategyData;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestMethod;
+import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.service.LoanDropdownReadPlatformService;
 import org.apache.fineract.portfolio.loanproduct.service.LoanEnumerations;
 import org.apache.fineract.portfolio.loanproduct.service.LoanProductReadPlatformService;
@@ -401,12 +404,14 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
         final BigDecimal outstandingLoanBalance = null;
         final BigDecimal unrecognizedIncomePortion = null;
+        final Collection<CodeValueData> foreClosureReasons = null;
+        final BigDecimal foreClosureChargesPortion = null;
         return new LoanTransactionData(null, null, null, transactionType, null, currencyData, earliestUnpaidInstallmentDate,
                 loanRepaymentScheduleInstallment.getTotalOutstanding(currency).getAmount(), loanRepaymentScheduleInstallment
                         .getPrincipalOutstanding(currency).getAmount(), loanRepaymentScheduleInstallment.getInterestOutstanding(currency)
                         .getAmount(), loanRepaymentScheduleInstallment.getFeeChargesOutstanding(currency).getAmount(),
                 loanRepaymentScheduleInstallment.getPenaltyChargesOutstanding(currency).getAmount(), null, unrecognizedIncomePortion,
-                paymentOptions, null, null, null, outstandingLoanBalance, false);
+                paymentOptions, null, null, null, outstandingLoanBalance, false, foreClosureReasons, foreClosureChargesPortion);
     }
 
     @Override
@@ -431,12 +436,14 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
         final BigDecimal outstandingLoanBalance = loanRepaymentScheduleInstallment.getPrincipalOutstanding(currency).getAmount();
         final BigDecimal unrecognizedIncomePortion = null;
+        final Collection<CodeValueData> foreClosureReasons = null;
+        final BigDecimal foreClosureChargesPortion = null;
         return new LoanTransactionData(null, null, null, transactionType, null, currencyData, earliestUnpaidInstallmentDate,
                 loanRepaymentScheduleInstallment.getTotalOutstanding(currency).getAmount(), loanRepaymentScheduleInstallment
                         .getPrincipalOutstanding(currency).getAmount(), loanRepaymentScheduleInstallment.getInterestOutstanding(currency)
                         .getAmount(), loanRepaymentScheduleInstallment.getFeeChargesOutstanding(currency).getAmount(),
                 loanRepaymentScheduleInstallment.getPenaltyChargesOutstanding(currency).getAmount(), null, unrecognizedIncomePortion,
-                paymentOptions, null, null, null, outstandingLoanBalance, false);
+                paymentOptions, null, null, null, outstandingLoanBalance, false, foreClosureReasons, foreClosureChargesPortion);
     }
 
     @Override
@@ -1776,8 +1783,11 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
         BigDecimal outstandingLoanBalance = null;
         final BigDecimal unrecognizedIncomePortion = null;
+        final Collection<CodeValueData> foreClosureReasons = null;
+        final BigDecimal foreClosureCharges = null;
         return new LoanTransactionData(null, null, null, transactionType, null, null, null, loan.getTotalWrittenOff(), null, null, null,
-                null, null, unrecognizedIncomePortion, paymentOptions, null, null, null, outstandingLoanBalance, false);
+                null, null, unrecognizedIncomePortion, paymentOptions, null, null, null, outstandingLoanBalance, false, foreClosureReasons, 
+                foreClosureCharges);
 
     }
 
@@ -2018,10 +2028,11 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
 
         final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(LoanTransactionType.REFUND_FOR_ACTIVE_LOAN);
         final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
-
+        final Collection<CodeValueData> foreClosureReasons = null;
+        final BigDecimal foreClosureCharges = null;
         return new LoanTransactionData(null, null, null, transactionType, null, currencyData, earliestUnpaidInstallmentDate,
                 retrieveTotalPaidInAdvance(loan.getId()).getPaidInAdvance(), null, null, null, null, null, null, paymentOptions, null,
-                null, null, null, false);
+                null, null, null, false, foreClosureReasons, foreClosureCharges);
     }
 
     @Override
@@ -2089,5 +2100,86 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         } catch (final EmptyResultDataAccessException e) {
             return null;
         }
+    }
+
+    @Override
+    public LoanTransactionData retrieveLoanForeclosureTemplate(final Long loanId) {
+        this.context.authenticatedUser();
+
+        final Loan loan = this.loanRepository.findOne(loanId);
+        if (loan == null) { throw new LoanNotFoundException(loanId); }
+
+        final MonetaryCurrency currency = loan.getCurrency();
+        final ApplicationCurrency applicationCurrency = this.applicationCurrencyRepository.findOneWithNotFoundDetection(currency);
+
+        final CurrencyData currencyData = applicationCurrency.toData();
+
+        final LocalDate earliestUnpaidInstallmentDate = DateUtils.getLocalDateOfTenant();
+        // if (!loan.canForecloseLoan()) { throw new
+        // GeneralPlatformDomainRuleException("loan.foreclose.not.valid",
+        // "Fore Close Task Exception: Loan can not be foreclosed:" + loanId); }
+
+        final LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment = loan.fetchLoanForeclosureDetail(DateUtils
+                .getLocalDateOfTenant());
+        BigDecimal unrecognizedIncomePortion = null;
+        if (loan.isPeriodicAccrualAccountingEnabledOnLoanProduct() && loan.client() != null) {
+            // final LocalDate clientDeathOnDate =
+            // loan.client().dateOfDeathLocalDate();
+            Money accruedAmountAfterDeath = Money.zero(loan.getCurrency());
+            // if (accruedTill != null && clientDeathOnDate != null &&
+            // accruedTill.isAfter(clientDeathOnDate)) {
+            // accruedAmountAfterDeath =
+            // loan.retrieveAccruedAmountAfterDate(clientDeathOnDate);
+            // }
+            if (accruedAmountAfterDeath.isGreaterThanZero()) {
+                Money interestCharged = loanRepaymentScheduleInstallment.getInterestCharged(currency);
+                Money actualInterestCharged = interestCharged.minus(accruedAmountAfterDeath);
+                if (actualInterestCharged.isLessThanZero()) {
+                    actualInterestCharged = actualInterestCharged.zero();
+                }
+                loanRepaymentScheduleInstallment.updateInterestCharged(actualInterestCharged.getAmount());
+                unrecognizedIncomePortion = accruedAmountAfterDeath.getAmount();
+            }
+        }
+        final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(LoanTransactionType.REPAYMENT);
+        final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final BigDecimal outstandingLoanBalance = loanRepaymentScheduleInstallment.getPrincipalOutstanding(currency).getAmount();
+        final Boolean isReversed = false;
+        final Collection<CodeValueData> foreClosureReasons = this.codeValueReadPlatformService
+                .retrieveCodeValuesByCode(LoanApiConstants.foreClosureReasonsParamName);
+
+        Money foreClosureChargesPortion = Money.zero(currency);
+
+        /*
+         * Fore-closure charges are not attached to the loan during
+         * disbursement, instead it will be attached to loan only on fore-closer
+         * event(during fore-closure approval)
+         */
+
+        /*
+         * Get the product definition for the loan, as fore-closure details are
+         * available in the loan product definition.
+         */
+
+        final LoanProduct loanProdcut = loan.loanProduct();
+        final Iterable<Charge> loanCharges = loanProdcut.getLoanProductCharges();
+        /*for (Charge charge : loanCharges) {
+            if (charge.isForeClosureCharge()) {
+                final LoanCharge foreClosureLoanCharge = LoanCharge.createNewWithoutLoan(charge, loan.getSummary()
+                        .getTotalPrincipalOutstanding(), charge.getAmount(), null, null, null, null, loan.repaymentScheduleDetail()
+                        .getNumberOfRepayments());
+                foreClosureChargesPortion = foreClosureChargesPortion.plus(foreClosureLoanCharge.getAmount(currency));
+            }
+        }*/
+        final Money outStandingAmountIncludingForeclosureCharges = loanRepaymentScheduleInstallment.getTotalOutstanding(currency).plus(
+                foreClosureChargesPortion);
+
+        return new LoanTransactionData(null, null, null, transactionType, null, currencyData, earliestUnpaidInstallmentDate,
+                outStandingAmountIncludingForeclosureCharges.getAmount(), loanRepaymentScheduleInstallment
+                        .getPrincipalOutstanding(currency).getAmount(), loanRepaymentScheduleInstallment.getInterestOutstanding(currency)
+                        .getAmount(), loanRepaymentScheduleInstallment.getFeeChargesOutstanding(currency).getAmount(),
+                loanRepaymentScheduleInstallment.getPenaltyChargesOutstanding(currency).getAmount(), null, unrecognizedIncomePortion,
+                paymentTypeOptions, null, null, null, outstandingLoanBalance, isReversed, foreClosureReasons,
+                foreClosureChargesPortion.getAmount());
     }
 }

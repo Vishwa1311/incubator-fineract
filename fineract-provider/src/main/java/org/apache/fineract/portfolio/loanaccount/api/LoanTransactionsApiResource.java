@@ -129,6 +129,8 @@ public class LoanTransactionsApiResource {
             transactionData = this.loanReadPlatformService.retrieveRefundByCashTemplate(loanId);
         } else if (is(commandParam, "refundbytransfer")) {
             transactionData = this.loanReadPlatformService.retrieveDisbursalTemplate(loanId, true);
+        } else if (is(commandParam, "foreclosure")) {
+            transactionData = this.loanReadPlatformService.retrieveLoanForeclosureTemplate(loanId);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam);
         }
@@ -188,6 +190,9 @@ public class LoanTransactionsApiResource {
             result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         } else if (is(commandParam, "refundByCash")) {
             final CommandWrapper commandRequest = builder.refundLoanTransactionByCash(loanId).build();
+            result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+        } else if (is(commandParam, "foreclosure")) {
+            final CommandWrapper commandRequest = builder.loanForeclosure(loanId).build();
             result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         }
 
