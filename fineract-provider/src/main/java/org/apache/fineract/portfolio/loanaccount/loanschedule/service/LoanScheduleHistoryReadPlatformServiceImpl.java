@@ -153,14 +153,14 @@ public class LoanScheduleHistoryReadPlatformServiceImpl implements LoanScheduleH
                                         data.disbursementDate(), data.amount(), this.totalFeeChargesDueAtDisbursement, data.isDisbursed());
                                 periods.add(periodData);
                                 this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.add(data.amount());
-                            } else if (data.isDueForDisbursement(fromDate, dueDate)
-                                    && this.outstandingLoanPrincipalBalance.compareTo(BigDecimal.ZERO) == 1) {
-                                principal = principal.add(data.amount());
-                                final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
-                                        data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
-                                periods.add(periodData);
-                                this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.add(data.amount());
-                            }
+                            } 
+                        } else if (data.isDueForDisbursement(fromDate, dueDate)
+                                && this.outstandingLoanPrincipalBalance.compareTo(BigDecimal.ZERO) == 1) {
+                            principal = principal.add(data.amount());
+                            final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                    data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
+                            periods.add(periodData);
+                            this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.add(data.amount());
                         }
                     }
                     totalPrincipalDisbursed = totalPrincipalDisbursed.add(principal);
