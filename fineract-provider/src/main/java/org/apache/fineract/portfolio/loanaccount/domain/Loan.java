@@ -527,7 +527,12 @@ public class Loan extends AbstractPersistable<Long> {
         Money chargesDue = Money.of(getCurrency(), BigDecimal.ZERO);
 
         for (final LoanCharge charge : charges()) {
-            if (charge.isDueAtDisbursement()) {
+            if (this.loanStatus != null && this.loanStatus.equals(LoanStatus.ACTIVE.getValue()) && charge.isTrancheDisbursementCharge()) {
+                LoanDisbursementDetails loanDisbursementDetails = charge.getTrancheDisbursementCharge().getloanDisbursementDetails();
+                if (loanDisbursementDetails != null && loanDisbursementDetails.actualDisbursementDate() != null) {
+                    chargesDue = chargesDue.plus(charge.amount());
+                }
+            } else if (charge.isDueAtDisbursement()) {
                 chargesDue = chargesDue.plus(charge.amount());
             }
         }
@@ -3178,8 +3183,16 @@ public class Loan extends AbstractPersistable<Long> {
         boolean isAllChargesPaid = true;
         for (final LoanCharge loanCharge : this.charges) {
             if (loanCharge.isActive() && !(loanCharge.isPaid() || loanCharge.isWaived())) {
-                isAllChargesPaid = false;
-                break;
+                if (loanCharge.isTrancheDisbursementCharge()) {
+                    LoanDisbursementDetails disbursementDetails = loanCharge.getTrancheDisbursementCharge().getloanDisbursementDetails();
+                    if (loanCharge.isNotFullyPaid() && disbursementDetails.actualDisbursementDate() != null) {
+                        isAllChargesPaid = false;
+                        break;
+                    }
+                } else {
+                    isAllChargesPaid = false;
+                    break;
+                }
             }
         }
         if (isAllChargesPaid) {
@@ -5658,6 +5671,7 @@ public class Loan extends AbstractPersistable<Long> {
 
     private void updateLoanToLastDisbursalState(LocalDate actualDisbursementDate) {
 
+        boolean isDisbursedAmountChanged = false;
         for (final LoanCharge charge : charges()) {
             if (charge.isOverdueInstallmentCharge()) {
                 charge.setActive(false);
@@ -5665,6 +5679,7 @@ public class Loan extends AbstractPersistable<Long> {
                     && actualDisbursementDate.equals(new LocalDate(charge.getTrancheDisbursementCharge().getloanDisbursementDetails()
                             .actualDisbursementDate()))) {
                 charge.resetToOriginal(loanCurrency());
+                isDisbursedAmountChanged = true;
             }
         }
         for (final LoanDisbursementDetails details : this.disbursementDetails) {
@@ -5672,6 +5687,9 @@ public class Loan extends AbstractPersistable<Long> {
                 this.loanRepaymentScheduleDetail.setPrincipal(getDisbursedAmount().subtract(details.principal()));
                 details.updateActualDisbursementDate(null);
             }
+        }
+        if (isDisbursedAmountChanged) {
+            updateSummaryWithTotalFeeChargesDueAtDisbursement(deriveSumTotalOfChargesDueAtDisbursement());
         }
         updateLoanSummaryDerivedFields();
     }
