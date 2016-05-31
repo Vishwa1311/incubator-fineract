@@ -139,7 +139,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.exception.ExceedingTrancheCountException;
-import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanStateTransitionException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidPaidInAdvanceAmountException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanDisbursalException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanMultiDisbursementException;
@@ -2548,7 +2547,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         this.validateForAddAndDeleteTranche(loan);
 
-        loan.updateDisbursementDetails(command, actualChanges);
+        final LocalDate recalculateFromDate = loan.updateDisbursementDetails(command, actualChanges);
 
         if (loan.getDisbursementDetails().isEmpty()) {
             final String errorMessage = "For this loan product, disbursement details must be provided";
@@ -2561,21 +2560,21 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                     .maxTrancheCount(), loan.getDisbursementDetails().size());
         }
         LoanDisbursementDetails updateDetails = null;
-        return processLoanDisbursementDetail(loan, loanId, command, updateDetails);
+        return processLoanDisbursementDetail(loan, loanId, command, updateDetails, recalculateFromDate);
 
     }
 
     private CommandProcessingResult processLoanDisbursementDetail(final Loan loan, Long loanId, JsonCommand command,
-            LoanDisbursementDetails loanDisbursementDetails) {
+            LoanDisbursementDetails loanDisbursementDetails, final LocalDate recalculateFromDate) {
         final List<Long> existingTransactionIds = new ArrayList<>();
         final List<Long> existingReversedTransactionIds = new ArrayList<>();
         existingTransactionIds.addAll(loan.findExistingTransactionIds());
         existingReversedTransactionIds.addAll(loan.findExistingReversedTransactionIds());
         final Map<String, Object> changes = new LinkedHashMap<>();
-        final LocalDate expectedDisbursementDate = command.localDateValueOfParameterNamed(LoanApiConstants.updatedDisbursementDateParameterName);
+        
         LocalDate recalculateFrom = null;
         if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
-            recalculateFrom = expectedDisbursementDate;
+            recalculateFrom = recalculateFromDate;
         }
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
 
@@ -2635,8 +2634,21 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         checkClientOrGroupActive(loan);
         LoanDisbursementDetails loanDisbursementDetails = loan.fetchLoanDisbursementsById(disbursementId);
         this.loanEventApiJsonValidator.validateUpdateDisbursementDateAndAmount(command.json(), loanDisbursementDetails);
-
-        return processLoanDisbursementDetail(loan, loanId, command, loanDisbursementDetails);
+        LocalDate recalculateFromDate = null;
+        /*
+         * picking up recalculateFrom date based on adding new tranches or
+         * deleting existing tranches or updating the tranche date to back
+         * dated or feature date In any case get the least expected tranche
+         * date.
+         */
+        final LocalDate updatedExpectedDisbursementDate = command.localDateValueOfParameterNamed(LoanApiConstants.updatedDisbursementDateParameterName);
+        if (updatedExpectedDisbursementDate.isBefore(loanDisbursementDetails.expectedDisbursementDateAsLocalDate())) {
+            recalculateFromDate = updatedExpectedDisbursementDate;
+        } else {
+            recalculateFromDate = loanDisbursementDetails.expectedDisbursementDateAsLocalDate();
+        }
+        
+        return processLoanDisbursementDetail(loan, loanId, command, loanDisbursementDetails, recalculateFromDate);
 
     }
 

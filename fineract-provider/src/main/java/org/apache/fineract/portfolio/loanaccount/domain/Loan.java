@@ -1719,11 +1719,13 @@ public class Loan extends AbstractPersistable<Long> {
         return returnObject;
     }
 
-    public void updateDisbursementDetails(final JsonCommand jsonCommand, final Map<String, Object> actualChanges) {
+    public LocalDate updateDisbursementDetails(final JsonCommand jsonCommand, final Map<String, Object> actualChanges) {
 
+        // disbursementList is updated when tranche is removed
         List<Long> disbursementList = fetchDisbursementIds();
         List<Long> loanChargeIds = fetchLoanChargeIds();
         int chargeIdLength = loanChargeIds.size();
+        LocalDate recalculateFromDate = null;
         String chargeIds = null;
         // From modify application page, if user removes all charges, we should
         // get empty array.
@@ -1762,15 +1764,17 @@ public class Loan extends AbstractPersistable<Long> {
                             loanChargeIds.remove(Long.parseLong(chargeIds));
                         }
                     }
-                    createOrUpdateDisbursementDetails(disbursementID, actualChanges, expectedDisbursementDate, principal, disbursementList);
+                    recalculateFromDate = createOrUpdateDisbursementDetails(disbursementID, actualChanges, expectedDisbursementDate, principal, disbursementList, recalculateFromDate);
                 }
-                removeDisbursementAndAssociatedCharges(actualChanges, disbursementList, loanChargeIds, chargeIdLength, removeAllChages);
+               
+                recalculateFromDate = removeDisbursementAndAssociatedCharges(actualChanges, disbursementList, loanChargeIds, chargeIdLength, removeAllChages, recalculateFromDate);
             }
         }
+        return recalculateFromDate;
     }
 
-    private void removeDisbursementAndAssociatedCharges(final Map<String, Object> actualChanges, List<Long> disbursementList,
-            List<Long> loanChargeIds, int chargeIdLength, boolean removeAllChages) {
+    private LocalDate removeDisbursementAndAssociatedCharges(final Map<String, Object> actualChanges, List<Long> disbursementList,
+            List<Long> loanChargeIds, int chargeIdLength, boolean removeAllChages, LocalDate recalculateFromDate) {
         if (removeAllChages) {
             LoanCharge[] tempCharges = new LoanCharge[this.charges.size()];
             this.charges.toArray(tempCharges);
@@ -1790,13 +1794,16 @@ public class Loan extends AbstractPersistable<Long> {
         }
         for (Long id : disbursementList) {
             removeChargesByDisbursementID(id);
-            this.disbursementDetails.remove(fetchLoanDisbursementsById(id));
+            LoanDisbursementDetails loanDisbursementDetail = fetchLoanDisbursementsById(id);
+            recalculateFromDate = getRecalculateFromDate(recalculateFromDate, loanDisbursementDetail.expectedDisbursementDateAsLocalDate());
+            this.disbursementDetails.remove(loanDisbursementDetail);
             actualChanges.put("recalculateLoanSchedule", true);
         }
+        return recalculateFromDate;
     }
 
-    private void createOrUpdateDisbursementDetails(Long disbursementID, final Map<String, Object> actualChanges,
-            Date expectedDisbursementDate, BigDecimal principal, List<Long> existingDisbursementList) {
+    private LocalDate createOrUpdateDisbursementDetails(Long disbursementID, final Map<String, Object> actualChanges,
+            Date expectedDisbursementDate, BigDecimal principal, List<Long> existingDisbursementList, LocalDate recalculateFromDate) {
 
         if (disbursementID != null) {
             LoanDisbursementDetails loanDisbursementDetail = fetchLoanDisbursementsById(disbursementID);
@@ -1817,6 +1824,8 @@ public class Loan extends AbstractPersistable<Long> {
             LoanDisbursementDetails disbursementDetails = new LoanDisbursementDetails(expectedDisbursementDate, actualDisbursementDate,
                     principal);
             disbursementDetails.updateLoan(this);
+            LocalDate expectedDisbursementDateAsLocalDate = new LocalDate(expectedDisbursementDate);
+            recalculateFromDate = getRecalculateFromDate(recalculateFromDate, expectedDisbursementDateAsLocalDate);
             this.disbursementDetails.add(disbursementDetails);
             for (LoanTrancheCharge trancheCharge : trancheCharges) {
                 Charge chargeDefinition = trancheCharge.getCharge();
@@ -1831,6 +1840,17 @@ public class Loan extends AbstractPersistable<Long> {
             actualChanges.put(LoanApiConstants.disbursementDataParameterName, expectedDisbursementDate + "-" + principal);
             actualChanges.put("recalculateLoanSchedule", true);
         }
+        
+        return recalculateFromDate;
+    }
+
+    public LocalDate getRecalculateFromDate(LocalDate recalculateFromDate, LocalDate expectedDisbursementDateAsLocalDate) {
+        if (recalculateFromDate == null) {
+            recalculateFromDate = expectedDisbursementDateAsLocalDate;
+        } else if (recalculateFromDate.isAfter(expectedDisbursementDateAsLocalDate)) {
+            recalculateFromDate = expectedDisbursementDateAsLocalDate;
+        }
+        return recalculateFromDate;
     }
 
     private void removeChargesByDisbursementID(Long id) {
