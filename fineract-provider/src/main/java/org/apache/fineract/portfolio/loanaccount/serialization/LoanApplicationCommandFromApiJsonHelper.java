@@ -135,9 +135,18 @@ public final class LoanApplicationCommandFromApiJsonHelper {
 
                 // if it is JLG loan that must have meeting details
                 if (isMeetingMandatoryForJLGLoans) {
+                    
                     final String calendarIdParameterName = "calendarId";
                     final Long calendarId = this.fromApiJsonHelper.extractLongNamed(calendarIdParameterName, element);
                     baseDataValidator.reset().parameter(calendarIdParameterName).value(calendarId).notNull().integerGreaterThanZero();
+                    
+                    // Global configuration meeting enabled for JLG loans.
+                    // If calendarId is null then through Sync Repayments With Meeting should be checked at UI level
+                    if (calendarId == null) {
+                        final String syncRepaymentsWithMeetingParameterName = "syncRepaymentsWithMeeting";
+                        baseDataValidator.reset().parameter(syncRepaymentsWithMeetingParameterName).value(false).notNull()
+                                .mustBeTrueValueRequired(false);
+                    }
 
                     // if it is JLG loan then must have a value for
                     // syncDisbursement passed in
