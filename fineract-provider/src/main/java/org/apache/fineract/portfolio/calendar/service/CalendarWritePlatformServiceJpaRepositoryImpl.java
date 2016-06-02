@@ -210,7 +210,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
     @Override
     public CommandProcessingResult updateCalendar(final JsonCommand command) {
 
-    	/** Validate to check if Edit is Allowed **/
+        /** Validate to check if Edit is Allowed **/
     	this.validateIsEditMeetingAllowed(command.getGroupId());
         /*
          * Validate all the data for updating the calendar
@@ -246,7 +246,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
         Map<String, Object> changes = null;
         
         final Boolean reschedulebasedOnMeetingDates = command
-                .booleanObjectValueOfParameterNamed(CALENDAR_SUPPORTED_PARAMETERS.RESCHEDULE_BASED_ON_MEETING_DATES.getValue());
+                .booleanPrimitiveValueOfParameterNamed(CALENDAR_SUPPORTED_PARAMETERS.RESCHEDULE_BASED_ON_MEETING_DATES.getValue());
         
         /*
          * System allows to change the meeting date by two means,
@@ -269,7 +269,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
         LocalDate newMeetingDate = null;
         LocalDate presentMeetingDate = null;
         
-        if (reschedulebasedOnMeetingDates != null && reschedulebasedOnMeetingDates) {
+        if (reschedulebasedOnMeetingDates) {
             
             newMeetingDate = command.localDateValueOfParameterNamed(CALENDAR_SUPPORTED_PARAMETERS.NEW_MEETING_DATE.getValue());
             presentMeetingDate = command.localDateValueOfParameterNamed(CALENDAR_SUPPORTED_PARAMETERS.PRESENT_MEETING_DATE.getValue());
@@ -291,7 +291,7 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
             Set<CalendarHistory> historys = calendarForUpdate.getCalendarHistory();
             CalendarHistoryDataWrapper calendarHistoryDataWrapper = new CalendarHistoryDataWrapper(historys);
             LocalDate endDate = null;
-            if (reschedulebasedOnMeetingDates == null) {
+            if (!reschedulebasedOnMeetingDates) {
                 newMeetingDate = command.localDateValueOfParameterNamed(CALENDAR_SUPPORTED_PARAMETERS.START_DATE.getValue());
                 presentMeetingDate = new LocalDate(oldStartDate);
                 if (newMeetingDate.isBefore(new LocalDate(oldStartDate)) || newMeetingDate.equals(new LocalDate(oldStartDate))) {
