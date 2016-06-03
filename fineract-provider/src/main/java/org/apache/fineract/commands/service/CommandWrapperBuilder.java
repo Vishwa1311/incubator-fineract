@@ -2784,4 +2784,13 @@ public class CommandWrapperBuilder {
         this.href = "/centers/" + centerId + "?command=associateCenters";
         return this;
     }
+
+    public CommandWrapperBuilder updateFutureMeetingCalendar(final String entityType, final Long entityId, final Long calendarId) {
+        this.actionName = "UPDATEFUTUREMEETINGS";
+        this.entityName = "CALENDAR";
+        this.entityId = calendarId;
+        this.groupId = entityId;
+        this.href = "/" + entityType + "/" + entityId + "/calendars/" + calendarId;
+        return this;
+    }
 }

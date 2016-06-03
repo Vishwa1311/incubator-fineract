@@ -1980,7 +1980,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     @Override
     public void applyMeetingDateChanges(final Calendar calendar, final Collection<CalendarInstance> loanCalendarInstances) {
 
-        final Boolean reschedulebasedOnMeetingDates = null;
+        final Boolean reschedulebasedOnMeetingDates = false;
         final LocalDate presentMeetingDate = null;
         final LocalDate newMeetingDate = null;
 
@@ -2015,7 +2015,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         for (final Loan loan : loans) {
             if (loan != null) {
                 
-                if (reschedulebasedOnMeetingDates != null && reschedulebasedOnMeetingDates
+                if (reschedulebasedOnMeetingDates
                         && loan.getExpectedFirstRepaymentOnDate() != null && loan.getExpectedFirstRepaymentOnDate().equals(presentMeetingDate)) {
                     loan.setExpectedFirstRepaymentOnDate(newMeetingDate.toDate());
                 }
@@ -2044,7 +2044,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                         }
                     } 
                     createAndSaveLoanScheduleArchive(loan, scheduleGeneratorDTO);
-                } else if (reschedulebasedOnMeetingDates != null && reschedulebasedOnMeetingDates) {
+                } else if (reschedulebasedOnMeetingDates) {
                     loan.updateLoanRepaymentScheduleDates(calendar.getStartDateLocalDate(), calendar.getRecurrence(), isHolidayEnabled,
                             holidays, workingDays, reschedulebasedOnMeetingDates, presentMeetingDate, newMeetingDate,
                             isSkipRepaymentOnFirstMonth, numberOfDays);

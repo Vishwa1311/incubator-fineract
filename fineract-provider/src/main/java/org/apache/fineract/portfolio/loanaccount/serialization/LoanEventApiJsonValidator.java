@@ -451,7 +451,7 @@ public final class LoanEventApiJsonValidator {
 
     public void validateGroupMeetingDateHasActiveLoans(final List<Loan> loans, final Boolean reschedulebasedOnMeetingDates,
             final LocalDate presentMeetingDate) {
-        if (reschedulebasedOnMeetingDates == null || !reschedulebasedOnMeetingDates) {
+        if (!reschedulebasedOnMeetingDates) {
             List<Long> activeLoanIds = new ArrayList<>();
             for (final Loan loan : loans) {
                 if (loan.isDisbursed()) {
