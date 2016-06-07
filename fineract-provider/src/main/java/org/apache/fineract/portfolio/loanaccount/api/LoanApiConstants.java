@@ -111,4 +111,35 @@ public interface LoanApiConstants {
     public static final String principalParamName = "principal";
     public static final String installmentAmountParamName = "installmentAmount";
 
+    // fore closure constants
+    public static final String foreClosureReasonsParamName = "ForeClosureReason";
+    public static final String outstandingPrincipalPortionParamName = "outstandingPrincipalPortion";
+    public static final String outstandingInterestPortionParamName = "outstandingInterestPortion";
+    public static final String outstandingFeeChargesPortionParamName = "outstandingFeeChargesPortion";
+    public static final String outstandingPenaltyChargesPortionParamName = "outstandingPenaltyChargesPortion";
+    public static final String totalWaivedAmountParamName = "totalWaivedAmount";
+    public static final String transactionDateParamName = "transactionDate";
+    public static final String isInterestWaivedParamName = "isInterestWaived";
+    public static final String isPartialInterestWaivedParamName = "isPartialInterestWaived";
+    public static final String isCompleteInterestWaivedParamName = "isCompleteInterestWaived";
+    public static final String interestWaivedAmountParamName = "interestWaivedAmount";
+    public static final String isFeeWaivedParamName = "isFeeWaived";
+    public static final String isPartialFeeWaivedParamName = "isPartialFeeWaived";
+    public static final String isCompleteFeeWaivedParamName = "isCompleteFeeWaived";
+    public static final String feeWaivedAmountParamName = "feeWaivedAmount";
+    public static final String isPenaltyWaivedParamName = "isPenaltyWaived";
+    public static final String isPartialPenaltyWaivedParamName = "isPartialPenaltyWaived";
+    public static final String isCompletePenaltyWaivedParamName = "isCompletePenaltyWaived";
+    public static final String penaltyWaivedAmountParamName = "penaltyWaivedAmount";
+    public static final String reasonParamName = "reason";
+    public static final String noteParamName = "note";
+    public static final String isPrincipalWrittenOffParamName = "isPrincipalWrittenOff";
+    public static final String isPartialPrincipalWrittenOffParamName = "isPartialPrincipalWrittenOff";
+    public static final String isCompletePrincipalWrittenOffParamName = "isCompletePrincipalWrittenOff";
+    public static final String principalWrittenOffAmountParamName = "principalWrittenOffAmount";
+    public static final String notebybmParamName = "notebybm";
+    public static final String foreClosureChargesPortionParamName = "foreClosureChargesPortion";
+    public static final String interestAccruedAfterDeathParamName = "interestAccruedAfterDeath";
+    public static final String loanIdParamName = "loanId";
+
 }

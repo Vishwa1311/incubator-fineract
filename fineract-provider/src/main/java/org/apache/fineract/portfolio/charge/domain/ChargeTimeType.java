@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.charge.domain;
 
+
 public enum ChargeTimeType {
     INVALID(0, "chargeTimeType.invalid"), //
     DISBURSEMENT(1, "chargeTimeType.disbursement"), // only for loan charges
@@ -131,7 +132,7 @@ public enum ChargeTimeType {
                     chargeTimeType = SHARE_REDEEM;
                 break;
                 case 16:
-                	chargeTimeType = SAVINGS_NOACTIVITY_FEE;
+                    chargeTimeType = SAVINGS_NOACTIVITY_FEE;
                 break;
                 default:
                     chargeTimeType = INVALID;
@@ -217,4 +218,5 @@ public enum ChargeTimeType {
     public boolean isSharesRedeem() {
         return this.value.equals(ChargeTimeType.SHARE_REDEEM.getValue());
     }
+
 }

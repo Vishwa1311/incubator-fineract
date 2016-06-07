@@ -23,12 +23,17 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.sql.DataSource;
+
+import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
+import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.jobs.annotation.CronTarget;
 import org.apache.fineract.infrastructure.jobs.exception.JobExecutionException;
 import org.apache.fineract.infrastructure.jobs.service.JobName;
 import org.apache.fineract.portfolio.loanaccount.data.LoanScheduleAccrualData;
 import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -36,12 +41,19 @@ public class LoanAccrualPlatformServiceImpl implements LoanAccrualPlatformServic
 
     private final LoanReadPlatformService loanReadPlatformService;
     private final LoanAccrualWritePlatformService loanAccrualWritePlatformService;
+    private final JournalEntryWritePlatformService journalEntryWritePlatformService;
+    private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
 
     @Autowired
     public LoanAccrualPlatformServiceImpl(final LoanReadPlatformService loanReadPlatformService,
-            final LoanAccrualWritePlatformService loanAccrualWritePlatformService) {
+            final LoanAccrualWritePlatformService loanAccrualWritePlatformService, 
+            final JournalEntryWritePlatformService journalEntryWritePlatformService, final RoutingDataSource dataSource) {
         this.loanReadPlatformService = loanReadPlatformService;
         this.loanAccrualWritePlatformService = loanAccrualWritePlatformService;
+        this.journalEntryWritePlatformService = journalEntryWritePlatformService;
+        this.dataSource = dataSource;
+        this.jdbcTemplate = new JdbcTemplate(this.dataSource);
     }
 
     @Override
@@ -136,5 +148,12 @@ public class LoanAccrualPlatformServiceImpl implements LoanAccrualPlatformServic
             }
             if (sb.length() > 0) { throw new JobExecutionException(sb.toString()); }
         }
+    }
+    
+    @Override
+    public void postDueInterest(Map<String, Object> mapData, final StringBuilder exceptionReasons) {
+        String sql = "UPDATE `m_loan_repayment_schedule` SET `accrual_interest_posted_derived`=? WHERE  `id`=?;";
+        this.jdbcTemplate.update(sql, mapData.get("totalAccruedAmount"), mapData.get("scheduleId"));
+        this.journalEntryWritePlatformService.postIRDJournalEntry(exceptionReasons, mapData);
     }
 }

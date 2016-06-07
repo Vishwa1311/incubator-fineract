@@ -67,6 +67,8 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OfficeRepository;
@@ -81,6 +83,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -89,6 +92,7 @@ import org.springframework.util.CollectionUtils;
 public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements JournalEntryWritePlatformService {
 
     private final static Logger logger = LoggerFactory.getLogger(JournalEntryWritePlatformServiceJpaRepositoryImpl.class);
+    private static final String JOURNAL_ENTRY_COMMENT_FOR_IRD = "Moving from IRND to IRD";
 
     private final GLClosureRepository glClosureRepository;
     private final GLAccountRepository glAccountRepository;
@@ -106,6 +110,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
     private final CashBasedAccountingProcessorForClientTransactions accountingProcessorForClientTransactions;
+    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public JournalEntryWritePlatformServiceJpaRepositoryImpl(final GLClosureRepository glClosureRepository,
@@ -119,7 +124,8 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
             final OrganisationCurrencyRepositoryWrapper organisationCurrencyRepository, final PlatformSecurityContext context,
             final PaymentDetailWritePlatformService paymentDetailWritePlatformService,
             final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper,
-            final CashBasedAccountingProcessorForClientTransactions accountingProcessorForClientTransactions) {
+            final CashBasedAccountingProcessorForClientTransactions accountingProcessorForClientTransactions, 
+            final RoutingDataSource dataSource) {
         this.glClosureRepository = glClosureRepository;
         this.officeRepository = officeRepository;
         this.glJournalEntryRepository = glJournalEntryRepository;
@@ -136,6 +142,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         this.paymentDetailWritePlatformService = paymentDetailWritePlatformService;
         this.financialActivityAccountRepositoryWrapper = financialActivityAccountRepositoryWrapper;
         this.accountingProcessorForClientTransactions = accountingProcessorForClientTransactions;
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
     @Transactional
@@ -771,4 +778,78 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         }
     }
 
+    @Override
+    @Transactional
+    public void postIRDJournalEntry(final StringBuilder exceptionReasons, final Map<String, Object> journalEntryData) {
+        final Date transactionDate = (Date) journalEntryData.get("dueDate");
+        final BigDecimal amount = (BigDecimal) journalEntryData.get("amount");
+        final String description = JOURNAL_ENTRY_COMMENT_FOR_IRD;
+        final Integer entityType = 1; // for loans
+        final Long entityId = (Long) journalEntryData.get("loanId");
+        final AppUser currentUser = this.context.authenticatedUser();
+
+        if (amount.compareTo(BigDecimal.ZERO) > 0) {
+
+            /*
+             * Reverse the IRND JE entries
+             */
+            String updatesql = "INSERT INTO `acc_gl_journal_entry` "
+                    + "(`account_id`, `office_id`, `currency_code`, `entry_date`, `type_enum`, `idfc_transaction_type`, `amount`, `description`,"
+                    + " `entity_type_enum`, `entity_id`, `createdby_id`, `lastmodifiedby_id`, `created_date`, `lastmodified_date`) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            int acountIdIndex = 0;
+            int typeEnumIndex = 6;
+            Object[] arrayVal = new Object[16];
+            arrayVal[1] = journalEntryData.get("officeId");
+            arrayVal[2] = journalEntryData.get("currency");
+            arrayVal[4] = transactionDate;
+            arrayVal[5] = amount;
+            arrayVal[6] = description;
+            arrayVal[7] = entityType;
+            arrayVal[8] = entityId;
+            arrayVal[9] = currentUser.getId();
+            arrayVal[10] = currentUser.getId();
+            arrayVal[11] = DateUtils.getLocalDateTimeOfTenant().toDate();
+            arrayVal[12] = arrayVal[11];
+
+            // Debit entry
+            arrayVal[acountIdIndex] = journalEntryData.get("glAccountIdForII");
+            arrayVal[typeEnumIndex] = JournalEntryType.DEBIT.getValue();
+            this.jdbcTemplate.update(updatesql, arrayVal);
+
+            // Credit entry
+            arrayVal[acountIdIndex] = journalEntryData.get("glAccountIdForIRND");
+            arrayVal[typeEnumIndex] = JournalEntryType.CREDIT.getValue();
+            this.jdbcTemplate.update(updatesql, arrayVal);
+
+            /*
+             * Post interest accrued and due to IRD account
+             */
+
+            // Debit entry
+            arrayVal[acountIdIndex] = journalEntryData.get("glAccountIdForIRD");
+            arrayVal[typeEnumIndex] = JournalEntryType.DEBIT.getValue();
+            this.jdbcTemplate.update(updatesql, arrayVal);
+
+            // Credit entry
+            arrayVal[acountIdIndex] = journalEntryData.get("glAccountForIIOA");
+            arrayVal[typeEnumIndex] = JournalEntryType.CREDIT.getValue();
+            this.jdbcTemplate.update(updatesql, arrayVal);
+
+        } else if (amount.compareTo(BigDecimal.ZERO) < 0) {
+
+            logger.error("ERROR_INT_RECIEVABLE_DUE_POSTING :" + entityId + ": The loan account " + entityId
+                    + " has gone into inconsistant accouting state, please manually correct them" + System.getProperty("line.separator"));
+
+            logger.error("REASON: Interest receivale posted is greater than the total interest due amount, by " + amount.abs()
+                    + System.getProperty("line.separator"));
+
+            exceptionReasons.append("ERROR_INT_RECIEVABLE_DUE_POSTING :" + entityId + ": The loan account " + entityId
+                    + " has gone into inconsistant accouting state, please manually correct them" + System.getProperty("line.separator"));
+
+            exceptionReasons.append("REASON: Interest receivale posted is greater than the total interest due amount, by " + amount.abs()
+                    + System.getProperty("line.separator"));
+
+        }
+    }
 }

@@ -16,21 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanaccount.service;
+package org.apache.fineract.portfolio.loanaccount.exception;
 
-import java.util.Collection;
-import java.util.Map;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-import org.apache.fineract.portfolio.loanaccount.data.LoanScheduleAccrualData;
-import org.joda.time.LocalDate;
+public class LoanForeclosureException extends AbstractPlatformDomainRuleException {
 
-public interface LoanAccrualWritePlatformService {
-
-    void addAccrualAccounting(Long loanId, Collection<LoanScheduleAccrualData> loanScheduleAccrualDatas) throws Exception;
-
-    void addPeriodicAccruals(LocalDate tilldate, Long loanId, Collection<LoanScheduleAccrualData> loanScheduleAccrualDatas) throws Exception;
-
-    void addIncomeAndAccrualTransactions(Long loanId) throws Exception;
-
-    void postDueInterest(Map<String, Object> mapData, StringBuilder exceptionReasons);
+    public LoanForeclosureException(final String errorCode, final String errorMessage, final Object... defaultUserMessageArgs) {
+        super(errorCode, errorMessage, defaultUserMessageArgs);
+    }
 }
