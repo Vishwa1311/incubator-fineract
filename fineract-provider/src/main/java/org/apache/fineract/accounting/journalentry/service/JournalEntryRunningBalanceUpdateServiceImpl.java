@@ -70,23 +70,29 @@ public class JournalEntryRunningBalanceUpdateServiceImpl implements JournalEntry
     
     // if a limit is not added to the running balance select statements below and the resultset is more than 400,000, 
     // the script will eat up all of the server memory
-    private final String selectRunningBalanceSqlLimit = "limit 0, 10000";
+    //private final String selectRunningBalanceSqlLimit = "limit 0, 10000";
     
     private final String officeRunningBalanceSql = "select je.office_running_balance as runningBalance,je.account_id as accountId from acc_gl_journal_entry je "
             + "inner join (select max(id) as id from acc_gl_journal_entry where office_id=?  and entry_date < ? group by account_id,entry_date) je2 "
             + "inner join (select max(entry_date) as date from acc_gl_journal_entry where office_id=? and entry_date < ? group by account_id) je3 "
-            + "where je2.id = je.id and je.entry_date = je3.date group by je.id order by je.entry_date DESC " + selectRunningBalanceSqlLimit;
+            + "where je2.id = je.id and je.entry_date = je3.date "
+            + " and je.account_id in (101,285)"
+            + "group by je.id order by je.entry_date DESC "; //+ selectRunningBalanceSqlLimit;
 
     private final String organizationRunningBalanceSql = "select je.organization_running_balance as runningBalance,je.account_id as accountId from acc_gl_journal_entry je "
             + "inner join (select max(id) as id from acc_gl_journal_entry where entry_date < ? group by account_id,entry_date) je2 "
             + "inner join (select max(entry_date) as date from acc_gl_journal_entry where entry_date < ? group by account_id) je3 "
-            + "where je2.id = je.id and je.entry_date = je3.date group by je.id order by je.entry_date DESC " + selectRunningBalanceSqlLimit;
+            + "where je2.id = je.id and je.entry_date = je3.date "
+            + " and je.account_id in (101,285)"
+            + "group by je.id order by je.entry_date DESC "; //+ selectRunningBalanceSqlLimit;
 
     private final String officesRunningBalanceSql = "select je.office_running_balance as runningBalance,je.account_id as accountId,je.office_id as officeId "
             + "from acc_gl_journal_entry je "
             + "inner join (select max(id) as id from acc_gl_journal_entry where entry_date < ? group by office_id,account_id,entry_date) je2 "
             + "inner join (select max(entry_date) as date from acc_gl_journal_entry where entry_date < ? group by office_id,account_id) je3 "
-            + "where je2.id = je.id and je.entry_date = je3.date group by je.id order by je.entry_date DESC " + selectRunningBalanceSqlLimit;
+            + "where je2.id = je.id and je.entry_date = je3.date "
+            + " and je.account_id in (101,285)"
+            + "group by je.id order by je.entry_date DESC "; //+ selectRunningBalanceSqlLimit;
 
     @Autowired
     public JournalEntryRunningBalanceUpdateServiceImpl(final RoutingDataSource dataSource, final OfficeRepository officeRepository,
