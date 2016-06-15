@@ -176,6 +176,7 @@ public class LoanProductData {
     private final LoanProductGuaranteeData productGuaranteeData;
     private final Boolean accountMovesOutOfNPAOnlyOnArrearsCompletion;
     private LoanProductConfigurableAttributes allowAttributeOverrides;
+    private boolean closeLoanOnOverpayment;
 
     /**
      * Used when returning lookup information about loan product for dropdowns.
@@ -249,6 +250,7 @@ public class LoanProductData {
         final boolean canDefineInstallmentAmount = false;
         final Integer installmentAmountInMultiplesOf = null;
         final LoanProductConfigurableAttributes loanProductConfigurableAttributes = null;
+        final Boolean closeLoanOnOverpayment = false;
 
         return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                 numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
@@ -263,7 +265,7 @@ public class LoanProductData {
                 accountMovesOutOfNPAOnlyOnArrearsCompletion, canDefineInstallmentAmount, installmentAmountInMultiplesOf,
                 loanProductConfigurableAttributes, isLinkedToFloatingInterestRates, floatingRateId, floatingRateName,
                 interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate, maxDifferentialLendingRate,
-                isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap);
+                isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap, closeLoanOnOverpayment);
 
     }
 
@@ -337,6 +339,7 @@ public class LoanProductData {
         final boolean canDefineInstallmentAmount = false;
         final Integer installmentAmountInMultiplesOf = null;
         final LoanProductConfigurableAttributes loanProductConfigurableAttributes = null;
+        final Boolean isoverpaymentcloseloan = false;
 
         return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                 numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
@@ -351,7 +354,7 @@ public class LoanProductData {
                 accountMovesOutOfNPAOnlyOnArrearsCompletion, canDefineInstallmentAmount, installmentAmountInMultiplesOf,
                 loanProductConfigurableAttributes, isLinkedToFloatingInterestRates, floatingRateId, floatingRateName,
                 interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate, maxDifferentialLendingRate,
-                isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap);
+                isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap, isoverpaymentcloseloan);
 
     }
 
@@ -432,6 +435,7 @@ public class LoanProductData {
         final boolean canDefineInstallmentAmount = false;
         final Integer installmentAmountInMultiplesOf = null;
         final LoanProductConfigurableAttributes loanProductConfigurableAttributes = null;
+        final Boolean isoverpaymentcloseloan = false;
 
         return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                 numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
@@ -446,7 +450,7 @@ public class LoanProductData {
                 principalThresholdForLastInstallment, accountMovesOutOfNPAOnlyOnArrearsCompletion, canDefineInstallmentAmount,
                 installmentAmountInMultiplesOf, loanProductConfigurableAttributes, isLinkedToFloatingInterestRates, floatingRateId,
                 floatingRateName, interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate,
-                maxDifferentialLendingRate, isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap);
+                maxDifferentialLendingRate, isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap, isoverpaymentcloseloan);
 
     }
 
@@ -485,7 +489,7 @@ public class LoanProductData {
             boolean isLinkedToFloatingInterestRates, Integer floatingRateId, String floatingRateName, BigDecimal interestRateDifferential,
             BigDecimal minDifferentialLendingRate, BigDecimal defaultDifferentialLendingRate, BigDecimal maxDifferentialLendingRate,
             boolean isFloatingInterestRateCalculationAllowed, final boolean isVariableInstallmentsAllowed,
-            final Integer minimumGapBetweenInstallments, final Integer maximumGapBetweenInstallments) {
+            final Integer minimumGapBetweenInstallments, final Integer maximumGapBetweenInstallments, final boolean closeLoanOnOverpayment) {
         this.id = id;
         this.name = name;
         this.shortName = shortName;
@@ -584,6 +588,7 @@ public class LoanProductData {
         this.canDefineInstallmentAmount = canDefineInstallmentAmount;
         this.installmentAmountInMultiplesOf = installmentAmountInMultiplesOf;
         this.preClosureInterestCalculationStrategyOptions = null;
+        this.closeLoanOnOverpayment = closeLoanOnOverpayment;
 
     }
 
@@ -597,7 +602,7 @@ public class LoanProductData {
             final List<EnumOptionData> valueConditionTypeOptions, final List<EnumOptionData> daysInMonthTypeOptions,
             final List<EnumOptionData> daysInYearTypeOptions, final List<EnumOptionData> interestRecalculationCompoundingTypeOptions,
             final List<EnumOptionData> rescheduleStrategyTypeOptions, final List<EnumOptionData> interestRecalculationFrequencyTypeOptions,
-            final List<EnumOptionData> preCloseInterestCalculationStrategyOptions, final List<FloatingRateData> floatingRateOptions) {
+            final List<EnumOptionData> preCloseInterestCalculationStrategyOptions, final List<FloatingRateData> floatingRateOptions, final boolean closeLoanOnOverpayment) {
         this.id = productData.id;
         this.name = productData.name;
         this.shortName = productData.shortName;
@@ -713,6 +718,7 @@ public class LoanProductData {
         this.canDefineInstallmentAmount = productData.canDefineInstallmentAmount;
         this.installmentAmountInMultiplesOf = productData.installmentAmountInMultiplesOf;
         this.preClosureInterestCalculationStrategyOptions = preCloseInterestCalculationStrategyOptions;
+        this.closeLoanOnOverpayment = closeLoanOnOverpayment;
     }
 
     private Collection<ChargeData> nullIfEmpty(final Collection<ChargeData> charges) {
@@ -1028,4 +1034,9 @@ public class LoanProductData {
     public Boolean getAllowPartialPeriodInterestCalcualtion() {
         return this.allowPartialPeriodInterestCalcualtion;
     }
+    
+    public boolean closeLoanOnOverpayment() {
+        return this.closeLoanOnOverpayment;
+    }
+    
 }

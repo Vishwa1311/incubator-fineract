@@ -301,13 +301,14 @@ public class LoanProductsApiResource {
         final List<EnumOptionData> preCloseInterestCalculationStrategyOptions = dropdownReadPlatformService
                 .retrivePreCloseInterestCalculationStrategyOptions();
         final List<FloatingRateData> floatingRateOptions = this.floatingRateReadPlatformService.retrieveLookupActive();
+        final boolean closeLoanOnOverpayment = productData.closeLoanOnOverpayment();
 
         return new LoanProductData(productData, chargeOptions, penaltyOptions, paymentTypeOptions, currencyOptions,
                 amortizationTypeOptions, interestTypeOptions, interestCalculationPeriodTypeOptions, repaymentFrequencyTypeOptions,
                 interestRateFrequencyTypeOptions, fundOptions, transactionProcessingStrategyOptions, accountOptions,
                 accountingRuleTypeOptions, loanCycleValueConditionTypeOptions, daysInMonthTypeOptions, daysInYearTypeOptions,
                 interestRecalculationCompoundingTypeOptions, rescheduleStrategyTypeOptions, interestRecalculationFrequencyTypeOptions,
-                preCloseInterestCalculationStrategyOptions, floatingRateOptions);
+                preCloseInterestCalculationStrategyOptions, floatingRateOptions, closeLoanOnOverpayment);
     }
 
 }
