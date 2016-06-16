@@ -104,7 +104,7 @@ public final class LoanProductDataValidator {
             LoanProductConstants.installmentAmountInMultiplesOfParamName,
             LoanProductConstants.preClosureInterestCalculationStrategyParamName, LoanProductConstants.allowAttributeOverridesParamName,
             LoanProductConstants.allowVariableInstallmentsParamName, LoanProductConstants.minimumGapBetweenInstallments,
-            LoanProductConstants.maximumGapBetweenInstallments));
+            LoanProductConstants.maximumGapBetweenInstallments, LoanProductConstants.closeLoanOnOverpayment));
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -608,6 +608,12 @@ public final class LoanProductDataValidator {
             if (useBorrowerCycle) {
                 validateBorrowerCycleVariations(element, baseDataValidator);
             }
+        }
+        
+        if(this.fromApiJsonHelper.parameterExists(LoanProductConstants.closeLoanOnOverpayment, element)){
+        	final Boolean closeLoanOnOverpayment = this.fromApiJsonHelper.extractBooleanNamed(LoanProductConstants.closeLoanOnOverpayment, element);
+            baseDataValidator.reset().parameter(LoanProductConstants.closeLoanOnOverpayment).value(closeLoanOnOverpayment).ignoreIfNull()
+                    .validateForBooleanValue();
         }
 
         validateMultiDisburseLoanData(baseDataValidator, element);
