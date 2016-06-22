@@ -138,6 +138,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTrancheDisbursementC
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
+import org.apache.fineract.portfolio.loanaccount.exception.DateMismatchException;
 import org.apache.fineract.portfolio.loanaccount.exception.ExceedingTrancheCountException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidPaidInAdvanceAmountException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanDisbursalException;
@@ -160,6 +161,7 @@ import org.apache.fineract.portfolio.loanaccount.serialization.LoanEventApiJsonV
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanUpdateCommandFromApiJsonDeserializer;
 import org.apache.fineract.portfolio.loanproduct.data.LoanOverdueDTO;
 import org.apache.fineract.portfolio.loanproduct.data.LoanProductData;
+import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.exception.InvalidCurrencyException;
 import org.apache.fineract.portfolio.loanproduct.exception.LinkedAccountRequiredException;
 import org.apache.fineract.portfolio.loanproduct.service.LoanProductReadPlatformService;
@@ -308,12 +310,19 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         this.loanEventApiJsonValidator.validateDisbursement(command.json(), isAccountTransfer);
 
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
+        final LocalDate actualDisbursementDate = command.localDateValueOfParameterNamed("actualDisbursementDate");
+        
+        // validate ActualDisbursement Date Against Expected Disbursement Date
+        LoanProduct loanProduct = loan.loanProduct();
+        if(loanProduct.isSyncExpectedWithDisbursementDate()){
+        	syncExpectedDateWithActualDisbursementDate(loan, actualDisbursementDate);
+        }
+        
         checkClientOrGroupActive(loan);
         final Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled = this.configurationDomainService.isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled();
         final LocalDate nextPossibleRepaymentDate = loan.getNextPossibleRepaymentDateForRescheduling(!isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled);
         final Date rescheduledRepaymentDate = command.DateValueOfParameterNamed("adjustRepaymentDate");
-        final LocalDate actualDisbursementDate = command.localDateValueOfParameterNamed("actualDisbursementDate");
-
+        
         // check for product mix validations
         checkForProductMixRestrictions(loan);
         
@@ -578,6 +587,14 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final SingleDisbursalCommand singleLoanDisbursalCommand = disbursalCommand[i];
 
             final Loan loan = this.loanAssembler.assembleFrom(singleLoanDisbursalCommand.getLoanId());
+            final LocalDate actualDisbursementDate = command.localDateValueOfParameterNamed("actualDisbursementDate");
+            
+            // validate ActualDisbursement Date Against Expected Disbursement Date
+            LoanProduct loanProduct = loan.loanProduct();
+            if(loanProduct.isSyncExpectedWithDisbursementDate()){
+            	syncExpectedDateWithActualDisbursementDate(loan, actualDisbursementDate);
+            }
+            
             checkClientOrGroupActive(loan);
             this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_DISBURSAL,
                     constructEntityMap(BUSINESS_ENTITY.LOAN, loan));
@@ -593,7 +610,6 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             // disbursement date and next available meeting dates
             // assuming repayment schedule won't regenerate because expected
             // disbursement and actual disbursement happens on same date
-            final LocalDate actualDisbursementDate = command.localDateValueOfParameterNamed("actualDisbursementDate");
             loan.validateAccountStatus(LoanEvent.LOAN_DISBURSED);
             updateLoanCounters(loan, actualDisbursementDate);
             boolean canDisburse = loan.canDisburse(actualDisbursementDate);
@@ -2937,4 +2953,35 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         }
 
     }
+    
+	private void syncExpectedDateWithActualDisbursementDate(final Loan loan, LocalDate actualDisbursementDate) {
+		LocalDate expectedDisbursementDate = null;
+		if(loan.isMultiDisburmentLoan()){
+			for(LoanDisbursementDetails loanDisbursementDetails : loan.getDisbursementDetails()){
+				if(loanDisbursementDetails.actualDisbursementDate() == null){
+					expectedDisbursementDate= new LocalDate(loanDisbursementDetails.expectedDisbursementDate());
+				if((!expectedDisbursementDate.isEqual(actualDisbursementDate))){
+					final String erroMessage = "error.msg.tranche.actual.disbursement.date.does.not.match.with.expected.disbursal.date";
+					final String userMessage = "Actual disbursement date  (" + actualDisbursementDate + ") "
+							+ "should be equal to Expected disbursal date (" + expectedDisbursementDate + ") for this tranche";
+					final Object defaultUserMessageArgs = null;
+					throw new DateMismatchException(actualDisbursementDate, expectedDisbursementDate, 
+							erroMessage, userMessage, defaultUserMessageArgs);
+		} 
+				}
+			}
+			 
+		}
+		else{
+			expectedDisbursementDate = loan.getExpectedDisbursedOnLocalDate();
+		if (expectedDisbursementDate != null && (!expectedDisbursementDate.isEqual(actualDisbursementDate))) {
+			final String erroMessage = "error.msg.actual.disbursement.date.does.not.match.with.expected.disbursal.date";
+			final String userMessage = "Actual disbursement date  (" + actualDisbursementDate + ") "
+					+ "should be equal to Expected disbursal date (" + expectedDisbursementDate + ")";
+			final Object defaultUserMessageArgs = null;
+			throw new DateMismatchException(actualDisbursementDate, expectedDisbursementDate, erroMessage, userMessage, defaultUserMessageArgs);
+		}
+		}
+
+	}
 }
