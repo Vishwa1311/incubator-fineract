@@ -123,6 +123,7 @@ public class LoanProductTestBuilder {
     private Integer minimumGap;
     private Integer maximumGap;
     private Boolean closeLoanOnOverpayment = Boolean.FALSE;
+    private Boolean syncExpectedWithDisbursementDate = Boolean.FALSE;
 
     public String build(final String chargeId) {
         final HashMap<String, Object> map = new HashMap<>();
@@ -210,6 +211,9 @@ public class LoanProductTestBuilder {
         }
         if(closeLoanOnOverpayment){
             map.put("closeLoanOnOverpayment", closeLoanOnOverpayment);
+        }
+        if(syncExpectedWithDisbursementDate){
+        map.put("syncExpectedWithDisbursementDate", this.syncExpectedWithDisbursementDate);
         }
         return new Gson().toJson(map);
     }
@@ -497,5 +501,9 @@ public class LoanProductTestBuilder {
     public LoanProductTestBuilder withonOverPaymentCloseLoan(Boolean closeLoanOnOverpayment) {
         this.closeLoanOnOverpayment = closeLoanOnOverpayment;
         return this;
+    }
+    public LoanProductTestBuilder withSyncExpectedWithDisbursementDate(Boolean syncExpectedWithDisbursementDate) {
+        this.syncExpectedWithDisbursementDate = syncExpectedWithDisbursementDate;
+        return this ;
     }
 }

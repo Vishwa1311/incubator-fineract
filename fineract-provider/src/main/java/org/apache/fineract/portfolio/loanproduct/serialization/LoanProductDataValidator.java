@@ -104,7 +104,8 @@ public final class LoanProductDataValidator {
             LoanProductConstants.installmentAmountInMultiplesOfParamName,
             LoanProductConstants.preClosureInterestCalculationStrategyParamName, LoanProductConstants.allowAttributeOverridesParamName,
             LoanProductConstants.allowVariableInstallmentsParamName, LoanProductConstants.minimumGapBetweenInstallments,
-            LoanProductConstants.maximumGapBetweenInstallments, LoanProductConstants.closeLoanOnOverpayment));
+            LoanProductConstants.maximumGapBetweenInstallments, LoanProductConstants.closeLoanOnOverpayment,
+            LoanProductConstants.syncExpectedWithDisbursementDate));
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -251,6 +252,10 @@ public final class LoanProductDataValidator {
         final Long transactionProcessingStrategyId = this.fromApiJsonHelper.extractLongNamed("transactionProcessingStrategyId", element);
         baseDataValidator.reset().parameter("transactionProcessingStrategyId").value(transactionProcessingStrategyId).notNull()
                 .integerGreaterThanZero();
+        
+        final Boolean syncExpectedWithDisbursementDate = this.fromApiJsonHelper.extractBooleanNamed("syncExpectedWithDisbursementDate", element);
+        baseDataValidator.reset().parameter("syncExpectedWithDisbursementDate").value(syncExpectedWithDisbursementDate).ignoreIfNull()
+                .validateForBooleanValue();
 
         // grace validation
         final Integer graceOnPrincipalPayment = this.fromApiJsonHelper.extractIntegerWithLocaleNamed("graceOnPrincipalPayment", element);
