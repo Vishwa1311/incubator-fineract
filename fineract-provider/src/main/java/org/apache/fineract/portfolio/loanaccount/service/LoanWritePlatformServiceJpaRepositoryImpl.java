@@ -2016,7 +2016,12 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final List<Loan> loans = this.loanRepository.findByIdsAndLoanStatusAndLoanType(loanIds, loanStatuses, loanTypes);
         this.loanEventApiJsonValidator.validateGroupMeetingDateHasActiveLoans(loans, reschedulebasedOnMeetingDates, presentMeetingDate);
         List<Holiday> holidays = null;
-        final LocalDate recalculateFrom = null;
+        LocalDate recalculateFrom = presentMeetingDate;
+        
+        //checking with back dated future meeting date 
+        if (presentMeetingDate.isAfter(newMeetingDate)) {
+            recalculateFrom = newMeetingDate;
+        }
         // loop through each loan to reschedule the repayment dates
         for (final Loan loan : loans) {
             if (loan != null) {
