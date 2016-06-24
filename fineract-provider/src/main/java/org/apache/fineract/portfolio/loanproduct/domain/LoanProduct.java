@@ -879,7 +879,7 @@ public class LoanProduct extends AbstractPersistable<Long> {
         
         if(command.isChangeInBooleanParameterNamed(LoanProductConstants.syncExpectedWithDisbursementDate, this.syncExpectedWithDisbursementDate)){
         	final boolean newValue = command.booleanPrimitiveValueOfParameterNamed(LoanProductConstants.syncExpectedWithDisbursementDate);
-        	actualChanges.put("syncExpectedWithDisbursementDate", newValue);
+        	actualChanges.put(LoanProductConstants.syncExpectedWithDisbursementDate, newValue);
         	this.syncExpectedWithDisbursementDate = newValue;
         }
 

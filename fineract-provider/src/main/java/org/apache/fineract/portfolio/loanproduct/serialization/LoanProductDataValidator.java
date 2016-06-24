@@ -253,8 +253,8 @@ public final class LoanProductDataValidator {
         baseDataValidator.reset().parameter("transactionProcessingStrategyId").value(transactionProcessingStrategyId).notNull()
                 .integerGreaterThanZero();
         
-        final Boolean syncExpectedWithDisbursementDate = this.fromApiJsonHelper.extractBooleanNamed("syncExpectedWithDisbursementDate", element);
-        baseDataValidator.reset().parameter("syncExpectedWithDisbursementDate").value(syncExpectedWithDisbursementDate).ignoreIfNull()
+        final Boolean syncExpectedWithDisbursementDate = this.fromApiJsonHelper.extractBooleanNamed(LoanProductConstants.syncExpectedWithDisbursementDate, element);
+        baseDataValidator.reset().parameter(LoanProductConstants.syncExpectedWithDisbursementDate).value(syncExpectedWithDisbursementDate).ignoreIfNull()
                 .validateForBooleanValue();
 
         // grace validation
@@ -1010,6 +1010,12 @@ public final class LoanProductDataValidator {
             baseDataValidator.reset().parameter("transactionProcessingStrategyId").value(transactionProcessingStrategyId).notNull()
                     .integerGreaterThanZero();
         }
+        
+        final Boolean syncExpectedWithDisbursementDate = this.fromApiJsonHelper.extractBooleanNamed
+        		(LoanProductConstants.syncExpectedWithDisbursementDate, element);
+        baseDataValidator.reset().parameter(LoanProductConstants.syncExpectedWithDisbursementDate)
+        .value(syncExpectedWithDisbursementDate).ignoreIfNull()
+                .validateForBooleanValue();
 
         // grace validation
         if (this.fromApiJsonHelper.parameterExists("graceOnPrincipalPayment", element)) {
