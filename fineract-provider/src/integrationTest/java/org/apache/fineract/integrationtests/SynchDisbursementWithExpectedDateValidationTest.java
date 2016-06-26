@@ -144,7 +144,7 @@ public class SynchDisbursementWithExpectedDateValidationTest {
     	        // DISBURSE THE LOAN(SECOND TRANCHE ) WITH ecpectedDisbursaldate different from actualDisbursementdate
     	        List<HashMap> disbursalError = (List<HashMap>) this.loanTransactionHelper.disburseLoan(disbursalDateForSecondTranche, loanID, this.responseForbiddenError);
     	        
-    	        Assert.assertEquals("error.msg.actual.disbursement.date.does.not.match.with.expected.disbursal.date.tranche",
+    	        Assert.assertEquals("error.msg.tranche.actual.disbursement.date.does.not.match.with.expected.disbursal.date.of.tranche",
     	        	disbursalError.get(0).get(CommonConstants.RESPONSE_ERROR_MESSAGE_CODE));  
     }
 

@@ -2961,7 +2961,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 				if(loanDisbursementDetails.actualDisbursementDate() == null){
 					expectedDisbursementDate= new LocalDate(loanDisbursementDetails.expectedDisbursementDate());
 				if((!expectedDisbursementDate.isEqual(actualDisbursementDate))){
-					final String erroMessage = "error.msg.tranche.actual.disbursement.date.does.not.match.with.expected.disbursal.date";
+					final String erroMessage = "error.msg.tranche.actual.disbursement.date.does.not.match.with.expected.disbursal.date.of.tranche";
 					final String userMessage = "Actual disbursement date  (" + actualDisbursementDate + ") "
 							+ "should be equal to Expected disbursal date (" + expectedDisbursementDate + ") for this tranche";
 					final Object defaultUserMessageArgs = null;
