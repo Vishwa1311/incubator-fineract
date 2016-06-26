@@ -2968,6 +2968,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 					throw new DateMismatchException(actualDisbursementDate, expectedDisbursementDate, 
 							erroMessage, userMessage, defaultUserMessageArgs);
 		} 
+				break;
 				}
 			}
 			 
