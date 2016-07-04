@@ -340,10 +340,10 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                     scheduleGeneratorDTO.isSkipRepaymentOnFirstDayofMonth(), scheduleGeneratorDTO.getNumberOfdays());
         }
         
-        if(rescheduledRepaymentDate != null){
-            this.loanScheduleAssembler.validateMinimumDaysBetweenDisbursalAndFirstRepayment(actualDisbursementDate, new LocalDate(rescheduledRepaymentDate), 
-                    loan.loanProduct().getMinimumDaysBetweenDisbursalAndFirstRepayment());
-        }
+		if (rescheduledRepaymentDate != null) {
+			this.loanScheduleAssembler.validateMinimumDaysBetweenDisbursalAndFirstRepayment(
+					new LocalDate(rescheduledRepaymentDate), loan, actualDisbursementDate);
+		}
         
 
         this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_DISBURSAL,

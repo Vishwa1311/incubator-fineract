@@ -76,6 +76,7 @@ public interface LoanProductConstants {
     public static final String graceOnArrearsAgeingParameterName = "graceOnArrearsAgeing";
     public static final String overdueDaysForNPAParameterName = "overdueDaysForNPA";
     public static final String minimumDaysBetweenDisbursalAndFirstRepayment = "minimumDaysBetweenDisbursalAndFirstRepayment";
+    public static final String minimumPeriodsBetweenDisbursalAndFirstRepayment = "minimumPeriodsBetweenDisbursalAndFirstRepayment";
     public static final String accountMovesOutOfNPAOnlyOnArrearsCompletionParamName = "accountMovesOutOfNPAOnlyOnArrearsCompletion";
 
     // Interest recalculation related

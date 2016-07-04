@@ -200,6 +200,7 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     + "lp.hold_guarantee_funds as holdGuaranteeFunds, "
                     + "lp.principal_threshold_for_last_installment as principalThresholdForLastInstallment, "
                     + "sync_expected_with_disbursement_date as syncExpectedWithDisbursementDate, "
+                    + "lp.min_periods_between_disbursal_and_first_repayment as minimumPeriodsBetweenDisbursalAndFirstRepayment, "
                     + "lpg.id as lpgId, lpg.mandatory_guarantee as mandatoryGuarantee, "
                     + "lpg.minimum_guarantee_from_own_funds as minimumGuaranteeFromOwnFunds, lpg.minimum_guarantee_from_guarantor_funds as minimumGuaranteeFromGuarantor, "
                     + "lp.account_moves_out_of_npa_only_on_arrears_completion as accountMovesOutOfNPAOnlyOnArrearsCompletion, "
@@ -270,6 +271,8 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
             final Integer overdueDaysForNPA = JdbcSupport.getIntegerDefaultToNullIfZero(rs, "overdueDaysForNPA");
             final Integer minimumDaysBetweenDisbursalAndFirstRepayment = JdbcSupport.getInteger(rs,
                     "minimumDaysBetweenDisbursalAndFirstRepayment");
+            final Integer minimumPeriodsBetweenDisbursalAndFirstRepayment = JdbcSupport.getInteger(rs,
+                    "minimumPeriodsBetweenDisbursalAndFirstRepayment");
 
             final Integer accountingRuleId = JdbcSupport.getInteger(rs, "accountingType");
             final EnumOptionData accountingRuleType = AccountingEnumerations.accountingRuleType(accountingRuleId);
@@ -425,7 +428,7 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     installmentAmountInMultiplesOf, allowAttributeOverrides, isLinkedToFloatingInterestRates, floatingRateId,
                     floatingRateName, interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate,
                     maxDifferentialLendingRate, isFloatingInterestRateCalculationAllowed, isVariableIntallmentsAllowed, minimumGap,
-                    maximumGap, closeLoanOnOverpayment,  syncExpectedWithDisbursementDate);
+                    maximumGap, closeLoanOnOverpayment,  syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment);
         }
     }
 
