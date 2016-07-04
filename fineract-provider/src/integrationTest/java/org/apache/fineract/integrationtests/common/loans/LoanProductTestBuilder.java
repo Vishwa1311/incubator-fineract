@@ -124,6 +124,7 @@ public class LoanProductTestBuilder {
     private Integer maximumGap;
     private Boolean closeLoanOnOverpayment = Boolean.FALSE;
     private Boolean syncExpectedWithDisbursementDate = Boolean.FALSE;
+    private Integer minimumPeriodsBetweenDisbursalAndFirstRepayment;
 
     public String build(final String chargeId) {
         final HashMap<String, Object> map = new HashMap<>();
@@ -157,6 +158,9 @@ public class LoanProductTestBuilder {
         map.put("minPrincipal", this.minPrincipal);
         map.put("maxPrincipal", this.maxPrincipal);
         map.put("overdueDaysForNPA", this.overdueDaysForNPA);
+        if (this.minimumPeriodsBetweenDisbursalAndFirstRepayment != null) {
+            map.put("minimumPeriodsBetweenDisbursalAndFirstRepayment", this.minimumPeriodsBetweenDisbursalAndFirstRepayment);
+        }
         if (this.minimumDaysBetweenDisbursalAndFirstRepayment != null) {
             map.put("minimumDaysBetweenDisbursalAndFirstRepayment", this.minimumDaysBetweenDisbursalAndFirstRepayment);
         }
@@ -464,6 +468,11 @@ public class LoanProductTestBuilder {
 
     public LoanProductTestBuilder withMinimumDaysBetweenDisbursalAndFirstRepayment(final String minimumDaysBetweenDisbursalAndFirstRepayment) {
         this.minimumDaysBetweenDisbursalAndFirstRepayment = minimumDaysBetweenDisbursalAndFirstRepayment;
+        return this;
+    }
+    
+    public LoanProductTestBuilder withMinimumPeriodsBetweenDisbursalAndFirstRepayment(final Integer minimumPeriodsBetweenDisbursalAndFirstRepayment) {
+        this.minimumPeriodsBetweenDisbursalAndFirstRepayment = minimumPeriodsBetweenDisbursalAndFirstRepayment;
         return this;
     }
 

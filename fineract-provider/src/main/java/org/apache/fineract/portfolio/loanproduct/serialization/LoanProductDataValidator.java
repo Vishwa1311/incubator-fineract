@@ -97,7 +97,8 @@ public final class LoanProductDataValidator {
             LoanProductConstants.recalculationCompoundingFrequencyIntervalParameterName,
             LoanProductConstants.recalculationCompoundingFrequencyTypeParameterName,
             LoanProductConstants.isArrearsBasedOnOriginalScheduleParamName,
-            LoanProductConstants.minimumDaysBetweenDisbursalAndFirstRepayment, LoanProductConstants.mandatoryGuaranteeParamName,
+            LoanProductConstants.minimumDaysBetweenDisbursalAndFirstRepayment, LoanProductConstants.minimumPeriodsBetweenDisbursalAndFirstRepayment,
+            LoanProductConstants.mandatoryGuaranteeParamName,
             LoanProductConstants.holdGuaranteeFundsParamName, LoanProductConstants.minimumGuaranteeFromGuarantorParamName,
             LoanProductConstants.minimumGuaranteeFromOwnFundsParamName, LoanProductConstants.principalThresholdForLastInstallmentParamName,
             LoanProductConstants.accountMovesOutOfNPAOnlyOnArrearsCompletionParamName, LoanProductConstants.canDefineEmiAmountParamName,
@@ -144,6 +145,13 @@ public final class LoanProductDataValidator {
                     LoanProductConstants.minimumDaysBetweenDisbursalAndFirstRepayment, element);
             baseDataValidator.reset().parameter(LoanProductConstants.minimumDaysBetweenDisbursalAndFirstRepayment)
                     .value(minimumDaysBetweenDisbursalAndFirstRepayment).ignoreIfNull().integerGreaterThanZero();
+        }
+        
+        if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.minimumPeriodsBetweenDisbursalAndFirstRepayment, element)) {
+            final Long minimumPeriodsBetweenDisbursalAndFirstRepayment = this.fromApiJsonHelper.extractLongNamed(
+                    LoanProductConstants.minimumPeriodsBetweenDisbursalAndFirstRepayment, element);
+            baseDataValidator.reset().parameter(LoanProductConstants.minimumPeriodsBetweenDisbursalAndFirstRepayment)
+                    .value(minimumPeriodsBetweenDisbursalAndFirstRepayment).ignoreIfNull().integerGreaterThanZero();
         }
 
         final Boolean includeInBorrowerCycle = this.fromApiJsonHelper.extractBooleanNamed("includeInBorrowerCycle", element);
@@ -1003,6 +1011,21 @@ public final class LoanProductDataValidator {
                     Locale.getDefault());
             baseDataValidator.reset().parameter("repaymentFrequencyType").value(repaymentFrequencyType).notNull().inMinMaxRange(0, 3);
         }
+        
+        if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.minimumDaysBetweenDisbursalAndFirstRepayment, element)) {
+            final Long minimumDaysBetweenDisbursalAndFirstRepayment = this.fromApiJsonHelper.extractLongNamed(
+                    LoanProductConstants.minimumDaysBetweenDisbursalAndFirstRepayment, element);
+            baseDataValidator.reset().parameter(LoanProductConstants.minimumDaysBetweenDisbursalAndFirstRepayment)
+                    .value(minimumDaysBetweenDisbursalAndFirstRepayment).ignoreIfNull().integerGreaterThanZero();
+        }
+        
+        if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.minimumPeriodsBetweenDisbursalAndFirstRepayment, element)) {
+            final Long minimumPeriodsBetweenDisbursalAndFirstRepayment = this.fromApiJsonHelper.extractLongNamed(
+                    LoanProductConstants.minimumPeriodsBetweenDisbursalAndFirstRepayment, element);
+            baseDataValidator.reset().parameter(LoanProductConstants.minimumPeriodsBetweenDisbursalAndFirstRepayment)
+                    .value(minimumPeriodsBetweenDisbursalAndFirstRepayment).ignoreIfNull().integerGreaterThanZero();
+        }
+        
 
         if (this.fromApiJsonHelper.parameterExists("transactionProcessingStrategyId", element)) {
             final Long transactionProcessingStrategyId = this.fromApiJsonHelper

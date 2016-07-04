@@ -61,6 +61,7 @@ public class MinimumDaysBetweenDisbursalAndFirstRepaymentTest {
     private final String numberOfRepayments = "12";
     private final String interestRatePerPeriod = "18";
     private final String groupActivationDate = "1 August 2014";
+    private final Integer minimumPeriodBetweenDisbursalAndFirstRepayment =1;
 
     @Before
     public void setup() {
@@ -147,11 +148,107 @@ public class MinimumDaysBetweenDisbursalAndFirstRepaymentTest {
 
         List<HashMap> error = (List<HashMap>) this.loanTransactionHelper.createLoanAccount(loanApplicationJSON,
                 CommonConstants.RESPONSE_ERROR);
-        assertEquals("error.msg.loan.days.between.first.repayment.and.disbursal.are.less.than.minimum.allowed",
+        assertEquals("error.msg.loan.days.between.first.repayment.and.disbursal.are.less.than.minimum.days.or.periods.allowed",
                 error.get(0).get(CommonConstants.RESPONSE_ERROR_MESSAGE_CODE));
 
     }
+    
+    /*
+     * MinimumPeriodbetweeDisbursalAndFirstRepayment is set to one loan period (repay every one week)
+     * and days between first repayment and disbursal set to one  period (7 days)
+     * system should  allow to create a loan and allow to disburse
+     * */
+    @SuppressWarnings("unchecked")
+    @Test
+    public void createLoanEntity_WITH_PERIOD_BETWEEN_DISB_DATE_AND_REPAY_START_DATE_GREATER_THAN_MIN_DAY_CRITERIA() {
 
+        this.requestSpec = new RequestSpecBuilder().setContentType(ContentType.JSON).build();
+        this.requestSpec.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey());
+        this.responseSpec = new ResponseSpecBuilder().expectStatusCode(200).build();
+        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpec, this.responseSpec);
+
+        // create all required entities
+        this.createRequiredEntities(minimumPeriodBetweenDisbursalAndFirstRepayment);
+
+        final String disbursalDate = "4 September 2014";
+        final String firstRepaymentDate = "11 September 2014";
+
+        final String loanApplicationJSON = new LoanApplicationTestBuilder().withPrincipal(loanPrincipalAmount)
+                .withLoanTermFrequency(numberOfRepayments).withLoanTermFrequencyAsWeeks().withNumberOfRepayments(numberOfRepayments)
+                .withRepaymentEveryAfter("1").withRepaymentFrequencyTypeAsMonths().withAmortizationTypeAsEqualInstallments()
+                .withInterestCalculationPeriodTypeAsDays().withInterestRatePerPeriod(interestRatePerPeriod)
+                .withRepaymentFrequencyTypeAsWeeks().withSubmittedOnDate(disbursalDate).withExpectedDisbursementDate(disbursalDate)
+                .withPrincipalGrace("2").withInterestGrace("2").withFirstRepaymentDate(firstRepaymentDate)
+                .build(this.clientId.toString(), this.loanProductId.toString(), null);
+
+        this.loanId = this.loanTransactionHelper.getLoanId(loanApplicationJSON);
+
+        // Test for loan account is created
+        Assert.assertNotNull(this.loanId);
+        HashMap loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpec, this.responseSpec, this.loanId);
+        LoanStatusChecker.verifyLoanIsPending(loanStatusHashMap);
+
+        // Test for loan account is created, can be approved
+        this.loanTransactionHelper.approveLoan(disbursalDate, this.loanId);
+        loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpec, this.responseSpec, this.loanId);
+        LoanStatusChecker.verifyLoanIsApproved(loanStatusHashMap);
+
+        // Test for loan account approved can be disbursed
+        this.loanTransactionHelper.disburseLoan(disbursalDate, this.loanId);
+        loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpec, this.responseSpec, this.loanId);
+        LoanStatusChecker.verifyLoanIsActive(loanStatusHashMap);
+
+    }
+    
+    /*
+     * MinimumPeriodbetweeDisbursalAndFirstRepayment is set to one period
+     * and days between first repayment and disbursal set to one day
+     * at the time of loan application loan frequency changed to repay every one day
+     * system should allow to create a loan to disburse the loan 
+     * */
+    @SuppressWarnings("unchecked")
+    @Test
+    public void createLoanEntity_WITH_DAYS_BETWEEN_DISB_DATE_AND_REPAY_START_DATE_GTATER_THAN_MIN_DAY_CRITERIA_WITH_REPAYMENT_FREEQUENCY_CHANGED() {
+
+        this.requestSpec = new RequestSpecBuilder().setContentType(ContentType.JSON).build();
+        this.requestSpec.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey());
+        this.responseSpec = new ResponseSpecBuilder().expectStatusCode(200).build();
+        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpec, this.responseSpec);
+        // create all required entities
+        this.createRequiredEntities(minimumPeriodBetweenDisbursalAndFirstRepayment);
+
+
+        final String disbursalDate = "4 September 2014";
+        final String firstRepaymentDate = "05 September 2014";
+        final String numberOfRepayments = "84";
+
+        final String loanApplicationJSON = new LoanApplicationTestBuilder().withPrincipal(loanPrincipalAmount)
+                .withLoanTermFrequency(numberOfRepayments).withLoanTermFrequencyAsDays().withNumberOfRepayments(numberOfRepayments)
+                .withRepaymentEveryAfter("1").withRepaymentFrequencyTypeAsMonths().withAmortizationTypeAsEqualInstallments()
+                .withInterestCalculationPeriodTypeAsDays().withInterestRatePerPeriod(interestRatePerPeriod)
+                .withRepaymentFrequencyTypeAsDays().withSubmittedOnDate(disbursalDate).withExpectedDisbursementDate(disbursalDate)
+                .withPrincipalGrace("2").withInterestGrace("2").withFirstRepaymentDate(firstRepaymentDate)
+                .build(this.clientId.toString(), this.loanProductId.toString(), null);
+        
+        this.loanId = this.loanTransactionHelper.getLoanId(loanApplicationJSON);
+
+        // Test for loan account is created
+        Assert.assertNotNull(this.loanId);
+        HashMap loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpec, this.responseSpec, this.loanId);
+        LoanStatusChecker.verifyLoanIsPending(loanStatusHashMap);
+
+        // Test for loan account is created, can be approved
+        this.loanTransactionHelper.approveLoan(disbursalDate, this.loanId);
+        loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpec, this.responseSpec, this.loanId);
+        LoanStatusChecker.verifyLoanIsApproved(loanStatusHashMap);
+
+        // Test for loan account approved can be disbursed
+        this.loanTransactionHelper.disburseLoan(disbursalDate, this.loanId);
+        loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpec, this.responseSpec, this.loanId);
+        LoanStatusChecker.verifyLoanIsActive(loanStatusHashMap);
+
+    }
+    
     /**
      * Creates the client, loan product, and loan entities
      **/
@@ -162,6 +259,18 @@ public class MinimumDaysBetweenDisbursalAndFirstRepaymentTest {
         this.createClientEntity();
         this.associateClientToGroup(this.groupId, this.clientId);
         this.createLoanProductEntity(minimumDaysBetweenDisbursalAndFirstRepayment);
+
+    }
+    
+    /**
+     * Creates the client, loan product, and loan entities(with minimum 
+     * days between disbursal and first repayment as as one loan period)
+     **/
+    private void createRequiredEntities(final Integer minimumPeriodBetweenDisbursalAndFirstRepayment) {
+        this.createGroupEntityWithCalendar();
+        this.createClientEntity();
+        this.associateClientToGroup(this.groupId, this.clientId);
+        this.createLoanProductEntity(minimumPeriodBetweenDisbursalAndFirstRepayment);
 
     }
 
@@ -207,6 +316,17 @@ public class MinimumDaysBetweenDisbursalAndFirstRepaymentTest {
                 .withNumberOfRepayments(numberOfRepayments).withinterestRatePerPeriod(interestRatePerPeriod)
                 .withInterestRateFrequencyTypeAsYear()
                 .withMinimumDaysBetweenDisbursalAndFirstRepayment(minimumDaysBetweenDisbursalAndFirstRepayment).build(null);
+        this.loanProductId = this.loanTransactionHelper.getLoanProductId(loanProductJSON);
+    }
+    
+    /**
+     * create a new loan product with minimum days as period
+     **/
+    private void createLoanProductEntity(final Integer minimumPeriodBetweenDisbursalAndFirstRepayment) {
+        final String loanProductJSON = new LoanProductTestBuilder().withPrincipal(loanPrincipalAmount)
+                .withNumberOfRepayments(numberOfRepayments).withinterestRatePerPeriod(interestRatePerPeriod)
+                .withInterestRateFrequencyTypeAsYear()
+                .withMinimumPeriodsBetweenDisbursalAndFirstRepayment(minimumPeriodBetweenDisbursalAndFirstRepayment).build(null);
         this.loanProductId = this.loanTransactionHelper.getLoanProductId(loanProductJSON);
     }
 

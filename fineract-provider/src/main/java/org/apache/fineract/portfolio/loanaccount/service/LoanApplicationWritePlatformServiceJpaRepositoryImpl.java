@@ -111,7 +111,6 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.joda.time.LocalDate;
-import org.joda.time.LocalTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -176,7 +175,8 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
             final LoanReadPlatformService loanReadPlatformService,
             final AccountNumberFormatRepositoryWrapper accountNumberFormatRepository,
             final BusinessEventNotifierService businessEventNotifierService, final ConfigurationDomainService configurationDomainService,
-            final LoanScheduleAssembler loanScheduleAssembler, final PledgeRepositoryWrapper pledgeRepositoryWrapper, final PledgeReadPlatformService pledgeReadPlatformService, final LoanUtilService loanUtilService) {
+            final LoanScheduleAssembler loanScheduleAssembler, final PledgeRepositoryWrapper pledgeRepositoryWrapper, final PledgeReadPlatformService pledgeReadPlatformService,
+            final LoanUtilService loanUtilService) {
         this.context = context;
         this.fromJsonHelper = fromJsonHelper;
         this.loanApplicationTransitionApiJsonValidator = loanApplicationTransitionApiJsonValidator;
@@ -809,6 +809,13 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
                 }
 
             }
+            LocalDate repaymentsStartingFromDate = existingLoanApplication.getExpectedFirstRepaymentOnDate();
+			if (repaymentsStartingFromDate != null) {
+				LocalDate expectedDisbursementDate = existingLoanApplication.getExpectedDisbursedOnLocalDate();
+				this.loanScheduleAssembler.validateMinimumDaysBetweenDisbursalAndFirstRepayment(
+						repaymentsStartingFromDate, existingLoanApplication, expectedDisbursementDate);
+			}
+			
 
             return new CommandProcessingResultBuilder() //
                     .withEntityId(loanId) //
