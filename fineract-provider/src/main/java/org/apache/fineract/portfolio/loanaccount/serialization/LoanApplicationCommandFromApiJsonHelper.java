@@ -83,6 +83,7 @@ public final class LoanApplicationCommandFromApiJsonHelper {
             "transactionProcessingStrategyId", // settings
             "calendarId", // optional
             "syncDisbursementWithMeeting",// optional
+            "syncRepaymentsWithMeeting",// optional
             "linkAccountId", LoanApiConstants.disbursementDataParameterName, LoanApiConstants.emiAmountParameterName,
             LoanApiConstants.maxOutstandingBalanceParameterName, LoanProductConstants.graceOnArrearsAgeingParameterName,
             LoanProductConstants.recalculationRestFrequencyDateParamName,

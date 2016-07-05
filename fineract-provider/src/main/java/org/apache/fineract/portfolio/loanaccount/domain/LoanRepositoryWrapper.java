@@ -26,6 +26,8 @@ import org.apache.fineract.portfolio.loanaccount.exception.LoanNotFoundException
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.finflux.loanapplicationreference.domain.LoanApplicationReference;
+
 /**
  * <p>
  * Wrapper for {@link LoanRepository} that adds NULL checking and Error handling
@@ -53,6 +55,10 @@ public class LoanRepositoryWrapper {
                 LoanStatus.APPROVED.getValue(), LoanStatus.ACTIVE.getValue(), LoanStatus.OVERPAID.getValue()));
         final Collection<Loan> loans = this.repository.findByClientIdAndGroupIdAndLoanStatus(clientId, groupId, loanStatuses);
         return loans;
+    }
+    
+    public void save(final Loan loan) {
+        this.repository.save(loan);
     }
 
 }

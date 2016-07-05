@@ -20,9 +20,7 @@ package org.apache.fineract.portfolio.paymenttype.data;
 
 public class PaymentTypeData {
 
-    @SuppressWarnings("unused")
     private Long id;
-    @SuppressWarnings("unused")
     private String name;
     @SuppressWarnings("unused")
     private String description;
@@ -49,5 +47,13 @@ public class PaymentTypeData {
         Boolean isCashPayment = null;
         Long position = null;
         return new PaymentTypeData(id, name, description, isCashPayment, position);
+    }
+
+    public Long getId() {
+        return this.id;
+    }
+
+    public String getName() {
+        return this.name;
     }
 }
