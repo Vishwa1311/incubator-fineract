@@ -23,7 +23,6 @@ import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.group.domain.GroupRepositoryWrapper;
-import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanApplicationDateException;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
@@ -76,8 +75,6 @@ public class LoanApplicationReferenceDataAssembler {
     }
 
     public LoanApplicationReference assembleCreateForm(final JsonCommand command) {
-
-        final Loan loan = null;
 
         final String loanApplicationReferenceNo = generateNextSequenceValue(null);
 
@@ -146,7 +143,7 @@ public class LoanApplicationReferenceDataAssembler {
         validateSubmittedOnDate(submittedOnDate, expectedFirstRepaymentOnDate, loanProduct, client);
 
         final LoanApplicationReference loanApplicationReference = LoanApplicationReference.create(loanApplicationReferenceNo,
-                externalIdOne, externalIdTwo, loan, client, loanOfficer, group, statusEnum, accountTypeEnum, loanProduct, loanPurpose,
+                externalIdOne, externalIdTwo, client, loanOfficer, group, statusEnum, accountTypeEnum, loanProduct, loanPurpose,
                 loanAmountRequested, numberOfRepayments, repaymentPeriodFrequencyEnum, repayEvery, termPeriodFrequencyEnum, termFrequency,
                 fixedEmiAmount, noOfTranche, submittedOnDate.toDate());
 
