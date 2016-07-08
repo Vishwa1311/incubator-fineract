@@ -1103,9 +1103,15 @@ public class LoanScheduleAssembler {
 		
 		final Integer calculatedminimumDaysBetweenDisbursalAndFirstRepayment = calculateMinimumDaysBetweenDisbursalAndFirstRepayment(
 				disbursalDate, loanProduct, loanTermPeriodFrequencyType, repaymentEvery, nthDay, dayOfWeek);
-	
-		validateMinimumDaysBetweenDisbursalAndFirstRepayment(disbursalDate, firstRepaymentDate,
-				calculatedminimumDaysBetweenDisbursalAndFirstRepayment);
+		final Integer minimumDaysBetweenDisbursalAndFirstRepayment = loanProduct
+				.getMinimumDaysBetweenDisbursalAndFirstRepayment();
+		Integer minumumPeriodsBetweenDisbursalAndFirstrepaymentdate = loanProduct
+				.getMinimumPeriodsBetweenDisbursalAndFirstRepayment();
+		if (minimumDaysBetweenDisbursalAndFirstRepayment > 0
+				|| minumumPeriodsBetweenDisbursalAndFirstrepaymentdate > 0) {
+			validateMinimumDaysBetweenDisbursalAndFirstRepayment(disbursalDate, firstRepaymentDate,
+					calculatedminimumDaysBetweenDisbursalAndFirstRepayment);
+		}
 	}
 	
 	private Integer calculateMinimumDaysBetweenDisbursalAndFirstRepayment(final LocalDate disbursalDate,

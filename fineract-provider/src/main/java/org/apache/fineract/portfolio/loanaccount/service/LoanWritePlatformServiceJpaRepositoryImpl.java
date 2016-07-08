@@ -339,12 +339,15 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             this.loanEventApiJsonValidator.validateDisbursementDateWithMeetingDate(actualDisbursementDate, calendarInstance, 
                     scheduleGeneratorDTO.isSkipRepaymentOnFirstDayofMonth(), scheduleGeneratorDTO.getNumberOfdays());
         }
-        
+		LocalDate expectedFirstRepaymentDate = null;
 		if (rescheduledRepaymentDate != null) {
-			this.loanScheduleAssembler.validateMinimumDaysBetweenDisbursalAndFirstRepayment(
-					new LocalDate(rescheduledRepaymentDate), loan, actualDisbursementDate);
+			expectedFirstRepaymentDate = new LocalDate(rescheduledRepaymentDate);
+		} else {
+			expectedFirstRepaymentDate = nextPossibleRepaymentDate;
 		}
-        
+		this.loanScheduleAssembler.validateMinimumDaysBetweenDisbursalAndFirstRepayment(expectedFirstRepaymentDate,
+				loan, actualDisbursementDate);
+		
 
         this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_DISBURSAL,
                 constructEntityMap(BUSINESS_ENTITY.LOAN, loan));
