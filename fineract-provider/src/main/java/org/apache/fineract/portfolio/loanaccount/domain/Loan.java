@@ -315,7 +315,7 @@ public class Loan extends AbstractPersistable<Long> {
 
     @LazyCollection(LazyCollectionOption.FALSE)
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "loan", orphanRemoval = true)
-    private Set<LoanOfficerAssignmentHistory> loanOfficerHistory;
+    private Set<LoanOfficerAssignmentHistory> loanOfficerHistory = new HashSet<>();
 
     // see
     // http://stackoverflow.com/questions/4334970/hibernate-cannot-simultaneously-fetch-multiple-bags
@@ -485,7 +485,7 @@ public class Loan extends AbstractPersistable<Long> {
             this.charges = associateChargesWithThisLoan(loanCharges);
             this.summary = updateSummaryWithTotalFeeChargesDueAtDisbursement(deriveSumTotalOfChargesDueAtDisbursement());
         } else {
-            this.charges = null;
+            this.charges = new HashSet<>();
             this.summary = new LoanSummary();
         }
         if (collateral != null && !collateral.isEmpty()) {
@@ -493,12 +493,16 @@ public class Loan extends AbstractPersistable<Long> {
         } else {
             this.collateral = null;
         }
-        this.loanOfficerHistory = null;
+        this.loanOfficerHistory = new HashSet<>();
 
         this.syncDisbursementWithMeeting = syncDisbursementWithMeeting;
         this.fixedEmiAmount = fixedEmiAmount;
         this.maxOutstandingLoanBalance = maxOutstandingLoanBalance;
-        this.disbursementDetails = disbursementDetails;
+        if(disbursementDetails != null && disbursementDetails.size() > 0){
+            this.disbursementDetails = disbursementDetails;
+        }else{
+            this.disbursementDetails = new HashSet<>();
+        }
         this.approvedPrincipal = this.loanRepaymentScheduleDetail.getPrincipal().getAmount();
         this.createStandingInstructionAtDisbursement = createStandingInstructionAtDisbursement;
 
@@ -863,7 +867,7 @@ public class Loan extends AbstractPersistable<Long> {
         if (loanCharge.isOverdueInstallmentCharge()) { return loanCharge.getAmountPercentageAppliedTo(); }
         switch (loanCharge.getChargeCalculation()) {
             case PERCENT_OF_AMOUNT:
-                    amount = getDerivedAmountForCharge(loanCharge);
+                amount = getDerivedAmountForCharge(loanCharge);
             break;
             case PERCENT_OF_AMOUNT_AND_INTEREST:
                 final BigDecimal totalInterestCharged = getTotalInterest();
@@ -2031,9 +2035,9 @@ public class Loan extends AbstractPersistable<Long> {
         final int numberOfInstallments = this.repaymentScheduleInstallments.size();
         LocalDate maturityDate = this.repaymentScheduleInstallments.get(numberOfInstallments - 1).getDueDate();
         ListIterator<LoanRepaymentScheduleInstallment> iterator = this.repaymentScheduleInstallments.listIterator(numberOfInstallments);
-        while(iterator.hasPrevious()){
+        while (iterator.hasPrevious()) {
             LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment = iterator.previous();
-            if(!loanRepaymentScheduleInstallment.isRecalculatedInterestComponent()){
+            if (!loanRepaymentScheduleInstallment.isRecalculatedInterestComponent()) {
                 maturityDate = loanRepaymentScheduleInstallment.getDueDate();
                 break;
             }
@@ -2321,7 +2325,7 @@ public class Loan extends AbstractPersistable<Long> {
     }
 
     public ChangedTransactionDetail disburse(final AppUser currentUser, final JsonCommand command, final Map<String, Object> actualChanges,
-            final ScheduleGeneratorDTO scheduleGeneratorDTO,final PaymentDetail paymentDetail) {
+            final ScheduleGeneratorDTO scheduleGeneratorDTO, final PaymentDetail paymentDetail) {
 
         final LoanStatus statusEnum = this.loanLifecycleStateMachine.transition(LoanEvent.LOAN_DISBURSED,
                 LoanStatus.fromInt(this.loanStatus));
@@ -2352,7 +2356,7 @@ public class Loan extends AbstractPersistable<Long> {
         updateSummaryWithTotalFeeChargesDueAtDisbursement(deriveSumTotalOfChargesDueAtDisbursement());
         updateLoanRepaymentPeriodsDerivedFields(actualDisbursementDate);
         LocalDateTime createdDate = DateUtils.getLocalDateTimeOfTenant();
-        handleDisbursementTransaction(actualDisbursementDate, createdDate, currentUser,paymentDetail);
+        handleDisbursementTransaction(actualDisbursementDate, createdDate, currentUser, paymentDetail);
         updateLoanSummaryDerivedFields();
         final Money interestApplied = Money.of(getCurrency(), this.summary.getTotalInterestCharged());
 
@@ -2639,7 +2643,7 @@ public class Loan extends AbstractPersistable<Long> {
         updateLoanSchedule(loanSchedule, currentUser);
         Set<LoanCharge> charges = this.charges();
         for (LoanCharge loanCharge : charges) {
-                recalculateLoanCharge(loanCharge, scheduleGeneratorDTO.getPenaltyWaitPeriod());
+            recalculateLoanCharge(loanCharge, scheduleGeneratorDTO.getPenaltyWaitPeriod());
         }
     }
 
@@ -2680,7 +2684,8 @@ public class Loan extends AbstractPersistable<Long> {
         return interestRate;
     }
 
-    private void handleDisbursementTransaction(final LocalDate disbursedOn, final LocalDateTime createdDate, final AppUser currentUser, final PaymentDetail paymentDetail) {
+    private void handleDisbursementTransaction(final LocalDate disbursedOn, final LocalDateTime createdDate, final AppUser currentUser,
+            final PaymentDetail paymentDetail) {
 
         // add repayment transaction to track incoming money from client to mfi
         // for (charges due at time of disbursement)
@@ -2703,9 +2708,9 @@ public class Loan extends AbstractPersistable<Long> {
         final Integer installmentNumber = null;
         for (final LoanCharge charge : charges()) {
             Date actualDisbursementDate = getActualDisbursementDate(charge);
-            if ((charge.getCharge().getChargeTimeType() == ChargeTimeType.DISBURSEMENT.getValue() 
-            		&& disbursedOn.equals(new LocalDate(actualDisbursementDate)) && actualDisbursementDate != null
-                    && !charge.isWaived() && !charge.isFullyPaid())
+            if ((charge.getCharge().getChargeTimeType() == ChargeTimeType.DISBURSEMENT.getValue()
+                    && disbursedOn.equals(new LocalDate(actualDisbursementDate)) && actualDisbursementDate != null && !charge.isWaived() && !charge
+                        .isFullyPaid())
                     || (charge.getCharge().getChargeTimeType() == ChargeTimeType.TRANCHE_DISBURSEMENT.getValue()
                             && disbursedOn.equals(new LocalDate(actualDisbursementDate)) && actualDisbursementDate != null
                             && !charge.isWaived() && !charge.isFullyPaid())) {
@@ -4155,6 +4160,14 @@ public class Loan extends AbstractPersistable<Long> {
     public BigDecimal getProposedPrincipal() {
         return this.proposedPrincipal;
     }
+    
+    public void updateProposedPrincipal(final BigDecimal proposedPrincipal) {
+        this.proposedPrincipal = proposedPrincipal;
+    }
+
+    public void updateApprovedPrincipal(final BigDecimal approvedPrincipal) {
+        this.approvedPrincipal = approvedPrincipal;
+    }
 
     public Map<String, Object> deriveAccountingBridgeData(final CurrencyData currencyData, final List<Long> existingTransactionIds,
             final List<Long> existingReversedTransactionIds, boolean isAccountTransfer) {
@@ -5120,7 +5133,7 @@ public class Loan extends AbstractPersistable<Long> {
         List<LoanTermVariationsData> loanTermVariations = new ArrayList<>();
         annualNominalInterestRate = constructLoanTermVariations(floatingRateDTO, annualNominalInterestRate, loanTermVariations);
         LocalDate interestChargedFromDate = getInterestChargedFromDate();
-        if(interestChargedFromDate == null && scheduleGeneratorDTO.isInterestChargedFromDateAsDisbursementDateEnabled()){
+        if (interestChargedFromDate == null && scheduleGeneratorDTO.isInterestChargedFromDateAsDisbursementDateEnabled()) {
             interestChargedFromDate = getDisbursementDate();
         }
 
@@ -5133,6 +5146,7 @@ public class Loan extends AbstractPersistable<Long> {
                 compoundingCalendarInstance, compoundingFrequencyType, this.loanProduct.preCloseInterestCalculationStrategy(),
                 rescheduleStrategyMethod, calendar, getApprovedPrincipal(), annualNominalInterestRate, loanTermVariations, calendarHistoryDataWrapper,
 		scheduleGeneratorDTO.getNumberOfdays(), scheduleGeneratorDTO.isSkipRepaymentOnFirstDayofMonth());
+        
         return loanApplicationTerms;
     }
 
@@ -5303,7 +5317,7 @@ public class Loan extends AbstractPersistable<Long> {
      *            TODO
      * @param floatingRateDTO
      *            TODO
-     * @param isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled 
+     * @param isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled
      * @param loanCalendarInstance
      *            Used for accessing the loan's calendar object
      * @return application terms of the Loan object
@@ -5363,7 +5377,7 @@ public class Loan extends AbstractPersistable<Long> {
         final BigDecimal maxOutstandingBalance = getMaxOutstandingLoanBalance();
 
         final List<DisbursementData> disbursementData = getDisbursmentData();
-        
+
         CalendarHistoryDataWrapper calendarHistoryDataWrapper = null;
         if (loanCalendar != null) {
             Set<CalendarHistory> calendarHistory = loanCalendar.getActiveCalendarHistory();
@@ -5768,7 +5782,7 @@ public class Loan extends AbstractPersistable<Long> {
     public LocalDate getNextPossibleRepaymentDateForRescheduling(Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled) {
         Set<LoanDisbursementDetails> loanDisbursementDetails = this.disbursementDetails;
         LocalDate nextRepaymentDate = new LocalDate();
-        if(this.isMultiDisburmentLoan()){
+        if (this.isMultiDisburmentLoan()) {
             for (LoanDisbursementDetails loanDisbursementDetail : loanDisbursementDetails) {
                 if (loanDisbursementDetail.actualDisbursementDate() == null) {
                     for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
@@ -5782,20 +5796,20 @@ public class Loan extends AbstractPersistable<Long> {
                     break;
                 }
             }
-        }else {
-                for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
-                    if ((isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled && installment.getDueDate().isEqual(this.getExpectedDisbursedOnLocalDate()))
-                            || installment.getDueDate().isAfter(this.getExpectedDisbursedOnLocalDate())
-                            && installment.isNotFullyPaidOff()) {
-                        nextRepaymentDate = installment.getDueDate();
-                        break;
-                    }
+        } else {
+            for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
+                if ((isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled && installment.getDueDate().isEqual(
+                        this.getExpectedDisbursedOnLocalDate()))
+                        || installment.getDueDate().isAfter(this.getExpectedDisbursedOnLocalDate()) && installment.isNotFullyPaidOff()) {
+                    nextRepaymentDate = installment.getDueDate();
+                    break;
                 }
+            }
         }
-           
+
         return nextRepaymentDate;
     }
-    
+
     public BigDecimal getDerivedAmountForCharge(LoanCharge loanCharge) {
         BigDecimal amount = BigDecimal.ZERO;
         if (isMultiDisburmentLoan() && (loanCharge.getCharge().getChargeTimeType() == ChargeTimeType.DISBURSEMENT.getValue())) {

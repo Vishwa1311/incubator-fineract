@@ -53,7 +53,7 @@ public final class CalculateLoanScheduleQueryFromApiJsonHelper {
             LoanProductConstants.allowPartialPeriodInterestCalcualtionParamName, "interestRateFrequencyType", "expectedDisbursementDate",
             "repaymentsStartingFromDate", "graceOnPrincipalPayment", "graceOnInterestPayment", "graceOnInterestCharged",
             "interestChargedFromDate", "submittedOnDate", "submittedOnNote", "locale", "dateFormat", "charges", "collateral",
-            "syncDisbursementWithMeeting", "linkAccountId", LoanApiConstants.disbursementDataParameterName,
+            "syncDisbursementWithMeeting", "syncRepaymentsWithMeeting", "linkAccountId", LoanApiConstants.disbursementDataParameterName,
             LoanApiConstants.emiAmountParameterName, LoanApiConstants.maxOutstandingBalanceParameterName,
             LoanProductConstants.graceOnArrearsAgeingParameterName, LoanProductConstants.recalculationRestFrequencyDateParamName,
             "createStandingInstructionAtDisbursement", LoanApiConstants.isFloatingInterestRateParameterName,

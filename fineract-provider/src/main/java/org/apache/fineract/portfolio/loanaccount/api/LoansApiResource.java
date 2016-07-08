@@ -595,7 +595,7 @@ public class LoansApiResource {
         return this.toApiJsonSerializer.serialize(settings, loanAccount, this.LOAN_DATA_PARAMETERS);
     }
 
-	@GET
+    @GET
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     public String retrieveAll(@Context final UriInfo uriInfo,
