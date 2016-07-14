@@ -38,7 +38,10 @@ public class ExecuteBatchUpdateTransactional {
     @Transactional
     public int executeBatchUpdate(List<String> insertStatement){
         int result = 0;
-        final int[] results = this.jdbcTemplate.batchUpdate(insertStatement.toArray(new String[0]));
+        int[] results = new int[0];
+        if(!insertStatement.isEmpty()){
+        results = this.jdbcTemplate.batchUpdate(insertStatement.toArray(new String[0]));
+        }
         for(int i:results){
             result += i;
         }
