@@ -46,10 +46,11 @@ import com.jayway.restassured.specification.ResponseSpecification;
  * Test the creation, approval and rejection of a loan reschedule request
  **/
 @SuppressWarnings({ "rawtypes" })
-public class MinimumDaysBetweenDisbursalAndFirstRepaymentTest {
+public class LoanTenureValidationTest {
 
     private ResponseSpecification responseSpec;
     private ResponseSpecification responseSpecForStatusCode403;
+    private RequestSpecification requestSpecc;
     private RequestSpecification requestSpec;
     private LoanTransactionHelper loanTransactionHelper;
     private Integer clientId;
@@ -62,10 +63,17 @@ public class MinimumDaysBetweenDisbursalAndFirstRepaymentTest {
     private final String interestRatePerPeriod = "18";
     private final String groupActivationDate = "1 August 2014";
     private final Integer minimumPeriodBetweenDisbursalAndFirstRepayment =1;
-
+    private ResponseSpecification responseSpecForStatusCode400;
+    private Boolean canDefineInstallmentAmount ;
+    
     @Before
     public void setup() {
         Utils.initializeRESTAssured();
+        this.requestSpecc = new RequestSpecBuilder().setContentType(ContentType.JSON).build();
+        this.requestSpecc.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey());
+        this.responseSpec = new ResponseSpecBuilder().expectStatusCode(200).build();
+        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpecc, this.responseSpec);
+        this.canDefineInstallmentAmount = true;
     }
 
     /*
@@ -249,6 +257,196 @@ public class MinimumDaysBetweenDisbursalAndFirstRepaymentTest {
 
     }
     
+    @Test
+    public void Laoan_Appliation_With_Actual_Number_Of_Repayment_Grater_Than_maxLoanterm() {
+
+        final String proposedAmount = "1000";
+        final Integer minLoanTerm = 8;
+        final Integer maxLoanTerm = 12;
+        final Integer loanTenureFrequencyType = 2;
+        final String installmentAmount = "60";
+        final String principal = "1000";
+        final String interestRatePerPeriod = "2";
+        final String repaymentAfterEvery = "1";
+        final String numberOfRepayment = "10";
+        this.responseSpecForStatusCode400 = new ResponseSpecBuilder().expectStatusCode(400).build();
+        
+        // CREATE CLIENT
+        final Integer clientID = ClientHelper.createClient(this.requestSpecc, this.responseSpec, "01 January 2014");
+        System.out.println("---------------------------------CLIENT CREATED WITH ID---------------------------------------------------"
+                + clientID);
+
+        // CREATE LOAN  PRODUCT
+        final Integer loanProductID = this.loanTransactionHelper.getLoanProductId(new LoanProductTestBuilder().withPrincipal(principal).
+        		withinterestRatePerPeriod(interestRatePerPeriod).withRepaymentTypeAsMonth().withRepaymentAfterEvery(repaymentAfterEvery).
+        		withNumberOfRepayments(numberOfRepayment).withInterestRateFrequencyTypeAsYear().withLoanTenureFrequencyType(loanTenureFrequencyType).
+        		withLoanTerms(minLoanTerm, maxLoanTerm).withCanDefineInstallmentAmount(canDefineInstallmentAmount).build(null));
+        System.out.println("----------------------------------LOAN PRODUCT CREATED WITH ID-------------------------------------------"
+                + loanProductID);
+
+        // APPLY FOR LOAN 
+        String loanApplicationJson = createLoanApplicationJson(clientID, loanProductID, proposedAmount, installmentAmount);
+        
+        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpecc, this.responseSpecForStatusCode400);
+        List<HashMap> error = (List<HashMap>) this.loanTransactionHelper.createLoanAccount(loanApplicationJson,
+                CommonConstants.RESPONSE_ERROR);
+        
+        Assert.assertEquals("validation.msg.loan.number.of.repayments.greater.than.max.loan.term",
+        		error.get(0).get(CommonConstants.RESPONSE_ERROR_MESSAGE_CODE));   
+           
+    }
+    
+    @Test
+    public void Laoan_Appliation_With_Actual_Number_Of_Repayment_Lesser_Than_minLoanterm() {
+
+        final String proposedAmount = "1000";
+        final Integer minLoanTerm = 8;
+        final Integer maxLoanTerm = 12;
+        final Integer loanTenureFrequencyType = 2;
+        final String installmentAmount = "200";
+        final String principal = "1000";
+        final String interestRatePerPeriod = "2";
+        final String repaymentAfterEvery = "1";
+        final String numberOfRepayment = "10";
+        this.responseSpecForStatusCode400 = new ResponseSpecBuilder().expectStatusCode(400).build();
+        
+        // CREATE CLIENT
+        final Integer clientID = ClientHelper.createClient(this.requestSpecc, this.responseSpec, "01 January 2014");
+        System.out.println("---------------------------------CLIENT CREATED WITH ID---------------------------------------------------"
+                + clientID);
+
+        // CREATE LOAN  PRODUCT
+        final Integer loanProductID = this.loanTransactionHelper.getLoanProductId(new LoanProductTestBuilder().withPrincipal(principal).
+        		withinterestRatePerPeriod(interestRatePerPeriod).withRepaymentTypeAsMonth().withRepaymentAfterEvery(repaymentAfterEvery).
+        		withNumberOfRepayments(numberOfRepayment).withInterestRateFrequencyTypeAsYear().withLoanTenureFrequencyType(loanTenureFrequencyType).
+        		withLoanTerms(minLoanTerm, maxLoanTerm).withCanDefineInstallmentAmount(canDefineInstallmentAmount).build(null));
+        System.out.println("----------------------------------LOAN PRODUCT CREATED WITH ID-------------------------------------------"
+                + loanProductID);
+
+        // APPLY FOR LOAN 
+        String loanApplicationJson = createLoanApplicationJson(clientID, loanProductID, proposedAmount, installmentAmount);
+        
+        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpecc, this.responseSpecForStatusCode400);
+        List<HashMap> error = (List<HashMap>) this.loanTransactionHelper.createLoanAccount(loanApplicationJson,
+                CommonConstants.RESPONSE_ERROR);
+        
+        Assert.assertEquals("validation.msg.loan.number.of.repayments.lesser.than.min.loan.term",
+        		error.get(0).get(CommonConstants.RESPONSE_ERROR_MESSAGE_CODE));   
+           
+    }
+    
+    @Test
+    public void Laoan_Appliation_With_Actual_Number_Of_Repayment_Lesser_Than_Minimum_Number_Of_Repayments() {
+
+        final String proposedAmount = "1000";
+        final Integer minNumberOfRepayments = 8;
+        final Integer maxNumberOfRepayments = 12;
+        final String installmentAmount = "200";
+        final String principal = "1000";
+        final String interestRatePerPeriod = "2";
+        final String repaymentAfterEvery = "1";
+        final String numberOfRepayment = "10";
+        this.responseSpecForStatusCode400 = new ResponseSpecBuilder().expectStatusCode(400).build();
+        // CREATE CLIENT
+        final Integer clientID = ClientHelper.createClient(this.requestSpecc, this.responseSpec, "01 January 2014");
+        System.out.println("---------------------------------CLIENT CREATED WITH ID---------------------------------------------------"
+                + clientID);
+
+        // CREATE LOAN  PRODUCT
+        final Integer loanProductID = this.loanTransactionHelper.getLoanProductId(new LoanProductTestBuilder().withPrincipal(principal).
+        		withinterestRatePerPeriod(interestRatePerPeriod).withRepaymentTypeAsMonth().withRepaymentAfterEvery(repaymentAfterEvery).
+        		withNumberOfRepayments(numberOfRepayment).withInterestRateFrequencyTypeAsYear().
+        		withMininmumAndMaximumNumberOfRepayments(minNumberOfRepayments, maxNumberOfRepayments).withCanDefineInstallmentAmount(canDefineInstallmentAmount).build(null));
+        System.out.println("----------------------------------LOAN PRODUCT CREATED WITH ID-------------------------------------------"
+                + loanProductID);
+
+        // APPLY FOR LOAN 
+        String loanApplicationJson = createLoanApplicationJson(clientID, loanProductID, proposedAmount, installmentAmount);
+        
+        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpecc, this.responseSpecForStatusCode400);
+        List<HashMap> error = (List<HashMap>) this.loanTransactionHelper.createLoanAccount(loanApplicationJson,
+                CommonConstants.RESPONSE_ERROR);
+        
+        Assert.assertEquals("validation.msg.loan.number.of.repayments.lesser.than.minimum.number.of.repayments",
+        		error.get(0).get(CommonConstants.RESPONSE_ERROR_MESSAGE_CODE));   
+           
+    }
+
+    @Test
+    public void Laoan_Appliation_With_Actual_Number_Of_Repayment_Grater_Than_Maximum_Number_Of_Repayments() {
+
+        final String proposedAmount = "1000";
+        final Integer minNumberOfRepayments = 8;
+        final Integer maxNumberOfRepayments = 12;
+        final String installmentAmount = "60";
+        final String principal = "1000";
+        final String interestRatePerPeriod = "2";
+        final String repaymentAfterEvery = "1";
+        final String numberOfRepayment = "10";
+        this.responseSpecForStatusCode400 = new ResponseSpecBuilder().expectStatusCode(400).build();
+        // CREATE CLIENT
+        final Integer clientID = ClientHelper.createClient(this.requestSpecc, this.responseSpec, "01 January 2014");
+        System.out.println("---------------------------------CLIENT CREATED WITH ID---------------------------------------------------"
+                + clientID);
+
+        // CREATE LOAN  PRODUCT
+        final Integer loanProductID = this.loanTransactionHelper.getLoanProductId(new LoanProductTestBuilder().withPrincipal(principal).
+        		withinterestRatePerPeriod(interestRatePerPeriod).withRepaymentTypeAsMonth().withRepaymentAfterEvery(repaymentAfterEvery).
+        		withNumberOfRepayments(numberOfRepayment).withInterestRateFrequencyTypeAsYear().
+        		withMininmumAndMaximumNumberOfRepayments(minNumberOfRepayments, maxNumberOfRepayments).withCanDefineInstallmentAmount(canDefineInstallmentAmount).build(null));
+        System.out.println("----------------------------------LOAN PRODUCT CREATED WITH ID-------------------------------------------"
+                + loanProductID);
+
+        // APPLY FOR LOAN 
+        String loanApplicationJson = createLoanApplicationJson(clientID, loanProductID, proposedAmount, installmentAmount);
+        
+        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpecc, this.responseSpecForStatusCode400);
+        List<HashMap> error = (List<HashMap>) this.loanTransactionHelper.createLoanAccount(loanApplicationJson,
+                CommonConstants.RESPONSE_ERROR);
+        
+        Assert.assertEquals("validation.msg.loan.number.of.repayments.greater.than.maximum.number.of.repayments",
+        		error.get(0).get(CommonConstants.RESPONSE_ERROR_MESSAGE_CODE));   
+           
+    }
+    
+    @Test
+    public void Laoan_Appliation_With_Actual_Number_Of_Repayment_Between_Min_Max_Number_Of_Repayments_And_Min_Max_LoanTerm() {
+
+        final String proposedAmount = "1000";
+        final Integer minNumberOfRepayments = 6;
+        final Integer maxNumberOfRepayments = 15;
+        final Integer minLoanTerm = 8;
+        final Integer maxLoanTerm = 12;
+        final Integer loanTenureFrequencyType = 2;
+        final String installmentAmount = "100";
+        final String principal = "1000";
+        final String interestRatePerPeriod = "2";
+        final String repaymentAfterEvery = "1";
+        final String numberOfRepayment = "10";
+        // CREATE CLIENT
+        final Integer clientID = ClientHelper.createClient(this.requestSpecc, this.responseSpec, "01 January 2014");
+        System.out.println("---------------------------------CLIENT CREATED WITH ID---------------------------------------------------"
+                + clientID);
+
+        // CREATE LOAN  PRODUCT
+        final Integer loanProductID = this.loanTransactionHelper.getLoanProductId(new LoanProductTestBuilder().withPrincipal(principal).
+        		withinterestRatePerPeriod(interestRatePerPeriod).withRepaymentTypeAsMonth().withRepaymentAfterEvery(repaymentAfterEvery).
+        		withNumberOfRepayments(numberOfRepayment).withInterestRateFrequencyTypeAsYear().withLoanTerms(minLoanTerm, maxLoanTerm).
+        		withMininmumAndMaximumNumberOfRepayments(minNumberOfRepayments, maxNumberOfRepayments).withLoanTenureFrequencyType(loanTenureFrequencyType).
+        		withCanDefineInstallmentAmount(canDefineInstallmentAmount).build(null));
+        System.out.println("----------------------------------LOAN PRODUCT CREATED WITH ID-------------------------------------------"
+                + loanProductID);
+
+        // APPLY FOR LOAN 
+        String loanApplicationJson = createLoanApplicationJson(clientID, loanProductID, proposedAmount, installmentAmount);
+         final Integer loanId = this.loanTransactionHelper.getLoanId(loanApplicationJson);
+         System.out.println("-----------------------------------LOAN CREATED WITH LOANID-------------------------------------------------"
+         		+ loanId);
+         HashMap loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpecc, this.responseSpec, loanId);
+         LoanStatusChecker.verifyLoanIsPending(loanStatusHashMap);
+         
+    }
+    
     /**
      * Creates the client, loan product, and loan entities
      **/
@@ -336,5 +534,23 @@ public class MinimumDaysBetweenDisbursalAndFirstRepaymentTest {
 
     public void setGroupCalendarId(Integer groupCalendarId) {
         this.groupCalendarId = groupCalendarId;
+    }
+    
+    private String createLoanApplicationJson(final Integer clientID, final Integer loanProductID, final String proposedAmount,
+    		final String installmentAmount) {
+        final String loanApplication = new LoanApplicationTestBuilder()
+        		.withPrincipal(proposedAmount).withLoanTermFrequency("10")
+        		.withAmortizationTypeAsEqualInstallments()
+        		.withInterestTypeAsDecliningBalance()
+                .withLoanTermFrequencyAsMonths().withNumberOfRepayments("10")
+                .withRepaymentEveryAfter("1")
+                .withRepaymentFrequencyTypeAsMonths()
+                .withInterestRatePerPeriod("2")
+                .withExpectedDisbursementDate("1 March 2014")
+                .withSubmittedOnDate("26 February 2014").
+                withFixedEmiAmount(installmentAmount). 
+                withCanDefineInstallmentAmount( canDefineInstallmentAmount).
+                build(clientID.toString(), loanProductID.toString(), null);
+        return loanApplication;
     }
 }

@@ -125,6 +125,12 @@ public class LoanProductTestBuilder {
     private Boolean closeLoanOnOverpayment = Boolean.FALSE;
     private Boolean syncExpectedWithDisbursementDate = Boolean.FALSE;
     private Integer minimumPeriodsBetweenDisbursalAndFirstRepayment;
+    private Integer maxLoanTerm = null;
+    private Integer minLoanTerm = null;
+    private Boolean canDefineInstallmentAmount = false;
+    private Integer minNumberOfRepayments = null;
+    private Integer maxNumberOfRepayments = null;
+    private Integer loanTenureFrequencyType = null;
 
     public String build(final String chargeId) {
         final HashMap<String, Object> map = new HashMap<>();
@@ -219,6 +225,12 @@ public class LoanProductTestBuilder {
         if(syncExpectedWithDisbursementDate){
         map.put("syncExpectedWithDisbursementDate", this.syncExpectedWithDisbursementDate);
         }
+		map.put("maxLoanTerm", this.maxLoanTerm);
+		map.put("minLoanTerm", this.minLoanTerm);
+		map.put("canDefineInstallmentAmount", this.canDefineInstallmentAmount);
+		map.put("minNumberOfRepayments", this.minNumberOfRepayments);
+		map.put("maxNumberOfRepayments", this.maxNumberOfRepayments);
+		map.put("loanTenureFrequencyType", this.loanTenureFrequencyType);
         return new Gson().toJson(map);
     }
 
@@ -515,4 +527,28 @@ public class LoanProductTestBuilder {
         this.syncExpectedWithDisbursementDate = syncExpectedWithDisbursementDate;
         return this ;
     }
+    
+    public LoanProductTestBuilder withLoanTerms(final Integer minLoanTerm, final Integer maxLoanTerm ){
+    	this.minLoanTerm = minLoanTerm;
+    	this.maxLoanTerm = maxLoanTerm;
+    	return this;
+    }
+    
+    public LoanProductTestBuilder withCanDefineInstallmentAmount(Boolean canDefineInstallmentAmount){
+    	this.canDefineInstallmentAmount = canDefineInstallmentAmount;
+    	return this;
+    }
+    
+    public LoanProductTestBuilder withMininmumAndMaximumNumberOfRepayments(final Integer minNumberOfRepayments,
+    final Integer maxNumberOfRepayments){
+    	this.minNumberOfRepayments = minNumberOfRepayments;
+    	this.maxNumberOfRepayments = maxNumberOfRepayments;
+    	return this;
+    }
+    
+    public LoanProductTestBuilder withLoanTenureFrequencyType(final Integer loanTenureFrequencyType){
+    	this.loanTenureFrequencyType = loanTenureFrequencyType;
+    	return this;
+    }
+    
 }

@@ -67,6 +67,7 @@ public class LoanApplicationTestBuilder {
 
     private String calendarId;
     private boolean syncDisbursementWithMeeting = false;
+    private Boolean canDefineInstallmentAmount = false;
 
     public String build(final String clientID, final String groupID, final String loanProductId, final String savingsID) {
         final HashMap<String, Object> map = new HashMap<>();
@@ -135,6 +136,11 @@ public class LoanApplicationTestBuilder {
             map.put("maxOutstandingLoanBalance", maxOutstandingLoanBalance);
 
         }
+        
+		if (disbursementData == null && this.canDefineInstallmentAmount) {
+			map.put("fixedEmiAmount", fixedEmiAmount);
+		}
+        
         if (recalculationRestFrequencyDate != null) {
             map.put("recalculationRestFrequencyDate", recalculationRestFrequencyDate);
         }
@@ -326,5 +332,10 @@ public class LoanApplicationTestBuilder {
     public LoanApplicationTestBuilder withFixedEmiAmount(final String installmentAmount) {
         this.fixedEmiAmount = installmentAmount;
         return this;
+    }
+    
+    public LoanApplicationTestBuilder withCanDefineInstallmentAmount(final Boolean canDefineInstallmentAmount){
+    	this.canDefineInstallmentAmount = canDefineInstallmentAmount;
+    	return this;
     }
 }

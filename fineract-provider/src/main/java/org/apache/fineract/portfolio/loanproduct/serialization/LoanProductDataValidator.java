@@ -106,7 +106,8 @@ public final class LoanProductDataValidator {
             LoanProductConstants.preClosureInterestCalculationStrategyParamName, LoanProductConstants.allowAttributeOverridesParamName,
             LoanProductConstants.allowVariableInstallmentsParamName, LoanProductConstants.minimumGapBetweenInstallments,
             LoanProductConstants.maximumGapBetweenInstallments, LoanProductConstants.closeLoanOnOverpayment,
-            LoanProductConstants.syncExpectedWithDisbursementDate));
+            LoanProductConstants.syncExpectedWithDisbursementDate, LoanProductConstants.minLoanTerm, LoanProductConstants.maxLoanTerm,
+            LoanProductConstants.loanTenureFrequencyType));
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -211,6 +212,48 @@ public final class LoanProductDataValidator {
                     .integerGreaterThanZero();
         }
 
+       
+        Integer minLoanTerm = null;
+        if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.minLoanTerm, element)) {
+        	minLoanTerm = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(LoanProductConstants.minLoanTerm, element);
+            baseDataValidator.reset().parameter(LoanProductConstants.minLoanTerm).value(minLoanTerm).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
+        Integer maxLoanTerm = null;
+        if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.maxLoanTerm, element)) {
+        	maxLoanTerm = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(LoanProductConstants.maxLoanTerm, element);
+            baseDataValidator.reset().parameter(LoanProductConstants.maxLoanTerm).value(maxLoanTerm).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
+        if((minLoanTerm != null && minLoanTerm > 0) && 
+        		(maxLoanTerm != null && maxLoanTerm > 0)){
+        	baseDataValidator.reset().parameter(LoanProductConstants.maxLoanTerm).value(maxLoanTerm)
+            .notLessThanMin(minLoanTerm);
+        }
+        
+		Integer loanTenureFrequencyType = null;
+		if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.maxLoanTerm, element)
+				|| (minLoanTerm != null || maxLoanTerm != null)) {
+			loanTenureFrequencyType = this.fromApiJsonHelper
+					.extractIntegerNamed(LoanProductConstants.loanTenureFrequencyType, element, Locale.getDefault());
+			baseDataValidator.reset().parameter(LoanProductConstants.loanTenureFrequencyType)
+					.value(loanTenureFrequencyType).notNull().inMinMaxRange(0, 3);
+		}
+		
+		if (minLoanTerm == null && maxLoanTerm == null) {
+			loanTenureFrequencyType = this.fromApiJsonHelper
+					.extractIntegerNamed(LoanProductConstants.loanTenureFrequencyType, element, Locale.getDefault());
+			if (loanTenureFrequencyType != null) {
+				final String errorCode = "sholud.not.allowed.to.pass.loan.tenureFrequencyType.since.maxLoanTerm.or.maxLoanTerm.is.not.paasing";
+				final Object defaultUserMessageArgs = null;
+				baseDataValidator.reset().parameter(LoanProductConstants.loanTenureFrequencyType)
+						.value(loanTenureFrequencyType)
+						.failWithCodeNoParameterAddedToErrorCode(errorCode, defaultUserMessageArgs);
+			}
+		}
+        
         final String maxNumberOfRepaymentsParameterName = "maxNumberOfRepayments";
         Integer maxNumberOfRepayments = null;
         if (this.fromApiJsonHelper.parameterExists(maxNumberOfRepaymentsParameterName, element)) {
@@ -981,23 +1024,55 @@ public final class LoanProductDataValidator {
         }
 
         final String minNumberOfRepaymentsParameterName = "minNumberOfRepayments";
-        Integer minNumberOfRepayments = null;
+        Integer minNumberOfRepayments = loanProduct.getMinNumberOfRepayments();
         if (this.fromApiJsonHelper.parameterExists(minNumberOfRepaymentsParameterName, element)) {
             minNumberOfRepayments = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(minNumberOfRepaymentsParameterName, element);
             baseDataValidator.reset().parameter(minNumberOfRepaymentsParameterName).value(minNumberOfRepayments).ignoreIfNull()
                     .integerGreaterThanZero();
         }
-
+        
         final String maxNumberOfRepaymentsParameterName = "maxNumberOfRepayments";
-        Integer maxNumberOfRepayments = null;
+        Integer maxNumberOfRepayments = loanProduct.getMaxNumberOfRepayments();
         if (this.fromApiJsonHelper.parameterExists(maxNumberOfRepaymentsParameterName, element)) {
             maxNumberOfRepayments = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(maxNumberOfRepaymentsParameterName, element);
             baseDataValidator.reset().parameter(maxNumberOfRepaymentsParameterName).value(maxNumberOfRepayments).ignoreIfNull()
                     .integerGreaterThanZero();
         }
+        
+        if((minNumberOfRepayments != null && minNumberOfRepayments > 0) && 
+        		(maxNumberOfRepayments != null && maxNumberOfRepayments > 0)){
+        	baseDataValidator.reset().parameter(LoanProductConstants.maxLoanTerm).value(maxNumberOfRepayments)
+            .notLessThanMin(minNumberOfRepayments);
+        }
+        
+        Integer minLoanTerm = loanProduct.getMinLoanTerm();
+        if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.minLoanTerm, element)) {
+        	minLoanTerm = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(LoanProductConstants.minLoanTerm, element);
+            baseDataValidator.reset().parameter(LoanProductConstants.minLoanTerm).value(minLoanTerm).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
 
+        Integer maxLoanTerm = loanProduct.getMaxLoanTerm();
+        if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.maxLoanTerm, element)) {
+        	maxLoanTerm = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(LoanProductConstants.maxLoanTerm, element);
+            baseDataValidator.reset().parameter(LoanProductConstants.maxLoanTerm).value(maxLoanTerm).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
+        if((minLoanTerm != null && minLoanTerm > 0) && 
+        		(maxLoanTerm != null && maxLoanTerm > 0)){
+        	baseDataValidator.reset().parameter(LoanProductConstants.maxLoanTerm).value(maxLoanTerm)
+            .notLessThanMin(minLoanTerm);
+        }
+        if (this.fromApiJsonHelper.parameterExists("repaymentFrequencyType", element)) {
+            final Integer repaymentFrequencyType = this.fromApiJsonHelper.extractIntegerNamed("repaymentFrequencyType", element,
+                    Locale.getDefault());
+            baseDataValidator.reset().parameter("repaymentFrequencyType").value(repaymentFrequencyType).notNull().inMinMaxRange(0, 3);
+        }
+        
+         Integer numberOfRepayments = null;
         if (this.fromApiJsonHelper.parameterExists("numberOfRepayments", element)) {
-            final Integer numberOfRepayments = this.fromApiJsonHelper.extractIntegerWithLocaleNamed("numberOfRepayments", element);
+             numberOfRepayments = this.fromApiJsonHelper.extractIntegerWithLocaleNamed("numberOfRepayments", element);
             baseDataValidator.reset().parameter("numberOfRepayments").value(numberOfRepayments).notNull().integerGreaterThanZero();
         }
 
@@ -1005,12 +1080,37 @@ public final class LoanProductDataValidator {
             final Integer repaymentEvery = this.fromApiJsonHelper.extractIntegerWithLocaleNamed("repaymentEvery", element);
             baseDataValidator.reset().parameter("repaymentEvery").value(repaymentEvery).notNull().integerGreaterThanZero();
         }
-
+        
         if (this.fromApiJsonHelper.parameterExists("repaymentFrequencyType", element)) {
             final Integer repaymentFrequencyType = this.fromApiJsonHelper.extractIntegerNamed("repaymentFrequencyType", element,
                     Locale.getDefault());
             baseDataValidator.reset().parameter("repaymentFrequencyType").value(repaymentFrequencyType).notNull().inMinMaxRange(0, 3);
         }
+
+		Integer loanTenureFrequencyTypeEunum = null;
+		PeriodFrequencyType loanTenureFrequencyType = loanProduct.getLoanTenureFrequencyType();
+		if (loanTenureFrequencyType != null) {
+			loanTenureFrequencyTypeEunum = loanTenureFrequencyType.getValue();
+		}
+		if ((this.fromApiJsonHelper.parameterExists(LoanProductConstants.loanTenureFrequencyType, element))
+				||((minLoanTerm != null || maxLoanTerm != null)  && (loanTenureFrequencyTypeEunum == null)) ) {
+			loanTenureFrequencyTypeEunum = this.fromApiJsonHelper
+					.extractIntegerNamed(LoanProductConstants.loanTenureFrequencyType, element, Locale.getDefault());
+			baseDataValidator.reset().parameter(LoanProductConstants.loanTenureFrequencyType)
+					.value(loanTenureFrequencyTypeEunum).inMinMaxRange(0, 3);
+		}
+		
+		if (minLoanTerm == null && maxLoanTerm == null) {
+			loanTenureFrequencyTypeEunum = this.fromApiJsonHelper
+					.extractIntegerNamed(LoanProductConstants.loanTenureFrequencyType, element, Locale.getDefault());
+			if (loanTenureFrequencyTypeEunum != null) {
+				final String errorCode = "sholud.not.allowed.to.pass.loan.tenureFrequencyType.since.maxLoanTerm.or.maxLoanTerm.is.not.paasing";
+				final Object defaultUserMessageArgs = null;
+				baseDataValidator.reset().parameter(LoanProductConstants.loanTenureFrequencyType)
+						.value(loanTenureFrequencyTypeEunum)
+						.failWithCodeNoParameterAddedToErrorCode(errorCode, defaultUserMessageArgs);
+			}
+		}
         
         if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.minimumDaysBetweenDisbursalAndFirstRepayment, element)) {
             final Long minimumDaysBetweenDisbursalAndFirstRepayment = this.fromApiJsonHelper.extractLongNamed(

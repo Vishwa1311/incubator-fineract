@@ -1120,36 +1120,41 @@ public class LoanScheduleAssembler {
 		
 		final Integer minimumDaysBetweenDisbursalAndFirstRepayment = loanProduct
 				.getMinimumDaysBetweenDisbursalAndFirstRepayment();
-		LocalDate calculatedFirstrepaymentdateFromMinimumperiods = calculateFirstRepaymentDateWithMinimumPeriodsBetweenDisbursalAndFirstRepaymentDate(
-				disbursalDate, loanProduct, loanTermPeriodFrequencyType, repaymentEvery, nthDay, dayOfWeek);
-		final Integer minumumDaysBetweenDisbursalAndFirstrepaymentdateFromPeriod = Days
-				.daysBetween(disbursalDate, calculatedFirstrepaymentdateFromMinimumperiods).getDays();
+		Integer minumumPeriodsBetweenDisbursalAndFirstrepaymentdate = loanProduct
+				.getMinimumPeriodsBetweenDisbursalAndFirstRepayment();
+		final Integer minumumDaysBetweenDisbursalAndFirstrepaymentdateFromPeriod = 
+				calculateNumberOfDaysBetweenDisbursalRepaymentDateWithRepaymentPeriod(
+				disbursalDate, loanTermPeriodFrequencyType, repaymentEvery, nthDay, dayOfWeek,
+				minumumPeriodsBetweenDisbursalAndFirstrepaymentdate);
 		final Integer calculatedminimumDaysBetweenDisbursalAndFirstRepayment = minimumDaysBetweenDisbursalAndFirstRepayment >= minumumDaysBetweenDisbursalAndFirstrepaymentdateFromPeriod
 				? minimumDaysBetweenDisbursalAndFirstRepayment
 				: minumumDaysBetweenDisbursalAndFirstrepaymentdateFromPeriod;
 		return calculatedminimumDaysBetweenDisbursalAndFirstRepayment;
 	}
 	
-    
-	private LocalDate calculateFirstRepaymentDateWithMinimumPeriodsBetweenDisbursalAndFirstRepaymentDate(
-			final LocalDate disbursalDate, final LoanProduct loanProduct,
+	public Integer calculateNumberOfDaysBetweenDisbursalRepaymentDateWithRepaymentPeriod(
+			final LocalDate disbursalDate, final PeriodFrequencyType loanTermPeriodFrequencyType,
+			final Integer repaymentEvery, Integer nthDay, DayOfWeekType dayOfWeek, Integer numberOfRepaymentPeriods) {
+
+		LocalDate calculatedRepaymentdateFromNumberOfRepaymentPeriods = calculateRepaymentDateFromNumberOfRepaymentsPeriods(
+				disbursalDate, loanTermPeriodFrequencyType, repaymentEvery, nthDay, dayOfWeek, numberOfRepaymentPeriods);
+		return Days.daysBetween(disbursalDate, calculatedRepaymentdateFromNumberOfRepaymentPeriods).getDays();
+	}
+
+	private LocalDate calculateRepaymentDateFromNumberOfRepaymentsPeriods(final LocalDate disbursalDate,
 			final PeriodFrequencyType loanTermPeriodFrequencyType, final Integer repaymentEvery, Integer nthDay,
-			DayOfWeekType dayOfWeek) {
+			DayOfWeekType dayOfWeek, Integer numberOfRepaymentPeriods) {
 
-		Integer minumumPeriodsBetweenDisbursalAndFirstrepaymentdate = loanProduct
-				.getMinimumPeriodsBetweenDisbursalAndFirstRepayment();
-
-		// for calculating first re payment date according to the minimum period
-		// between
-		// disbursal date and first re payment date taking repaid every as
+		// for calculating nth re payment date according loanFreequnncy of the
 		// loan
-		// repaidEvery*minumumPeriodBetweenDisbursalAndFirstrepaymentdateFromLoanProduct
+		// between
+		// disbursal date and nth re payment date taking repaid every as
+		// loan
+		// repaidEvery*loanFreequnncy
 		final ScheduledDateGenerator scheduledDateGenerator = new DefaultScheduledDateGenerator();
-		Integer repaidEvery = repaymentEvery * minumumPeriodsBetweenDisbursalAndFirstrepaymentdate;
-		LocalDate calculatedFirstFepaymentdateFromMinimumPeriodBetweenDisbursalAndFirstRepaymentDate = scheduledDateGenerator
-				.getRepaymentPeriodDate(loanTermPeriodFrequencyType, repaidEvery, disbursalDate, nthDay, dayOfWeek);
-
-		return calculatedFirstFepaymentdateFromMinimumPeriodBetweenDisbursalAndFirstRepaymentDate;
+		Integer repaidEvery = repaymentEvery * numberOfRepaymentPeriods;
+		return scheduledDateGenerator.getRepaymentPeriodDate(loanTermPeriodFrequencyType, repaidEvery, disbursalDate,
+				nthDay, dayOfWeek);
 	}
     
 }
