@@ -35,6 +35,7 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
+import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.common.service.CommonEnumerations;
 import org.apache.fineract.portfolio.loanproduct.data.LoanProductBorrowerCycleVariationData;
 import org.apache.fineract.portfolio.loanproduct.data.LoanProductData;
@@ -201,6 +202,8 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     + "lp.principal_threshold_for_last_installment as principalThresholdForLastInstallment, "
                     + "sync_expected_with_disbursement_date as syncExpectedWithDisbursementDate, "
                     + "lp.min_periods_between_disbursal_and_first_repayment as minimumPeriodsBetweenDisbursalAndFirstRepayment, "
+                    + "lp.min_loan_term as minLoanTerm, lp.max_loan_term as maxLoanterm ,"
+                    + "lp.loan_tenure_frequency_type as loanTenureFrequencyType , "
                     + "lpg.id as lpgId, lpg.mandatory_guarantee as mandatoryGuarantee, "
                     + "lpg.minimum_guarantee_from_own_funds as minimumGuaranteeFromOwnFunds, lpg.minimum_guarantee_from_guarantor_funds as minimumGuaranteeFromGuarantor, "
                     + "lp.account_moves_out_of_npa_only_on_arrears_completion as accountMovesOutOfNPAOnlyOnArrearsCompletion, "
@@ -413,6 +416,13 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
             final Boolean closeLoanOnOverpayment = rs.getBoolean("closeLoanOnOverpayment");
             final boolean syncExpectedWithDisbursementDate = rs.getBoolean("syncExpectedWithDisbursementDate");
             
+            final Integer minLoanTerm = JdbcSupport.getInteger(rs, "minLoanTerm");
+            final Integer maxLoanTerm = JdbcSupport.getInteger(rs, "maxLoanTerm");
+            EnumOptionData loanTenureFrequencyType = null;
+            final Integer loanTenureFrequencyTypeEnum = JdbcSupport.getInteger(rs, "loanTenureFrequencyType");
+            if(loanTenureFrequencyTypeEnum != null){
+            loanTenureFrequencyType = LoanEnumerations.loanTenureFrequencyType(loanTenureFrequencyTypeEnum.intValue());
+            }
             return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                     numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
                     minInterestRatePerPeriod, maxInterestRatePerPeriod, annualInterestRate, repaymentFrequencyType,
@@ -428,7 +438,8 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     installmentAmountInMultiplesOf, allowAttributeOverrides, isLinkedToFloatingInterestRates, floatingRateId,
                     floatingRateName, interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate,
                     maxDifferentialLendingRate, isFloatingInterestRateCalculationAllowed, isVariableIntallmentsAllowed, minimumGap,
-                    maximumGap, closeLoanOnOverpayment,  syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment);
+                    maximumGap, closeLoanOnOverpayment,  syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment,
+                    minLoanTerm, maxLoanTerm, loanTenureFrequencyType);
         }
     }
 

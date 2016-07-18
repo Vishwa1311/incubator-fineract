@@ -192,6 +192,15 @@ public class LoanProduct extends AbstractPersistable<Long> {
     
     @Column(name = "sync_expected_with_disbursement_date")
     private boolean syncExpectedWithDisbursementDate;
+    
+    @Column(name = "max_loan_term")
+    private Integer maxLoanTerm;
+    
+    @Column(name = "min_loan_term")
+    private Integer minLoanTerm;
+    
+    @Column(name = "loan_tenure_frequency_type", nullable = true)
+    private PeriodFrequencyType loanTenureFrequencyType;
 
     public static LoanProduct assembleFromJson(final Fund fund, final LoanTransactionProcessingStrategy loanTransactionProcessingStrategy,
             final List<Charge> productCharges, final JsonCommand command, final AprCalculator aprCalculator, FloatingRate floatingRate) {
@@ -338,6 +347,11 @@ public class LoanProduct extends AbstractPersistable<Long> {
         final Boolean closeLoanOnOverpayment = command.booleanPrimitiveValueOfParameterNamed(LoanProductConstants.closeLoanOnOverpayment);
         final boolean syncExpectedWithDisbursementDate = command.booleanPrimitiveValueOfParameterNamed(LoanProductConstants.syncExpectedWithDisbursementDate);
         
+        final Integer maxLoanTerm = command.integerValueOfParameterNamed(LoanProductConstants.maxLoanTerm);
+        final Integer minLoanTerm = command.integerValueOfParameterNamed(LoanProductConstants.minLoanTerm);
+        final Integer loanTermFrequencyTypeEnum = command.integerValueOfParameterNamed(LoanProductConstants.loanTenureFrequencyType);
+        final PeriodFrequencyType loanTenureFrequencyType = PeriodFrequencyType.fromInt(loanTermFrequencyTypeEnum);
+
         return new LoanProduct(fund, loanTransactionProcessingStrategy, name, shortName, description, currency, principal, minPrincipal,
                 maxPrincipal, interestRatePerPeriod, minInterestRatePerPeriod, maxInterestRatePerPeriod, interestFrequencyType,
                 annualInterestRate, interestMethod, interestCalculationPeriodMethod, allowPartialPeriodInterestCalcualtion, repaymentEvery,
@@ -352,8 +366,7 @@ public class LoanProduct extends AbstractPersistable<Long> {
                 interestRateDifferential, minDifferentialLendingRate, maxDifferentialLendingRate, defaultDifferentialLendingRate,
                 isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGapBetweenInstallments,
                 maximumGapBetweenInstallments, closeLoanOnOverpayment, syncExpectedWithDisbursementDate, 
-                minimumPeriodsBetweenDisbursalAndFirstRepayment);
-
+                minimumPeriodsBetweenDisbursalAndFirstRepayment, minLoanTerm , maxLoanTerm, loanTenureFrequencyType);
     }
 
     public void updateLoanProductInRelatedClasses() {
@@ -584,7 +597,9 @@ public class LoanProduct extends AbstractPersistable<Long> {
             BigDecimal minDifferentialLendingRate, BigDecimal maxDifferentialLendingRate, BigDecimal defaultDifferentialLendingRate,
             Boolean isFloatingInterestRateCalculationAllowed, final Boolean isVariableInstallmentsAllowed,
             final Integer minimumGapBetweenInstallments, final Integer maximumGapBetweenInstallments, final Boolean closeLoanOnOverpayment,
-            final Boolean syncExpectedWithDisbursementDate, final Integer minimumPeriodsBetweenDisbursalAndFirstRepayment) {
+            final Boolean syncExpectedWithDisbursementDate, final Integer minimumPeriodsBetweenDisbursalAndFirstRepayment,
+            final Integer minLoanTerm, final Integer maxLoanTerm, final PeriodFrequencyType loanTenureFrequencyType) {
+    	
         this.fund = fund;
         this.transactionProcessingStrategy = transactionProcessingStrategy;
         this.name = name.trim();
@@ -661,6 +676,9 @@ public class LoanProduct extends AbstractPersistable<Long> {
         this.installmentAmountInMultiplesOf = installmentAmountInMultiplesOf;
         this.closeLoanOnOverpayment = closeLoanOnOverpayment;
         this.syncExpectedWithDisbursementDate = syncExpectedWithDisbursementDate;
+        this.minLoanTerm = minLoanTerm;
+        this.maxLoanTerm = maxLoanTerm;
+        this.loanTenureFrequencyType = loanTenureFrequencyType;
     }
 
     public MonetaryCurrency getCurrency() {
@@ -718,7 +736,19 @@ public class LoanProduct extends AbstractPersistable<Long> {
         return this.loanConfigurableAttributes;
     }
 
-    public Map<String, Object> update(final JsonCommand command, final AprCalculator aprCalculator, FloatingRate floatingRate) {
+	public Integer getMaxLoanTerm() {
+		return this.maxLoanTerm ;
+	}
+
+	public Integer getMinLoanTerm() {
+		return this.minLoanTerm ;
+	}
+	
+	public PeriodFrequencyType getLoanTenureFrequencyType() {
+		return this.loanTenureFrequencyType;
+	}
+
+	public Map<String, Object> update(final JsonCommand command, final AprCalculator aprCalculator, FloatingRate floatingRate) {
 
         final Map<String, Object> actualChanges = this.loanProductRelatedDetail.update(command, aprCalculator);
         actualChanges.putAll(loanProductMinMaxConstraints().update(command));
@@ -1051,6 +1081,24 @@ public class LoanProduct extends AbstractPersistable<Long> {
             actualChanges.put(LoanProductConstants.closeLoanOnOverpayment, newValue);
             this.closeLoanOnOverpayment = newValue;
         }
+        
+        if(command.isChangeInIntegerParameterNamedWithNullCheck(LoanProductConstants.minLoanTerm, this.minLoanTerm)){
+        final Integer newValue = command.integerValueOfParameterNamed(LoanProductConstants.minLoanTerm);
+        actualChanges.put(LoanProductConstants.minLoanTerm, newValue);
+        this.minLoanTerm = newValue;
+        }
+        
+        if(command.isChangeInIntegerParameterNamedWithNullCheck(LoanProductConstants.maxLoanTerm, this.maxLoanTerm)){
+            final Integer newValue = command.integerValueOfParameterNamed(LoanProductConstants.maxLoanTerm);
+            actualChanges.put(LoanProductConstants.maxLoanTerm, newValue);
+            this.maxLoanTerm = newValue;
+         }
+        
+        if(command.isChangeInIntegerParameterNamedWithNullCheck(LoanProductConstants.loanTenureFrequencyType, this.loanTenureFrequencyType.getValue())){
+            final Integer newValue = command.integerValueOfParameterNamed(LoanProductConstants.loanTenureFrequencyType);
+            actualChanges.put(LoanProductConstants.loanTenureFrequencyType, newValue);
+            this.loanTenureFrequencyType = PeriodFrequencyType.fromInt(newValue);
+         }
         
         return actualChanges;
     }

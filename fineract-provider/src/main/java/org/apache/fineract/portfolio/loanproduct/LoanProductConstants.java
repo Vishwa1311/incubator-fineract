@@ -122,7 +122,9 @@ public interface LoanProductConstants {
     public static final String allowVariableInstallmentsParamName = "allowVariableInstallments" ;
     public static final String minimumGapBetweenInstallments = "minimumGap" ;
     public static final String maximumGapBetweenInstallments = "maximumGap" ;
-    
+    public static final String minLoanTerm = "minLoanTerm";
+    public static final String maxLoanTerm = "maxLoanTerm";
+    public static final String loanTenureFrequencyType = "loanTenureFrequencyType";
     
     public static final String allowPartialPeriodInterestCalcualtionParamName = "allowPartialPeriodInterestCalcualtion";
     
