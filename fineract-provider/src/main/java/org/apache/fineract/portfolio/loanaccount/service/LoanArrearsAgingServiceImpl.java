@@ -23,6 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +34,7 @@ import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.jobs.annotation.CronTarget;
+import org.apache.fineract.infrastructure.jobs.exception.JobExecutionException;
 import org.apache.fineract.infrastructure.jobs.service.JobName;
 import org.apache.fineract.portfolio.common.BusinessEventNotificationConstants.BUSINESS_ENTITY;
 import org.apache.fineract.portfolio.common.BusinessEventNotificationConstants.BUSINESS_EVENTS;
@@ -45,8 +47,8 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanSummary;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanSchedulePeriodData;
 import org.apache.fineract.scheduledjobs.service.ExecuteBatchUpdateTransactional;
-import org.apache.fineract.scheduledjobs.service.ScheduledJobRunnerServiceImpl;
 import org.apache.fineract.scheduledjobs.service.PageDataForArrearsAgeingDetailsWithOriginalSchedule;
+import org.apache.fineract.scheduledjobs.service.ScheduledJobRunnerServiceImpl;
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -94,9 +96,11 @@ public class LoanArrearsAgingServiceImpl implements LoanArrearsAgingService, Bus
 
     @Override
     @CronTarget(jobName = JobName.UPDATE_LOAN_ARREARS_AGEING)
-    public void updateLoanArrearsAgeingDetails() {
-       
+    public void updateLoanArrearsAgeingDetails() throws JobExecutionException{
+        final StringBuilder errorMessage = new StringBuilder();
+        Map<String,Integer> returnMap = new HashMap<>();
         List<String> insertStatement = new ArrayList<>();
+        int result = 0 ;
        
         this.jdbcTemplate.execute("truncate table m_loan_arrears_aging");
 
@@ -128,10 +132,21 @@ public class LoanArrearsAgingServiceImpl implements LoanArrearsAgingService, Bus
         updateSqlBuilder.append(" and (prd.arrears_based_on_original_schedule = 0 or prd.arrears_based_on_original_schedule is null) ");
         updateSqlBuilder.append(" GROUP BY ml.id");
 
-        int result = updateLoanArrearsAgeingDetailsWithOriginalSchedule();
+        returnMap = updateLoanArrearsAgeingDetailsWithOriginalSchedule();
         insertStatement.add(updateSqlBuilder.toString());
-        final int results = this.executeBatchUpdateTransactional.executeBatchUpdate(insertStatement);
-        logger.info(ThreadLocalContextUtil.getTenant().getName() + ": Results affected by update: " + result+results);
+        returnMap.putAll(this.executeBatchUpdateTransactional.executeBatchUpdate(insertStatement));
+        for (String message : returnMap.keySet()) {
+            if (!message.isEmpty()) {
+                errorMessage.append(message);
+            }
+        }
+        Iterator<Integer> iterator = returnMap.values().iterator();
+        while (iterator.hasNext()) {
+            result += iterator.next();
+        }
+        if (errorMessage.length() > 0) { throw new JobExecutionException(errorMessage.toString()); }
+        logger.info(
+                ThreadLocalContextUtil.getTenant().getName() + ": Results affected by update: " + result);
     }
 
     @Override
@@ -201,12 +216,13 @@ public class LoanArrearsAgingServiceImpl implements LoanArrearsAgingService, Bus
         return updateSql;
     }
 
-    private int updateLoanArrearsAgeingDetailsWithOriginalSchedule() {
-        
+    private Map<String,Integer> updateLoanArrearsAgeingDetailsWithOriginalSchedule() {
+        Map<String,Integer> returnMap = new HashMap<>();
         int result = 0;
         int limit = 1000;
         int offset =0;
         int totalRecords = 0;
+        StringBuilder errorMessage = new StringBuilder();
 
         do {
             List<String> insertStatement = new ArrayList<>();
@@ -224,12 +240,20 @@ public class LoanArrearsAgingServiceImpl implements LoanArrearsAgingService, Bus
                 List<Map<String, Object>> loanSummary = getLoanSummary(loanIdsAsString);
                 updateSchheduleWithPaidDetail(scheduleDate, loanSummary);
                 createInsertStatements(insertStatement, scheduleDate, true);
-                final int results = this.executeBatchUpdateTransactional.executeBatchUpdate(insertStatement);
-                    result += results;
+                returnMap = this.executeBatchUpdateTransactional.executeBatchUpdate(insertStatement);
+                for(String message: returnMap.keySet()){
+                    if(!message.isEmpty()){
+                errorMessage.append(message);
+                    }
+                }
+                Iterator<Integer> iterator = returnMap.values().iterator();
+                while(iterator.hasNext()){
+                    result += iterator.next();
+                }
             }
         }while(offset < totalRecords);
-
-        return result;
+        returnMap.put(errorMessage.toString(), result);
+        return returnMap;
 
     }
 

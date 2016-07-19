@@ -18,7 +18,10 @@
  */
 package org.apache.fineract.scheduledjobs.service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,15 +39,22 @@ public class ExecuteBatchUpdateTransactional {
     }
     
     @Transactional
-    public int executeBatchUpdate(List<String> insertStatement){
+    public Map<String, Integer> executeBatchUpdate(List<String> insertStatement){
+        Map<String, Integer> returnMap = new HashMap<>();
         int result = 0;
+        StringBuilder errorMessage = new StringBuilder();
         int[] results = new int[0];
         if(!insertStatement.isEmpty()){
+            try{
         results = this.jdbcTemplate.batchUpdate(insertStatement.toArray(new String[0]));
+            }catch(Exception e){
+                errorMessage.append(e.getMessage());
+            }
         }
         for(int i:results){
             result += i;
         }
-        return result;
+        returnMap.put(errorMessage.toString(), result);
+        return returnMap;
     }
 }
