@@ -164,9 +164,9 @@ public class GroupLoanIndividualMonitoringAssembler {
             BigDecimal feeCharge = percentageOf(amount, glimCharge.getCharge().getAmount());
             BigDecimal totalChargeAmount = feeCharge;
             totalChargeAmount = applyTaxComponentsOnCharges(glimCharge.getCharge(), feeCharge, totalChargeAmount);
-            if (glimCharge.getCharge().isEmiRoundingGoalSeek()) {
+            /*if (glimCharge.getCharge().isEmiRoundingGoalSeek()) {
                 totalChargeAmount = BigDecimal.valueOf(Math.ceil(totalChargeAmount.doubleValue()));
-            }
+            }*/
             totalChargeAmount = minimumAndMaximumCap(totalChargeAmount, glimCharge.getCharge().getMinCap(), glimCharge
                     .getCharge().getMaxCap(), loan);
             glimCharge.setFeeAmount(totalChargeAmount);
@@ -233,7 +233,7 @@ public class GroupLoanIndividualMonitoringAssembler {
                     if (glimCharge.getCharge().isEmiRoundingGoalSeek()) {
                         BigDecimal differenceAmount = totalPaybleAmount.subtract(totalAmountBeforeAdjustment);
                         revisedTotalFee = glimCharge.getFeeAmount().add(differenceAmount);
-                        glimCharge.setRevisedFeeAmount(BigDecimal.valueOf(Math.ceil(revisedTotalFee.doubleValue())));
+                        glimCharge.setRevisedFeeAmount(BigDecimal.valueOf(Math.round(revisedTotalFee.doubleValue())));
                         totalCharge = totalCharge.add(differenceAmount);
                         for (LoanCharge loanCharge : loanCharges) {
                             if (loanCharge.getCharge().isEmiRoundingGoalSeek()
@@ -308,9 +308,9 @@ public class GroupLoanIndividualMonitoringAssembler {
                 BigDecimal feeCharge = percentageOf(proposedAmount, chargeAmount);
                 BigDecimal totalChargeAmount = feeCharge;
                 totalChargeAmount = applyTaxComponentsOnCharges(charge, feeCharge, totalChargeAmount);
-                if (charge.isEmiRoundingGoalSeek()) {
+               /* if (charge.isEmiRoundingGoalSeek()) {
                     totalChargeAmount = BigDecimal.valueOf(Math.ceil(totalChargeAmount.doubleValue()));
-                }
+                }*/
                 totalChargeAmount = minimumAndMaximumCap(totalChargeAmount, charge.getMinCap(), charge.getMaxCap(),
                         newLoanApplication);
                 GroupLoanIndividualMonitoringCharge glimCharge = GroupLoanIndividualMonitoringCharge.instance(null, client, charge,
@@ -329,7 +329,7 @@ public class GroupLoanIndividualMonitoringAssembler {
                 totalTaxPercentage = totalTaxPercentage.add(taxGroupMapping.getTaxComponent().getPercentage());
             }
             totalChargeAmount = (feeCharge.add(percentageOf(feeCharge, totalTaxPercentage)));
-            //totalChargeAmount = BigDecimal.valueOf(Math.round(Double.valueOf("" + totalChargeAmount)));
+            totalChargeAmount = BigDecimal.valueOf(Math.round(Double.valueOf("" + totalChargeAmount)));
         }
         return totalChargeAmount;
     }
