@@ -83,6 +83,7 @@ import org.apache.fineract.portfolio.calendar.service.CalendarUtils;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
 import org.apache.fineract.portfolio.charge.exception.LoanChargeCannotBeAddedException;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.collateral.data.CollateralData;
@@ -398,6 +399,9 @@ public class Loan extends AbstractPersistable<Long> {
 
     @Column(name = "is_subsidy_applicable")
     private Boolean isSubsidyApplicable;
+
+    @Transient
+    List<GroupLoanIndividualMonitoring> glimList = new ArrayList<GroupLoanIndividualMonitoring>();
 
     public static Loan newIndividualLoanApplication(final String accountNo, final Client client, final Integer loanType,
             final LoanProduct loanProduct, final Fund fund, final Staff officer, final CodeValue loanPurpose,
@@ -896,7 +900,9 @@ public class Loan extends AbstractPersistable<Long> {
         return this.loanSummaryWrapper.calculateTotalInterestCharged(this.repaymentScheduleInstallments, getCurrency()).getAmount();
     }
 
-    private BigDecimal calculatePerInstallmentChargeAmount(final LoanCharge loanCharge) {
+    public BigDecimal calculatePerInstallmentChargeAmount(final LoanCharge loanCharge) {
+        if (loanCharge.getChargeCalculation().getValue() == ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT.getValue()
+                && loanCharge.isInstalmentFee()) { return loanCharge.amount(); }
         return calculatePerInstallmentChargeAmount(loanCharge.getChargeCalculation(), loanCharge.getPercentage());
     }
 
@@ -931,6 +937,9 @@ public class Loan extends AbstractPersistable<Long> {
             break;
             case PERCENT_OF_INTEREST:
                 percentOf = installment.getInterestCharged(getCurrency());
+            break;
+            case PERCENT_OF_DISBURSEMENT_AMOUNT:
+                percentOf = installment.getPrincipal(getCurrency());
             break;
             default:
             break;
@@ -2588,7 +2597,8 @@ public class Loan extends AbstractPersistable<Long> {
 
         final InterestMethod interestMethod = this.loanRepaymentScheduleDetail.getInterestMethod();
         final LoanApplicationTerms loanApplicationTerms = constructLoanApplicationTerms(scheduleGeneratorDTO);
-
+        updateInstallmentAmount(loanApplicationTerms);
+        loanApplicationTerms.updateTotalInterestDueForGlim(this.glimList);
         final LoanScheduleGenerator loanScheduleGenerator = scheduleGeneratorDTO.getLoanScheduleFactory().create(interestMethod);
         final LoanScheduleModel loanSchedule = loanScheduleGenerator.generate(mc, loanApplicationTerms, charges(),
                 scheduleGeneratorDTO.getHolidayDetailDTO());
@@ -4570,6 +4580,10 @@ public class Loan extends AbstractPersistable<Long> {
     public boolean isJLGLoan() {
         return AccountType.fromInt(this.loanType).isJLGAccount();
     }
+    
+    public boolean isGLIMLoan() {
+        return AccountType.fromInt(this.loanType).isGLIMAccount();
+    }
 
     public void updateInterestRateFrequencyType() {
         this.loanRepaymentScheduleDetail.updatenterestPeriodFrequencyType(this.loanProduct.getInterestPeriodFrequencyType());
@@ -4782,6 +4796,9 @@ public class Loan extends AbstractPersistable<Long> {
                 BigDecimal amount = BigDecimal.ZERO;
                 if (loanCharge.getChargeCalculation().isFlat()) {
                     amount = loanCharge.amountOrPercentage();
+                } else if (loanCharge.isInstalmentFee() && loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
+                    BigDecimal numberOfRepayments = new BigDecimal(this.fetchNumberOfInstallmensAfterExceptions());
+                    amount = (loanCharge.amount().divide(numberOfRepayments, MoneyHelper.getRoundingMode()));
                 } else {
                     amount = calculateInstallmentChargeAmount(loanCharge.getChargeCalculation(), loanCharge.getPercentage(), installment)
                             .getAmount();
@@ -5354,7 +5371,8 @@ public class Loan extends AbstractPersistable<Long> {
         final MathContext mc = new MathContext(8, roundingMode);
 
         final LoanApplicationTerms loanApplicationTerms = constructLoanApplicationTerms(generatorDTO);
-
+        updateInstallmentAmount(loanApplicationTerms);
+        loanApplicationTerms.updateTotalInterestDueForGlim(this.glimList);
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
                 .determineProcessor(this.transactionProcessingStrategy);
 
@@ -6089,8 +6107,46 @@ public class Loan extends AbstractPersistable<Long> {
         return amount;
     }
     
+
     public void updateWriteOffReason(CodeValue writeOffReason) {
         this.writeOffReason = writeOffReason;
+    }
+
+    public void updateGlim(final List<GroupLoanIndividualMonitoring> glimList) {
+        this.glimList.addAll(glimList);
+    }
+    
+    public List<GroupLoanIndividualMonitoring> getGroupLoanIndividualMonitoringList() {
+        return this.glimList;
+    }
+    
+    public void updateInstallmentAmount(LoanApplicationTerms loanApplicationTerms) {
+        BigDecimal installmentAmount = BigDecimal.ZERO;
+        for (GroupLoanIndividualMonitoring glim : glimList) {
+            BigDecimal totalFeeCharges = BigDecimal.ZERO;
+            for (GroupLoanIndividualMonitoringCharge groupLoanIndividualMonitoringCharge : glim.getGroupLoanIndividualMonitoringCharges()) {
+                if (groupLoanIndividualMonitoringCharge.getRevisedFeeAmount() != null) {
+                    totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getRevisedFeeAmount());
+                } else {
+                    totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getFeeAmount());
+                }
+            }
+            installmentAmount = installmentAmount.add(calculateInstallmentAmount(glim.getInstallmentAmount(), totalFeeCharges,
+                    loanApplicationTerms.getNumberOfRepayments()));
+        }
+        if (installmentAmount.compareTo(BigDecimal.ZERO) == 1) {
+            loanApplicationTerms.setFixedEmiAmount(installmentAmount);
+        }
+    }
+    
+    public BigDecimal calculateInstallmentAmount(BigDecimal installmentAmount, final BigDecimal totalFeeCharges, final Integer numberOfRepayments) {
+        BigDecimal feePerInstallment = BigDecimal.ZERO;
+        if(installmentAmount != null){
+            /*feePerInstallment = totalFeeCharges.divide(BigDecimal.valueOf(numberOfRepayments.doubleValue()), MoneyHelper.getRoundingModeForGlimEmiAmount());*/
+            feePerInstallment = BigDecimal.valueOf(totalFeeCharges.doubleValue() / numberOfRepayments.doubleValue());
+            installmentAmount = installmentAmount.subtract(feePerInstallment);
+        }
+        return installmentAmount;
     }
 
     public Boolean isSubsidyApplicable() {

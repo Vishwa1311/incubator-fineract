@@ -16,13 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
+package org.apache.fineract.portfolio.loanaccount.exception;
 
-public class ChargesApiConstants {
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
-    
+public class InvalidClientShareInGroupLoanException extends
+		AbstractPlatformDomainRuleException {
+
+	public InvalidClientShareInGroupLoanException() {
+		super("error.msg.glim.each.client.must.have.more.than.zero.amount",
+				"Each client must have more than 0 amount.");
+		// TODO Auto-generated constructor stub
+	}
 
 }

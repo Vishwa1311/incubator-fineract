@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
+package org.apache.fineract.portfolio.charge.domain;
 
-public class ChargesApiConstants {
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
-    
+public interface GroupLoanIndividualMonitoringChargeRepository extends
+		JpaRepository<GroupLoanIndividualMonitoringCharge, Long>,
+		JpaSpecificationExecutor<GroupLoanIndividualMonitoringCharge> {
 
 }

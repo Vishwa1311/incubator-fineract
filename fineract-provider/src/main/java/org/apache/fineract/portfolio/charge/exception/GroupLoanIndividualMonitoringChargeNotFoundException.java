@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
+package org.apache.fineract.portfolio.charge.exception;
 
-public class ChargesApiConstants {
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformResourceNotFoundException;
 
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
-    
+public class GroupLoanIndividualMonitoringChargeNotFoundException  extends AbstractPlatformResourceNotFoundException {
+
+	public GroupLoanIndividualMonitoringChargeNotFoundException(final Long id) {
+        super("error.msg.glim.charge.id.invalid", "Glim Charge with identifier " + id + " does not exist", id);
+    }
 
 }
