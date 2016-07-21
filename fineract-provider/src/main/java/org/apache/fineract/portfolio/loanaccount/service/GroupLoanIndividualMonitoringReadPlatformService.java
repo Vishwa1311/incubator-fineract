@@ -16,13 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
+package org.apache.fineract.portfolio.loanaccount.service;
 
-public class ChargesApiConstants {
+import java.util.Collection;
 
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
-    
 
+import org.apache.fineract.portfolio.loanaccount.data.GroupLoanIndividualMonitoringData;
+
+public interface GroupLoanIndividualMonitoringReadPlatformService {
+	
+	Collection<GroupLoanIndividualMonitoringData> retrieveAll();
+	
+	GroupLoanIndividualMonitoringData retrieveOne(final Long id);
+	
+	Collection<GroupLoanIndividualMonitoringData> retrieveAllByLoanId(final Long loanId);
+	
+	GroupLoanIndividualMonitoringData retrieveByLoanAndClientId(final Long loanId, final Long clientId);
 }

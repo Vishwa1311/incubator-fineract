@@ -16,13 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
+package org.apache.fineract.portfolio.loanproduct.exception;
 
-public class ChargesApiConstants {
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
-    
+public class LinkedChargeGoalSeekException extends
+		AbstractPlatformDomainRuleException {
+
+	public LinkedChargeGoalSeekException(final String entity,
+			final String postFix, final String defaultUserMessage,
+			final Object... defaultUserMessageArgs) {
+		super(defaultUserMessage, "error.msg." + entity + "." + postFix,
+				defaultUserMessageArgs);
+	}
 
 }

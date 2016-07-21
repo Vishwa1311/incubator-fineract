@@ -40,6 +40,7 @@ import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsDataWrapper;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoring;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInterestRecalculationDetails;
 import org.apache.fineract.portfolio.loanproduct.domain.AmortizationMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestCalculationPeriodMethod;
@@ -145,7 +146,7 @@ public final class LoanApplicationTerms {
 
     private BigDecimal currentPeriodFixedPrincipalAmount;
 
-    private final BigDecimal actualFixedEmiAmount;
+    private BigDecimal actualFixedEmiAmount;
 
     private final BigDecimal maxOutstandingBalance;
 
@@ -194,6 +195,8 @@ public final class LoanApplicationTerms {
     private final boolean isSubsidyApplicable;
 
     private final HolidayDetailDTO holidayDetailDTO;
+    
+    private Money totalInterestForGlim;
 
     public static LoanApplicationTerms assembleFrom(final ApplicationCurrency currency, final Integer loanTermFrequency,
             final PeriodFrequencyType loanTermPeriodFrequencyType, final Integer numberOfRepayments, final Integer repaymentEvery,
@@ -1587,4 +1590,20 @@ public final class LoanApplicationTerms {
         return this.isSubsidyApplicable;
     }
 
+    
+    public void setActualFixedEmiAmount(final BigDecimal actualFixedEmiAmount) {
+        this.actualFixedEmiAmount = actualFixedEmiAmount;
+    }
+
+    public void updateTotalInterestDueForGlim(List<GroupLoanIndividualMonitoring> glimList) {
+        Money totalInterestDueForGlim = Money.zero(getCurrency());
+        for (GroupLoanIndividualMonitoring glim : glimList) {
+            totalInterestDueForGlim = totalInterestDueForGlim.plus(glim.getInterestAmount());
+        }
+        this.totalInterestForGlim = totalInterestDueForGlim;
+    }
+    
+    public Money getTotalInterestForGlim() {
+        return this.totalInterestForGlim;
+    }
 }

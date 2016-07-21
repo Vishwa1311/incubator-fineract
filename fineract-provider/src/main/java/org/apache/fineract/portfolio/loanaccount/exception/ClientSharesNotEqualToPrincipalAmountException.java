@@ -16,13 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
+package org.apache.fineract.portfolio.loanaccount.exception;
 
-public class ChargesApiConstants {
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
-    
-
+public class ClientSharesNotEqualToPrincipalAmountException extends
+		AbstractPlatformDomainRuleException {
+	public ClientSharesNotEqualToPrincipalAmountException() {
+		super(
+				"error.msg.glim.sum.of.each.clients.share.must.be.equal.to.principal.amount",
+				"Sum of each clients share must be equal to principal amount.");
+		// TODO Auto-generated constructor stub
+	}
 }

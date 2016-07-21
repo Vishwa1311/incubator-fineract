@@ -114,6 +114,9 @@ public class Charge extends AbstractPersistable<Long> {
     @JoinColumn(name = "tax_group_id")
     private TaxGroup taxGroup;
 
+    @Column(name = "emi_rounding_goalseek", nullable = false)
+    private boolean emiRoundingGoalSeek = false;
+
     public static Charge fromJson(final JsonCommand command, final GLAccount account, final TaxGroup taxGroup) {
 
         final String name = command.stringValueOfParameterNamed("name");
@@ -135,9 +138,10 @@ public class Charge extends AbstractPersistable<Long> {
         final BigDecimal minCap = command.bigDecimalValueOfParameterNamed("minCap");
         final BigDecimal maxCap = command.bigDecimalValueOfParameterNamed("maxCap");
         final Integer feeFrequency = command.integerValueOfParameterNamed("feeFrequency");
+        final Boolean emiRoundingGoalSeek = command.booleanPrimitiveValueOfParameterNamed("emiRoundingGoalSeek");
 
         return new Charge(name, amount, currencyCode, chargeAppliesTo, chargeTimeType, chargeCalculationType, penalty, active, paymentMode,
-                feeOnMonthDay, feeInterval, minCap, maxCap, feeFrequency, account, taxGroup);
+                feeOnMonthDay, feeInterval, minCap, maxCap, feeFrequency, account, taxGroup, emiRoundingGoalSeek);
     }
 
     protected Charge() {
@@ -147,7 +151,7 @@ public class Charge extends AbstractPersistable<Long> {
     private Charge(final String name, final BigDecimal amount, final String currencyCode, final ChargeAppliesTo chargeAppliesTo,
             final ChargeTimeType chargeTime, final ChargeCalculationType chargeCalculationType, final boolean penalty,
             final boolean active, final ChargePaymentMode paymentMode, final MonthDay feeOnMonthDay, final Integer feeInterval,
-            final BigDecimal minCap, final BigDecimal maxCap, final Integer feeFrequency, final GLAccount account, final TaxGroup taxGroup) {
+            final BigDecimal minCap, final BigDecimal maxCap, final Integer feeFrequency, final GLAccount account, final TaxGroup taxGroup, boolean emiRoundingGoalSeek) {
         this.name = name;
         this.amount = amount;
         this.currencyCode = currencyCode;
@@ -159,6 +163,7 @@ public class Charge extends AbstractPersistable<Long> {
         this.account = account;
         this.taxGroup = taxGroup;
         this.chargePaymentMode = paymentMode == null ? null : paymentMode.getValue();
+        this.emiRoundingGoalSeek = emiRoundingGoalSeek;
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("charges");
@@ -202,10 +207,10 @@ public class Charge extends AbstractPersistable<Long> {
                         .failWithCodeNoParameterAddedToErrorCode("not.allowed.charge.time.for.loan");
             }
         }
-        if (isPercentageOfApprovedAmount()) {
+        //if (isPercentageOfApprovedAmount()) {
             this.minCap = minCap;
             this.maxCap = maxCap;
-        }
+        //}
 
         if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }
     }
@@ -475,8 +480,15 @@ public class Charge extends AbstractPersistable<Long> {
             actualChanges.put(activeParamName, newValue);
             this.active = newValue;
         }
+        
+        final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
+        if (command.isChangeInBooleanParameterNamed(activeParamName, this.emiRoundingGoalSeek)) {
+            final boolean newValue = command.booleanPrimitiveValueOfParameterNamed(emiRoundingGoalSeekParamName);
+            actualChanges.put(emiRoundingGoalSeekParamName, newValue);
+            this.active = newValue;
+        }
         // allow min and max cap to be only added to PERCENT_OF_AMOUNT for now
-        if (isPercentageOfApprovedAmount()) {
+        if (isPercentageOfApprovedAmount() || isPercentageOfDisbursementAmount()) {
             final String minCapParamName = "minCap";
             if (command.isChangeInBigDecimalParameterNamed(minCapParamName, this.minCap)) {
                 final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(minCapParamName);
@@ -546,7 +558,7 @@ public class Charge extends AbstractPersistable<Long> {
         final CurrencyData currency = new CurrencyData(this.currencyCode, null, 0, 0, null, null);
         return ChargeData.instance(getId(), this.name, this.amount, currency, chargeTimeType, chargeAppliesTo, chargeCalculationType,
                 chargePaymentmode, getFeeOnMonthDay(), this.feeInterval, this.penalty, this.active, this.minCap, this.maxCap,
-                feeFrequencyType, accountData, taxGroupData);
+                feeFrequencyType, accountData, taxGroupData, this.emiRoundingGoalSeek);
     }
 
     public Integer getChargePaymentMode() {
@@ -621,4 +633,13 @@ public class Charge extends AbstractPersistable<Long> {
     public void setTaxGroup(TaxGroup taxGroup) {
         this.taxGroup = taxGroup;
     }
+
+    public boolean isEmiRoundingGoalSeek() {
+        return this.emiRoundingGoalSeek;
+    }
+
+    public void setEmiRoundingGoalSeek(boolean emiRoundingGoalSeek) {
+        this.emiRoundingGoalSeek = emiRoundingGoalSeek;
+    }
+    
 }

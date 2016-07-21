@@ -71,6 +71,8 @@ public class LoanRepaymentScheduleProcessingWrapper {
             final Money totalInterest, boolean isInstallmentChargeApplicable) {
 
         Money cumulative = Money.zero(monetaryCurrency);
+        Money totalLoanCharge = Money.zero(monetaryCurrency);
+        Integer numberOfRepayments = null;
 
         for (final LoanCharge loanCharge : loanCharges) {
             if (loanCharge.isFeeCharge() && !loanCharge.isDueAtDisbursement()) {
@@ -82,11 +84,19 @@ public class LoanRepaymentScheduleProcessingWrapper {
                                     period.getInterestCharged(monetaryCurrency).getAmount());
                         } else if (loanCharge.getChargeCalculation().isPercentageOfInterest()) {
                             amount = amount.add(period.getInterestCharged(monetaryCurrency).getAmount());
+                        } else if (loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
+                            numberOfRepayments = loanCharge.getLoan().fetchNumberOfInstallmensAfterExceptions();
+                            totalLoanCharge = totalLoanCharge.plus(loanCharge.amount()); 
                         } else {
                             amount = amount.add(period.getPrincipal(monetaryCurrency).getAmount());
                         }
-                        BigDecimal loanChargeAmt = amount.multiply(loanCharge.getPercentage()).divide(BigDecimal.valueOf(100));
-                        cumulative = cumulative.plus(loanChargeAmt);
+                        if (loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
+                            BigDecimal loanChargeAmount = BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfRepayments);
+                            cumulative = cumulative.plus(loanChargeAmount);
+                        } else {
+                            BigDecimal loanChargeAmt = amount.multiply(loanCharge.getPercentage()).divide(BigDecimal.valueOf(100));
+                            cumulative = cumulative.plus(loanChargeAmt);
+                        }
                     } else {
                         cumulative = cumulative.plus(loanCharge.amountOrPercentage());
                     }
@@ -109,6 +119,13 @@ public class LoanRepaymentScheduleProcessingWrapper {
                 } else if (loanCharge.isDueForCollectionFromAndUpToAndIncluding(periodStart, periodEnd)) {
                     cumulative = cumulative.plus(loanCharge.amount());
                 }
+            }
+        }
+        
+        if (numberOfRepayments != null && isLastRepaymentPeriod(numberOfRepayments, period.getInstallmentNumber())) {
+            Money totalFees = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
+            if (totalFees.compareTo(totalLoanCharge) != BigDecimal.ZERO.intValue()) {
+                cumulative = cumulative.minus((totalFees.minus(totalLoanCharge)));
             }
         }
 
@@ -162,6 +179,8 @@ public class LoanRepaymentScheduleProcessingWrapper {
             final Money totalPrincipal, final Money totalInterest, boolean isInstallmentChargeApplicable) {
 
         Money cumulative = Money.zero(currency);
+        Money totalLoanCharge = Money.zero(currency);
+        Integer numberOfRepayments = null;
 
         for (final LoanCharge loanCharge : loanCharges) {
             if (loanCharge.isPenaltyCharge()) {
@@ -173,11 +192,19 @@ public class LoanRepaymentScheduleProcessingWrapper {
                                     period.getInterestCharged(currency).getAmount());
                         } else if (loanCharge.getChargeCalculation().isPercentageOfInterest()) {
                             amount = amount.add(period.getInterestCharged(currency).getAmount());
+                        } else if (loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
+                            numberOfRepayments = loanCharge.getLoan().fetchNumberOfInstallmensAfterExceptions();
+                            totalLoanCharge = totalLoanCharge.plus(loanCharge.amount()); 
                         } else {
                             amount = amount.add(period.getPrincipal(currency).getAmount());
                         }
-                        BigDecimal loanChargeAmt = amount.multiply(loanCharge.getPercentage()).divide(BigDecimal.valueOf(100));
-                        cumulative = cumulative.plus(loanChargeAmt);
+                        if (loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
+                            BigDecimal loanChargeAmount = BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfRepayments);
+                            cumulative = cumulative.plus(loanChargeAmount);
+                        } else {
+                            BigDecimal loanChargeAmt = amount.multiply(loanCharge.getPercentage()).divide(BigDecimal.valueOf(100));
+                            cumulative = cumulative.plus(loanChargeAmt);
+                        }
                     } else {
                         cumulative = cumulative.plus(loanCharge.amountOrPercentage());
                     }
@@ -200,6 +227,13 @@ public class LoanRepaymentScheduleProcessingWrapper {
                 } else if (loanCharge.isDueForCollectionFromAndUpToAndIncluding(periodStart, periodEnd)) {
                     cumulative = cumulative.plus(loanCharge.amount());
                 }
+            }
+        }
+        
+        if (numberOfRepayments != null && isLastRepaymentPeriod(numberOfRepayments, period.getInstallmentNumber())) {
+            Money totalFees = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
+            if (totalFees.compareTo(totalLoanCharge) != BigDecimal.ZERO.intValue()) {
+                cumulative = cumulative.minus((totalFees.minus(totalLoanCharge)));
             }
         }
 
@@ -246,5 +280,9 @@ public class LoanRepaymentScheduleProcessingWrapper {
         }
 
         return cumulative;
+    }
+    
+    protected final boolean isLastRepaymentPeriod(final int numberOfRepayments, final int periodNumber) {
+        return periodNumber == numberOfRepayments;
     }
 }

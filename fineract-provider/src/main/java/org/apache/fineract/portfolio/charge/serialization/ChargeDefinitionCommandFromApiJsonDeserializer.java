@@ -56,7 +56,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
     private final Set<String> supportedParameters = new HashSet<>(Arrays.asList("name", "amount", "locale", "currencyCode",
             "currencyOptions", "chargeAppliesTo", "chargeTimeType", "chargeCalculationType", "chargeCalculationTypeOptions", "penalty",
             "active", "chargePaymentMode", "feeOnMonthDay", "feeInterval", "monthDayFormat", "minCap", "maxCap", "feeFrequency",
-            ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName));
+            ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName, ChargesApiConstants.emiRoundingGoalSeekParamName));
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -211,6 +211,12 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             baseDataValidator.reset().parameter("penalty").value(penalty).notNull();
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ChargesApiConstants.emiRoundingGoalSeekParamName, element)) {
+            final Boolean emiRoundingGoalSeek = this.fromApiJsonHelper.extractBooleanNamed(
+                    ChargesApiConstants.emiRoundingGoalSeekParamName, element);
+            baseDataValidator.reset().parameter(ChargesApiConstants.emiRoundingGoalSeekParamName).value(emiRoundingGoalSeek).notNull();
+        }
+        
         if (this.fromApiJsonHelper.parameterExists("active", element)) {
             final Boolean active = this.fromApiJsonHelper.extractBooleanNamed("active", element);
             baseDataValidator.reset().parameter("active").value(active).notNull();
@@ -262,6 +268,12 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.parameterExists("minCap", element)) {
             final BigDecimal minCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed("minCap", element.getAsJsonObject());
             baseDataValidator.reset().parameter("minCap").value(minCap).notNull().positiveAmount();
+        }      
+
+
+        if (this.fromApiJsonHelper.parameterExists(ChargesApiConstants.emiRoundingGoalSeekParamName, element)) {
+            final Boolean emiRoundingGoalSeek = this.fromApiJsonHelper.extractBooleanNamed(ChargesApiConstants.emiRoundingGoalSeekParamName, element);
+            baseDataValidator.reset().parameter(ChargesApiConstants.emiRoundingGoalSeekParamName).value(emiRoundingGoalSeek).notNull();
         }
 
         if (this.fromApiJsonHelper.parameterExists("maxCap", element)) {
@@ -366,8 +378,10 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             baseDataValidator.reset().parameter("chargeCalculationType").value(chargeCalculationType)
                     .isOneOfTheseValues(ChargeCalculationType.validValuesForTrancheDisbursement());
         } else {
-            baseDataValidator.reset().parameter("chargeCalculationType").value(chargeCalculationType)
-                    .isNotOneOfTheseValues(ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT.getValue());
+        	if(chargeTimeType != ChargeTimeType.INSTALMENT_FEE.getValue()){
+        		baseDataValidator.reset().parameter("chargeCalculationType").value(chargeCalculationType)
+                .isNotOneOfTheseValues(ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT.getValue());
+        	}
         }
     }
 

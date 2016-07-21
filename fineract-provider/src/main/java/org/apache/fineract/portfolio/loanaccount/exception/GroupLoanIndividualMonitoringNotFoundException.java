@@ -16,13 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.api;
+package org.apache.fineract.portfolio.loanaccount.exception;
 
-public class ChargesApiConstants {
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformResourceNotFoundException;
 
-    public static final String glAccountIdParamName = "incomeAccountId";
-    public static final String taxGroupIdParamName = "taxGroupId";
-    public static final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
-    
+@SuppressWarnings("serial")
+public class GroupLoanIndividualMonitoringNotFoundException extends
+		AbstractPlatformResourceNotFoundException {
+
+	public GroupLoanIndividualMonitoringNotFoundException(final Long id) {
+		super("error.msg.glim.id.invalid",
+				"Group Loan individual record with identifier " + id
+						+ " does not exist", id);
+	}
 
 }

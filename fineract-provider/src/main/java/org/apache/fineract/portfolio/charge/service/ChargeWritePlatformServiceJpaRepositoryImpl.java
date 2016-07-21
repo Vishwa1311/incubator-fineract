@@ -177,6 +177,13 @@ public class ChargeWritePlatformServiceJpaRepositoryImpl implements ChargeWriteP
                 }
                 chargeForUpdate.setTaxGroup(taxGroup);
             }
+            
+			if (changes
+					.containsKey(ChargesApiConstants.emiRoundingGoalSeekParamName)) {
+				boolean emiRoundingGoalSeek = command
+						.booleanPrimitiveValueOfParameterNamed(ChargesApiConstants.emiRoundingGoalSeekParamName);
+				chargeForUpdate.setEmiRoundingGoalSeek(emiRoundingGoalSeek);
+			}
 
             if (!changes.isEmpty()) {
                 this.chargeRepository.save(chargeForUpdate);
