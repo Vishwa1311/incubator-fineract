@@ -3156,4 +3156,12 @@ public class CommandWrapperBuilder {
         this.href = "/loanapplicationreferences/" + loanApplicationReferenceId;
         return this;
     }
+
+    public CommandWrapperBuilder createGlimRepaymentTransaction(final Long loanId) {
+        this.actionName = "REPAYMENT";
+        this.entityName = "GLIMTRANSACTION";
+        this.href = "/glim/" + loanId + "/transactions";
+        this.loanId = loanId;
+        return this;
+    }
 }

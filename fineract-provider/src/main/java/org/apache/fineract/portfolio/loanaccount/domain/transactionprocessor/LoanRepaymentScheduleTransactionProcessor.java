@@ -18,12 +18,14 @@
  */
 package org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
@@ -51,5 +53,7 @@ public interface LoanRepaymentScheduleTransactionProcessor {
 
     void handleRefund(LoanTransaction loanTransaction, MonetaryCurrency currency, List<LoanRepaymentScheduleInstallment> installments,
             final Set<LoanCharge> charges);
+
+    void handleGLIMRepayment(GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction, BigDecimal individualTransactionAmount);
 
 }

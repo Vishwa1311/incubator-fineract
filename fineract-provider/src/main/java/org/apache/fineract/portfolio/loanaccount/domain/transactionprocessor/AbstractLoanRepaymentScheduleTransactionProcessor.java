@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,8 +29,12 @@ import java.util.Set;
 
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidDetail;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoring;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringTransaction;
+import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidBy;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInstallmentCharge;
@@ -627,4 +632,44 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
         return latestPaidCharge;
     }
 
+    /**
+     * Invoked when a there is a glim repayment for an active loan
+     * 
+     * Splits the total transaction amount of an individual into principal,
+     * interest, fees and penalties of this transaction based on the repayment
+     * strategy
+     * 
+     */
+    @Override
+    public void handleGLIMRepayment(GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction, BigDecimal individualTransactionAmount) {
+        final RoundingMode roundingMode = MoneyHelper.getRoundingMode();
+        // final MathContext mc = new MathContext(0, RoundingMode.HALF_EVEN);
+        final LoanTransaction loanTransaction = groupLoanIndividualMonitoringTransaction.getLoanTransaction();
+        final GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = groupLoanIndividualMonitoringTransaction
+                .getGroupLoanIndividualMonitoring();
+        Loan loan = loanTransaction.getLoan();
+        MonetaryCurrency currency = loan.getCurrency();
+        Money installmentAmount = Money.of(currency, groupLoanIndividualMonitoring.getInstallmentAmount());
+        Money feeAmount = Money.of(currency, groupLoanIndividualMonitoring.getChargeAmount());
+        Money interestAmount = Money.of(currency, groupLoanIndividualMonitoring.getInterestAmount());
+        Money penaltyAmount = Money.zero(currency);
+        Money individualAmount = Money.of(currency, individualTransactionAmount);
+        Integer numberOfInstallments = loan.repaymentScheduleDetail().getNumberOfRepayments();
+
+        Money feePortion = Money.of(currency, (feeAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode).getAmount()
+                .setScale(0, RoundingMode.HALF_EVEN)));
+        Money penaltyPortion = Money.of(currency, (penaltyAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode)
+                .getAmount().setScale(0, RoundingMode.HALF_EVEN)));
+
+        Money interestPortion = Money.of(currency, (interestAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode)
+                .getAmount().setScale(0, RoundingMode.HALF_EVEN)));
+        Money chargePortion = feePortion.plus(penaltyPortion);
+        Money principalPortion = installmentAmount.minus(chargePortion).minus(interestPortion);
+        handleGLIMRepaymentInstallment(groupLoanIndividualMonitoringTransaction, individualAmount, principalPortion, interestPortion,
+                feePortion, penaltyPortion);
+    }
+
+    protected abstract void handleGLIMRepaymentInstallment(
+            GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction, Money installmentAmount,
+            Money principalPortion, Money interestPortion, Money feePortion, Money penaltyPortion);
 }
