@@ -82,4 +82,7 @@ public class GroupLoanIndividualMonitoringData {
                 totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount);
     }
 
+    public BigDecimal getInstallmentAmount() {
+        return this.installmentAmount;
+    }
 }

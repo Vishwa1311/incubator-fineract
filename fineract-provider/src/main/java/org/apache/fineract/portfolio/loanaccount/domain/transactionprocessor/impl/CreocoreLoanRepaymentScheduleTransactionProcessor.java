@@ -22,11 +22,13 @@ import java.util.List;
 
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionToRepaymentScheduleMapping;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.AbstractLoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
+import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
 import org.joda.time.LocalDate;
 
 /**
@@ -185,5 +187,41 @@ public class CreocoreLoanRepaymentScheduleTransactionProcessor extends AbstractL
                     interestPortion, feeChargesPortion, penaltyChargesPortion));
         }
         return transactionAmountRemaining;
+    }
+
+    @Override
+    protected void handleGLIMRepaymentInstallment(GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction,
+            Money installmentAmount, Money principalPortion, Money interestPortion, Money feeChargesPortion, Money penaltyChargesPortion) {
+
+        Money transactionAmountUnprocessed = installmentAmount;
+        Money transactionAmountRemaining = transactionAmountUnprocessed;
+        final MonetaryCurrency currency = transactionAmountUnprocessed.getCurrency();
+        Money tempPrincipalPortion = Money.zero(currency);
+        Money tempInterestPortion = Money.zero(currency);
+        Money tempFeeChargesPortion = Money.zero(currency);
+        Money tempPenaltyChargesPortion = Money.zero(currency);
+
+        if (transactionAmountRemaining.isGreaterThanZero()) {
+            tempPenaltyChargesPortion = LoanUtilService.deductGivenComponent(transactionAmountRemaining, penaltyChargesPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(penaltyChargesPortion);
+        }
+
+        if (transactionAmountRemaining.isGreaterThanZero()) {
+            tempFeeChargesPortion = LoanUtilService.deductGivenComponent(transactionAmountRemaining, feeChargesPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(feeChargesPortion);
+        }
+
+        if (transactionAmountRemaining.isGreaterThanZero()) {
+            tempInterestPortion = LoanUtilService.deductGivenComponent(transactionAmountRemaining, interestPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(interestPortion);
+        }
+
+        if (transactionAmountRemaining.isGreaterThanZero()) {
+            tempPrincipalPortion = LoanUtilService.deductGivenComponent(transactionAmountRemaining, principalPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(principalPortion);
+        }
+        groupLoanIndividualMonitoringTransaction = GroupLoanIndividualMonitoringTransaction.instance(
+                groupLoanIndividualMonitoringTransaction, tempPrincipalPortion.getAmount(), tempInterestPortion.getAmount(),
+                tempFeeChargesPortion.getAmount(), tempPenaltyChargesPortion.getAmount(), installmentAmount.getAmount());
     }
 }
