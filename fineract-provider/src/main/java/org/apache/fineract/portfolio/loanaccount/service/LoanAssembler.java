@@ -183,6 +183,7 @@ public class LoanAssembler {
         final Boolean syncDisbursementWithMeeting = this.fromApiJsonHelper.extractBooleanNamed("syncDisbursementWithMeeting", element);
         final Boolean createStandingInstructionAtDisbursement = this.fromApiJsonHelper.extractBooleanNamed(
                 "createStandingInstructionAtDisbursement", element);
+        final Boolean isGlimLoan = this.fromApiJsonHelper.parameterExists(LoanApiConstants.clientMembersParamName, element);
 
         final LoanProduct loanProduct = this.loanProductRepository.findOne(productId);
         if (loanProduct == null) { throw new LoanProductNotFoundException(productId); }
@@ -309,9 +310,9 @@ public class LoanAssembler {
         final boolean allowTransactionsOnNonWorkingDay = this.configurationDomainService.allowTransactionsOnNonWorkingDayEnabled();
         final boolean allowTransactionsOnHoliday = this.configurationDomainService.allowTransactionsOnHolidayEnabled();
         final LoanScheduleModel loanScheduleModel = this.loanScheduleAssembler.assembleLoanScheduleFrom(loanApplicationTerms,
-                isHolidayEnabled, holidays, workingDays, element,disbursementDetails, glimList);
+                isHolidayEnabled, holidays, workingDays, element,disbursementDetails, glimList, loanApplication);
         loanApplication.loanApplicationSubmittal(currentUser, loanScheduleModel, loanApplicationTerms, defaultLoanLifecycleStateMachine(),
-                submittedOnDate, externalId, allowTransactionsOnHoliday, holidays, workingDays, allowTransactionsOnNonWorkingDay);
+                submittedOnDate, externalId, allowTransactionsOnHoliday, holidays, workingDays, allowTransactionsOnNonWorkingDay, isGlimLoan);
         
         loanApplication.updateGlim(glimList);
         return loanApplication;
