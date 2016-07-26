@@ -85,4 +85,22 @@ public class GroupLoanIndividualMonitoringData {
     public BigDecimal getInstallmentAmount() {
         return this.installmentAmount;
     }
+
+	public BigDecimal getChargeAmount() {
+		return this.chargeAmount;
+	}
+
+	public void setChargeAmount(BigDecimal chargeAmount) {
+		this.chargeAmount = chargeAmount;
+	}
+
+	public BigDecimal getInterestAmount() {
+		return this.interestAmount;
+	}
+
+	public void setInterestAmount(BigDecimal interestAmount) {
+		this.interestAmount = interestAmount;
+	}
+    
+    
 }
