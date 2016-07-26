@@ -1,6 +1,7 @@
 package org.apache.fineract.portfolio.loanaccount.api;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.Collection;
 
 import javax.ws.rs.Consumes;
@@ -21,9 +22,14 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSerializationSettings;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
 import org.apache.fineract.portfolio.loanaccount.data.GroupLoanIndividualMonitoringData;
 import org.apache.fineract.portfolio.loanaccount.data.GroupLoanIndividualMonitoringTransactionData;
+import org.apache.fineract.portfolio.loanaccount.data.LoanAccountData;
+import org.apache.fineract.portfolio.loanaccount.domain.Loan;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.service.GroupLoanIndividualMonitoringReadPlatformService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanReadPlatformService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -38,18 +44,21 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
     private final DefaultToApiJsonSerializer<GroupLoanIndividualMonitoringTransactionData> toApiJsonSerializer;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
     private final GroupLoanIndividualMonitoringReadPlatformService groupLoanIndividualMonitoringReadPlatformService;
+    private final LoanRepositoryWrapper loanRepositoryWrapper;
 
     @Autowired
     public GroupLoanIndividualMonitoringTransactionApiResource(final PlatformSecurityContext context,
             final ApiRequestParameterHelper apiRequestParameterHelper,
             final DefaultToApiJsonSerializer<GroupLoanIndividualMonitoringTransactionData> toApiJsonSerializer,
             final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService,
-            final GroupLoanIndividualMonitoringReadPlatformService groupLoanIndividualMonitoringReadPlatformService) {
+            final GroupLoanIndividualMonitoringReadPlatformService groupLoanIndividualMonitoringReadPlatformService,
+            final LoanRepositoryWrapper loanRepositoryWrapper) {
         this.context = context;
         this.apiRequestParameterHelper = apiRequestParameterHelper;
         this.toApiJsonSerializer = toApiJsonSerializer;
         this.commandsSourceWritePlatformService = commandsSourceWritePlatformService;
         this.groupLoanIndividualMonitoringReadPlatformService = groupLoanIndividualMonitoringReadPlatformService;
+        this.loanRepositoryWrapper =loanRepositoryWrapper;
     }
 
     @GET
@@ -60,8 +69,12 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
         BigDecimal transactionAmount = BigDecimal.ZERO;
         Collection<GroupLoanIndividualMonitoringData> groupLoanIndividualMonitoringData = this.groupLoanIndividualMonitoringReadPlatformService
                 .retrieveAllByLoanId(loanId);
+        Loan loan = this.loanRepositoryWrapper.findOneWithNotFoundDetection(loanId);
+        BigDecimal numberOfRepayment = BigDecimal.valueOf(Long.valueOf(loan.getLoanProductRelatedDetail().getNumberOfRepayments().toString()));
         for (GroupLoanIndividualMonitoringData groupLoanIndividualMonitoringDetail : groupLoanIndividualMonitoringData) {
             transactionAmount = transactionAmount.add(groupLoanIndividualMonitoringDetail.getInstallmentAmount());
+            groupLoanIndividualMonitoringDetail.setInterestAmount(BigDecimal.valueOf(groupLoanIndividualMonitoringDetail.getInterestAmount().doubleValue()/numberOfRepayment.doubleValue()).setScale(2, BigDecimal.ROUND_HALF_UP));  
+            groupLoanIndividualMonitoringDetail.setChargeAmount(BigDecimal.valueOf(groupLoanIndividualMonitoringDetail.getChargeAmount().doubleValue()/numberOfRepayment.doubleValue()).setScale(2, BigDecimal.ROUND_HALF_UP));
         }
         final GroupLoanIndividualMonitoringTransactionData groupLoanIndividualMonitoringTransactionData = new GroupLoanIndividualMonitoringTransactionData(
                 transactionAmount, groupLoanIndividualMonitoringData);

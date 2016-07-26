@@ -13,6 +13,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonit
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
+import org.apache.fineract.portfolio.loanaccount.exception.ClientInstallmentNotEqualToTransactionAmountException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -42,20 +43,26 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
             final LoanTransaction loanTransaction) {
         Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = new ArrayList<>();
         BigDecimal individualTransactionAmount = BigDecimal.ZERO;
+        BigDecimal totalInstallmentAmount = BigDecimal.ZERO;
+        BigDecimal transactionAmount =  command.bigDecimalValueOfParameterNamed(LoanApiConstants.transactionAmountParamName);
         if (command.hasParameter(LoanApiConstants.clientMembersParamName)) {
             final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
                     .determineProcessor(loanTransaction.getLoan().transactionProcessingStrategy());
             JsonArray clientMembers = command.arrayOfParameterNamed(LoanApiConstants.clientMembersParamName);
             for (JsonElement clientMember : clientMembers) {
                 JsonObject member = clientMember.getAsJsonObject();
-                Long glimId = member.get(LoanApiConstants.glimIdParamName).getAsLong();
-                individualTransactionAmount = member.get(LoanApiConstants.transactionAmountParamName).getAsBigDecimal();
+                Long glimId = member.get(LoanApiConstants.idParameterName).getAsLong();
+                individualTransactionAmount = member.get(LoanApiConstants.installmentAmountParamName).getAsBigDecimal();
+                totalInstallmentAmount = totalInstallmentAmount.add(individualTransactionAmount);
                 GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = this.groupLoanIndividualMonitoringRepositoryWrapper
                         .findOneWithNotFoundDetection(glimId);
                 GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction = GroupLoanIndividualMonitoringTransaction
                         .instance(groupLoanIndividualMonitoring, loanTransaction);
                 loanRepaymentScheduleTransactionProcessor.handleGLIMRepayment(groupLoanIndividualMonitoringTransaction, individualTransactionAmount);
                 glimTransactions.add(groupLoanIndividualMonitoringTransaction);
+            }
+            if(totalInstallmentAmount.compareTo(transactionAmount)!=0){
+            	throw new ClientInstallmentNotEqualToTransactionAmountException();
             }
         }
         return glimTransactions;
