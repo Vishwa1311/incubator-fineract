@@ -199,19 +199,6 @@ public class GroupLoanIndividualMonitoringAssembler {
 
     public void adjustRoundOffValuesToApplicableCharges(Set<LoanCharge> loanCharges, Integer numberOfRepayment,
             List<GroupLoanIndividualMonitoring> glimList) {
-    	for(LoanCharge loanCharge : loanCharges){
-    		BigDecimal glimCharge = BigDecimal.ZERO;
-			for (final GroupLoanIndividualMonitoring glim : glimList) {
-				Set<GroupLoanIndividualMonitoringCharge> clientCharges = glim.getGroupLoanIndividualMonitoringCharges();
-				for (GroupLoanIndividualMonitoringCharge glimChar : clientCharges) {
-					if (loanCharge.getCharge().getId().equals(glimChar.getCharge().getId())) {
-						glimCharge = glimCharge.add(glimChar.getFeeAmount());
-					}
-				}
-			}
-    		loanCharge.updateAmount(glimCharge);
-    		glimCharge = BigDecimal.ZERO;
-    	}
         for (final GroupLoanIndividualMonitoring glim : glimList) {
             if (glim.isClientSelected()) {
                 BigDecimal totalCharge = BigDecimal.ZERO;
@@ -391,14 +378,14 @@ public class GroupLoanIndividualMonitoringAssembler {
         return pmt;
     }
     
-    /*public BigDecimal calculateInstallmentAmount(BigDecimal installmentAmount, final BigDecimal totalFeeCharges, final Integer numberOfRepayments) {
+    public BigDecimal calculateInstallmentAmount(BigDecimal installmentAmount, final BigDecimal totalFeeCharges, final Integer numberOfRepayments) {
         BigDecimal feePerInstallment = BigDecimal.ZERO;
         if (installmentAmount != null) {
             feePerInstallment = BigDecimal.valueOf(totalFeeCharges.doubleValue() / numberOfRepayments.doubleValue());
             installmentAmount = installmentAmount.subtract(feePerInstallment);
         }
         return installmentAmount;
-    }*/
+    }
     
     // update EMI amount for Glim Loan
     public void updateInstallmentAmount(List<GroupLoanIndividualMonitoring> glimList, LoanApplicationTerms loanApplicationTerms) {
@@ -412,7 +399,8 @@ public class GroupLoanIndividualMonitoringAssembler {
                     totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getFeeAmount());
                 }
             }
-            installmentAmount = installmentAmount.add(glim.getInstallmentAmount());
+            installmentAmount = installmentAmount.add(calculateInstallmentAmount(glim.getInstallmentAmount(), totalFeeCharges,
+                    loanApplicationTerms.getNumberOfRepayments()));
         }
         if (installmentAmount.compareTo(BigDecimal.ZERO) == 1) {
             loanApplicationTerms.setFixedEmiAmount(installmentAmount);

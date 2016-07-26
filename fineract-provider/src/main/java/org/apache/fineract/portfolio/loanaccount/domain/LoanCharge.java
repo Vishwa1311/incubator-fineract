@@ -18,8 +18,6 @@
  */
 package org.apache.fineract.portfolio.loanaccount.domain;
 
-import static org.hamcrest.CoreMatchers.nullValue;
-
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
@@ -998,7 +996,6 @@ public class LoanCharge extends AbstractPersistable<Long> {
 
     public void updateAmount(final BigDecimal amount) {
         this.amount = amount;
-        this.amountOutstanding = this.amount;
         calculateOutstanding();
         if (!this.taxDetails.isEmpty()) {
             updateTotalAmount();
@@ -1253,13 +1250,5 @@ public class LoanCharge extends AbstractPersistable<Long> {
         if (this.amountSansTax != null && this.taxAmount != null) {
             this.amount = this.amountSansTax.add(this.taxAmount);
         }
-    }
-    
-    public void updateChargeCaliculationType(Integer chargeCaliculation){
-    	this.chargeCalculation = chargeCaliculation;
-    }
-    
-    public void updateAmountOrpercetageToNull(){
-    	this.amountOrPercentage = null;
     }
 }

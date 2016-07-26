@@ -1914,7 +1914,7 @@ public class Loan extends AbstractPersistable<Long> {
     public void loanApplicationSubmittal(final AppUser currentUser, final LoanScheduleModel loanSchedule,
             final LoanApplicationTerms loanApplicationTerms, final LoanLifecycleStateMachine lifecycleStateMachine,
             final LocalDate submittedOn, final String externalId, final boolean allowTransactionsOnHoliday, final List<Holiday> holidays,
-            final WorkingDays workingDays, final boolean allowTransactionsOnNonWorkingDay, final boolean isGlimLoan) {
+            final WorkingDays workingDays, final boolean allowTransactionsOnNonWorkingDay) {
 
         updateLoanSchedule(loanSchedule, currentUser);
 
@@ -1963,11 +1963,9 @@ public class Loan extends AbstractPersistable<Long> {
 
         // charges are optional
         int penaltyWaitPeriod = 0;
-		if (!isGlimLoan) {
-			for (final LoanCharge loanCharge : charges()) {
-				recalculateLoanCharge(loanCharge, penaltyWaitPeriod);
-			}
-		}
+        for (final LoanCharge loanCharge : charges()) {
+            recalculateLoanCharge(loanCharge, penaltyWaitPeriod);
+        }
 
         updateSummaryWithTotalFeeChargesDueAtDisbursement(deriveSumTotalOfChargesDueAtDisbursement());
 
