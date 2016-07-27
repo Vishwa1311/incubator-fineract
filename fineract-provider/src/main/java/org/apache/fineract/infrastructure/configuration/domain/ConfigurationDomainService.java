@@ -82,5 +82,7 @@ public interface ConfigurationDomainService {
     boolean isDailyTPTLimitEnabled();
     
     Long getDailyTPTLimit();
+
+    int getAdjustedAmountRoundingMode();
     
 }
