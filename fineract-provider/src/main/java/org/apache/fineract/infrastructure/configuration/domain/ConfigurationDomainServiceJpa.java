@@ -263,5 +263,11 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         return property.isEnabled();
     }
 
+    @Override
+    public boolean isForceLoanRepaymentFrequencyMatchWithMeetingFrequencyEnabled(){
+    	final String propertyName = "force-loan-repayment-frequency-match-with-meeting-frequency";
+    	 final GlobalConfigurationProperty property = this.globalConfigurationRepository.findOneByNameWithNotFoundDetection(propertyName);
+         return property.isEnabled();
+    }
   
 }

@@ -55,6 +55,7 @@ import org.apache.fineract.portfolio.calendar.domain.CalendarInstanceRepository;
 import org.apache.fineract.portfolio.calendar.domain.CalendarRepository;
 import org.apache.fineract.portfolio.calendar.domain.CalendarType;
 import org.apache.fineract.portfolio.calendar.exception.CalendarNotFoundException;
+import org.apache.fineract.portfolio.calendar.service.CalendarUtils;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.client.domain.AccountNumberGenerator;
 import org.apache.fineract.portfolio.client.domain.Client;
@@ -67,6 +68,7 @@ import org.apache.fineract.portfolio.collaterals.domain.Pledges;
 import org.apache.fineract.portfolio.collaterals.service.PledgeReadPlatformService;
 import org.apache.fineract.portfolio.common.BusinessEventNotificationConstants.BUSINESS_ENTITY;
 import org.apache.fineract.portfolio.common.BusinessEventNotificationConstants.BUSINESS_EVENTS;
+import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.common.service.BusinessEventNotifierService;
 import org.apache.fineract.portfolio.fund.domain.Fund;
 import org.apache.fineract.portfolio.group.domain.Group;
@@ -830,6 +832,17 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
 						repaymentsStartingFromDate, existingLoanApplication, expectedDisbursementDate);
 			}
 			
+			final AccountType loanType = AccountType.fromInt(existingLoanApplication.getLoanType());
+			if ((loanType.isJLGAccount() || loanType.isGroupAccount()) && calendar != null) {
+				final PeriodFrequencyType meetingPeriodFrequency = CalendarUtils
+						.getMeetingPeriodFrequencyType(calendar.getRecurrence());
+				final Integer repaymentFrequencyType = existingLoanApplication.getLoanProductRelatedDetail()
+						.getRepaymentPeriodFrequencyType().getValue();
+				final Integer repaymentEvery = existingLoanApplication.getLoanProductRelatedDetail().getRepayEvery();
+				this.loanScheduleAssembler.validateRepaymentFrequencyIsSameAsMeetingFrequency(
+						meetingPeriodFrequency.getValue(), repaymentFrequencyType,
+						CalendarUtils.getInterval(calendar.getRecurrence()), repaymentEvery);
+			}
 
             return new CommandProcessingResultBuilder() //
                     .withEntityId(loanId) //
