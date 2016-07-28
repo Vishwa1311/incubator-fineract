@@ -207,8 +207,8 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
         if (realCause.getMessage().contains("f_entity_address_UNIQUE")) {
             final Long addressTypeId = command.longValueOfParameterNamed(AddressApiConstants.addressTypesParamName);
             final CodeValue addressType = this.codeValueRepository.findOneWithNotFoundDetection(addressTypeId);
-            throw new PlatformDataIntegrityException("error.msg.address.type.duplicate",
-                    "Address type `" + addressType.label() + "` already exists", "addressType", addressType.label());
+            throw new PlatformDataIntegrityException("error.msg.address.type.duplicate", "Address type `" + addressType.label()
+                    + "` already exists", "addressType", addressType.label());
         }
 
         logAsErrorUnexpectedDataIntegrityException(dve);

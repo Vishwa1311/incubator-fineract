@@ -14,7 +14,7 @@ public class FamilyDetailsApiConstants {
     public static final String dateFormatParamName = "dateFormat";
 
     // Resource Name
-    public static final String FamilyDetail_RESOURCE_NAME = "familydetail";
+    public static final String FAMILY_DETAIL_RESOURCE_NAME = "familydetail";
 
     // Input Params
     public static final String idParamName = "id";
@@ -35,5 +35,7 @@ public class FamilyDetailsApiConstants {
             salutationParamName, firstnameParamName, middlenameParamName, lastnameParamName, relationshipParamName, genderIdParamName,
             genderParamName, dobParamName, ageParamName, localeParamName, occupationalDetailsParamName, educationParamName,
             dateFormatParamName, occupationDetailsIdParamName, salutationIdParamName, educationIdParamName, relationshipIdParamName));
+
+    public static final String familyMembersParamName = "familyMembers";
 
 }

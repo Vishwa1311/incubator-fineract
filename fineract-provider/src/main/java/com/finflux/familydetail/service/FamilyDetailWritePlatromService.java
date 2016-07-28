@@ -10,4 +10,6 @@ public interface FamilyDetailWritePlatromService {
     CommandProcessingResult updateFamilyDeatails(Long clientId, Long familyDetailId, JsonCommand command);
 
     CommandProcessingResult deleteFamilyDeatails(Long familyDetailId, Long clientId);
+    
+    void createOrUpdateFamilyDeatails(final Long clientId, final JsonCommand command);
 }

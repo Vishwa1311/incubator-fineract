@@ -60,7 +60,7 @@ public class FamilyDetailApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     public String retrieveFamilyDetailsTemplate(@Context final UriInfo uriInfo) {
 
-        this.platformSecurityContext.authenticatedUser().validateHasReadPermission(FamilyDetailsApiConstants.FamilyDetail_RESOURCE_NAME);
+        this.platformSecurityContext.authenticatedUser().validateHasReadPermission(FamilyDetailsApiConstants.FAMILY_DETAIL_RESOURCE_NAME);
 
         final FamilyDetailTemplateData familyDetailTemplateData = this.familyDetailsReadPlatformService.retrieveTemplate();
 
@@ -126,7 +126,7 @@ public class FamilyDetailApiResource {
     public String retrieveAll(@Context final UriInfo uriInfo, @PathParam("clientId") final Long clientId,
             @PathParam("familyDetailsId") final Long familyDetailsId) {
 
-        this.platformSecurityContext.authenticatedUser().validateHasReadPermission(FamilyDetailsApiConstants.FamilyDetail_RESOURCE_NAME);
+        this.platformSecurityContext.authenticatedUser().validateHasReadPermission(FamilyDetailsApiConstants.FAMILY_DETAIL_RESOURCE_NAME);
 
         final Collection<FamilyDetailData> familyDetailsData = this.familyDetailsReadPlatformService.retrieveAllFamilyDetails(clientId);
 

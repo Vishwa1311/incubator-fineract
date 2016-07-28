@@ -12,15 +12,15 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
-import org.apache.fineract.portfolio.loanaccount.domain.Loan;
-import org.apache.fineract.portfolio.loanaccount.exception.LoanApplicationDateException;
 import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.finflux.risk.existingloans.api.ExistingLoanApiConstants;
 import com.finflux.risk.existingloans.exception.ExistingLoanDateException;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
 @Component
@@ -33,20 +33,37 @@ public class ExistingLoanDataValidator {
         this.fromApiJsonHelper = fromApiJsonHelper;
     }
 
-    public void validateForCreate(final Long clientId,final String json) {
+    public void validateForCreate(final String json) {
 
         if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
-        if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
+
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json,
                 ExistingLoanApiConstants.EXISTING_LOAN_REQUEST_DATA_PARAMETERS);
-        final JsonElement element = this.fromApiJsonHelper.parse(json);
-        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
 
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
                 .resource(ExistingLoanApiConstants.EXISTINGLOAN_RESOURCE_NAME);
 
-         baseDataValidator.reset().parameter(ExistingLoanApiConstants.clientIdParamName).value(clientId).notBlank();
+        final JsonElement parentElement = this.fromApiJsonHelper.parse(json);
+        final JsonObject parentElementObj = parentElement.getAsJsonObject();
+
+        if (parentElement.isJsonObject()
+                && !this.fromApiJsonHelper.parameterExists(ExistingLoanApiConstants.existingLoansParamName, parentElement)) {
+            validateEachJsonObjectForCreate(parentElement.getAsJsonObject(), baseDataValidator);
+        } else if (this.fromApiJsonHelper.parameterExists(ExistingLoanApiConstants.existingLoansParamName, parentElement)) {
+            final JsonArray array = parentElementObj.get(ExistingLoanApiConstants.existingLoansParamName).getAsJsonArray();
+            if (array != null && array.size() > 0) {
+                for (int i = 0; i < array.size(); i++) {
+                    final JsonObject element = array.get(i).getAsJsonObject();
+                    validateEachJsonObjectForCreate(element, baseDataValidator);
+                }
+            }
+        }
+        throwExceptionIfValidationWarningsExist(dataValidationErrors);
+    }
+
+    private void validateEachJsonObjectForCreate(final JsonObject element, DataValidatorBuilder baseDataValidator) {
 
         if (this.fromApiJsonHelper.parameterExists(ExistingLoanApiConstants.loanApplicationIdParamName, element)) {
             final Long loanApplicationId = this.fromApiJsonHelper.extractLongNamed(ExistingLoanApiConstants.loanApplicationIdParamName,
@@ -179,32 +196,43 @@ public class ExistingLoanDataValidator {
         }
         final Integer archive = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ExistingLoanApiConstants.archiveParamName, element);
         baseDataValidator.reset().parameter(ExistingLoanApiConstants.archiveParamName).value(archive).integerGreaterThanZero().notNull();
-
-        throwExceptionIfValidationWarningsExist(dataValidationErrors);
-
     }
 
-    private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
-        if (!dataValidationErrors.isEmpty()) {
-            //
-            throw new PlatformApiDataValidationException(dataValidationErrors);
-        }
-    }
-
-    public void validateForUpdate(final Long clientId,final String json) {
+    public void validateForUpdate(final String json) {
 
         if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
 
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
         this.fromApiJsonHelper
                 .checkForUnsupportedParameters(typeOfMap, json, ExistingLoanApiConstants.EXISTING_LOAN_UPDATE_DATA_PARAMETERS);
-        final JsonElement element = this.fromApiJsonHelper.parse(json);
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
 
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
                 .resource(ExistingLoanApiConstants.EXISTINGLOAN_RESOURCE_NAME);
 
+        final JsonElement parentElement = this.fromApiJsonHelper.parse(json);
+        final JsonObject parentElementObj = parentElement.getAsJsonObject();
+        if (parentElement.isJsonObject()
+                && !this.fromApiJsonHelper.parameterExists(ExistingLoanApiConstants.existingLoansParamName, parentElement)) {
+            validateEachObjectForUpdate(parentElement.getAsJsonObject(), baseDataValidator);
+        } else if (this.fromApiJsonHelper.parameterExists(ExistingLoanApiConstants.existingLoansParamName, parentElement)) {
+            final JsonArray array = parentElementObj.get(ExistingLoanApiConstants.existingLoansParamName).getAsJsonArray();
+            if (array != null && array.size() > 0) {
+                for (int i = 0; i < array.size(); i++) {
+                    final JsonObject element = array.get(i).getAsJsonObject();
+                    validateEachObjectForUpdate(element, baseDataValidator);
+                }
+            }
+        }
+        throwExceptionIfValidationWarningsExist(dataValidationErrors);
+    }
+
+    private void validateEachObjectForUpdate(final JsonObject element, final DataValidatorBuilder baseDataValidator) {
+        
+        final Long id = this.fromApiJsonHelper.extractLongNamed(ExistingLoanApiConstants.idParamName, element);
+        baseDataValidator.reset().parameter(ExistingLoanApiConstants.idParamName).value(id).notBlank().longGreaterThanZero();
+        
         boolean atLeastOneParameterPassedForUpdate = false;
         if (this.fromApiJsonHelper.parameterExists(ExistingLoanApiConstants.loanApplicationIdParamName, element)) {
             atLeastOneParameterPassedForUpdate = true;
@@ -213,7 +241,6 @@ public class ExistingLoanDataValidator {
             baseDataValidator.reset().parameter(ExistingLoanApiConstants.loanApplicationIdParamName).value(loanApplicationId)
                     .integerGreaterThanZero();
         }
-        baseDataValidator.reset().parameter(ExistingLoanApiConstants.clientIdParamName).value(clientId).notBlank();
 
         if (this.fromApiJsonHelper.parameterExists(ExistingLoanApiConstants.loanIdParamName, element)) {
 
@@ -301,7 +328,7 @@ public class ExistingLoanDataValidator {
             baseDataValidator.reset().parameter(ExistingLoanApiConstants.repaymentFrequencyMultipleOfParamName)
                     .value(repaymentFrequencyMultipleOf).integerGreaterThanZero();
         }
-        
+
         if (this.fromApiJsonHelper.parameterExists(ExistingLoanApiConstants.externalLoanPurposeCvIdParamName, element)) {
             atLeastOneParameterPassedForUpdate = true;
             final Integer externalLoanPuropeseId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(
@@ -363,19 +390,20 @@ public class ExistingLoanDataValidator {
             final Object forceError = null;
             baseDataValidator.reset().anyOfNotNull(forceError);
         }
-
-        throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }
-    public void validateMaturityOnDate(final LocalDate disbursedDate,final LocalDate maturityDate ) {
-        
+
+    public void validateMaturityOnDate(final LocalDate disbursedDate, final LocalDate maturityDate) {
         String defaultUserMessage = "";
-        if(maturityDate!=null&& disbursedDate!=null)
-        if (maturityDate.isBefore(disbursedDate)) {
-            defaultUserMessage = "maturityDate cannot be before the disbursedDate.";
-            throw new ExistingLoanDateException("submitted.on.date.cannot.be.before.the.loan.product.start.date", defaultUserMessage,
-                    maturityDate.toString(), disbursedDate.toString());
-        }
-        
+        if (maturityDate != null && disbursedDate != null)
+            if (maturityDate.isBefore(disbursedDate)) {
+                defaultUserMessage = "maturityDate cannot be before the disbursedDate.";
+                throw new ExistingLoanDateException("submitted.on.date.cannot.be.before.the.loan.product.start.date", defaultUserMessage,
+                        maturityDate.toString(), disbursedDate.toString());
+            }
+    }
+
+    private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
+        if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }
     }
 
 }

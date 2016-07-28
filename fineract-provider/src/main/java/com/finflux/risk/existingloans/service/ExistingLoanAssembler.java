@@ -1,7 +1,8 @@
 package com.finflux.risk.existingloans.service;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
@@ -9,8 +10,6 @@ import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrappe
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.portfolio.client.domain.Client;
-import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
-import org.apache.fineract.useradministration.domain.AppUser;
 import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,47 +17,62 @@ import org.springframework.stereotype.Service;
 import com.finflux.risk.existingloans.api.ExistingLoanApiConstants;
 import com.finflux.risk.existingloans.data.ExistingLoanDataValidator;
 import com.finflux.risk.existingloans.domain.ExistingLoan;
-import com.finflux.risk.existingloans.domain.ExistingLoanRepository;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 @Service
 public class ExistingLoanAssembler {
 
     private final FromJsonHelper fromApiJsonHelper;
-    private final ExistingLoanRepository existingLoanRepository;
-    private final ClientRepositoryWrapper clientRepository;
     private final CodeValueRepositoryWrapper codeValueRepository;
     private final ExistingLoanDataValidator existingLoanDataValidator;
 
-
     @Autowired
-    public ExistingLoanAssembler(final FromJsonHelper fromApiJsonHelper, final ExistingLoanRepository existingLoanRepository,
-            ClientRepositoryWrapper clientRepository, final CodeValueRepositoryWrapper codeValueRepository,
-             final ExistingLoanDataValidator existingLoanDataValidator
-) {
+    public ExistingLoanAssembler(final FromJsonHelper fromApiJsonHelper, final CodeValueRepositoryWrapper codeValueRepository,
+            final ExistingLoanDataValidator existingLoanDataValidator) {
         this.fromApiJsonHelper = fromApiJsonHelper;
-        this.existingLoanRepository = existingLoanRepository;
-        this.clientRepository = clientRepository;
         this.codeValueRepository = codeValueRepository;
-        this.existingLoanDataValidator=existingLoanDataValidator;
+        this.existingLoanDataValidator = existingLoanDataValidator;
     }
 
-    public ExistingLoan assembleForSave(final Long clientId,final JsonCommand command) {
-        // ExistingLoan existingLoan =null;
-        final JsonElement element = command.parsedJson();
-        final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId);
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public List<ExistingLoan> assembleForSave(final Client client, final JsonCommand command) {
+
+        final List<ExistingLoan> existingLoans = new ArrayList();
+        final JsonElement parentElement = command.parsedJson();
+        final JsonObject parentElementObj = parentElement.getAsJsonObject();
+        if (parentElement.isJsonObject() && !command.parameterExists(ExistingLoanApiConstants.existingLoansParamName)) {
+            final ExistingLoan existingLoan = assembleCreateFormEachObject(client, parentElement.getAsJsonObject());
+            existingLoans.add(existingLoan);
+        } else if (command.parameterExists(ExistingLoanApiConstants.existingLoansParamName)) {
+            final JsonArray array = parentElementObj.get(ExistingLoanApiConstants.existingLoansParamName).getAsJsonArray();
+            if (array != null && array.size() > 0) {
+                for (int i = 0; i < array.size(); i++) {
+                    final JsonObject element = array.get(i).getAsJsonObject();
+                    final ExistingLoan existingLoan = assembleCreateFormEachObject(client, element);
+                    existingLoans.add(existingLoan);
+                }
+            }
+        }
+        return existingLoans;
+    }
+
+    private ExistingLoan assembleCreateFormEachObject(final Client client, final JsonObject element) {
+
         final Long loanApplicationId = this.fromApiJsonHelper.extractLongNamed("loanApplicationId", element);
+
         final Long loanId = this.fromApiJsonHelper.extractLongNamed("loanId", element);
 
         CodeValue sourceCvId = null;
-        final Long sourcecvId = command.longValueOfParameterNamed(ExistingLoanApiConstants.sourceCvIdParamName);
+        final Long sourcecvId = this.fromApiJsonHelper.extractLongNamed(ExistingLoanApiConstants.sourceCvIdParamName, element);
         if (sourcecvId != null) {
             sourceCvId = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ExistingLoanApiConstants.Source_Cv_Option,
                     sourcecvId);
         }
 
         CodeValue bureauCvId = null;
-        final Long bureaucvId = command.longValueOfParameterNamed(ExistingLoanApiConstants.bureauCvIdParamName);
+        final Long bureaucvId = this.fromApiJsonHelper.extractLongNamed(ExistingLoanApiConstants.bureauCvIdParamName, element);
         if (bureaucvId != null) {
             bureauCvId = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ExistingLoanApiConstants.Bureau_Cv_Option,
                     bureaucvId);
@@ -67,7 +81,7 @@ public class ExistingLoanAssembler {
         final Long bureauEnqRefId = this.fromApiJsonHelper.extractLongNamed("bureauEnqRefId", element);
 
         CodeValue lenderCvId = null;
-        final Long lendercvId = command.longValueOfParameterNamed(ExistingLoanApiConstants.lenderCvIdParamName);
+        final Long lendercvId = this.fromApiJsonHelper.extractLongNamed(ExistingLoanApiConstants.lenderCvIdParamName, element);
         if (lendercvId != null) {
             lenderCvId = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ExistingLoanApiConstants.Lender_Cv_Option,
                     lendercvId);
@@ -76,7 +90,7 @@ public class ExistingLoanAssembler {
         final String lenderNotListed = this.fromApiJsonHelper.extractStringNamed("lenderNotListed", element);
 
         CodeValue loanType = null;
-        final Long loanTypeId = command.longValueOfParameterNamed(ExistingLoanApiConstants.loanTypeCvIdParamName);
+        final Long loanTypeId = this.fromApiJsonHelper.extractLongNamed(ExistingLoanApiConstants.loanTypeCvIdParamName, element);
         if (loanTypeId != null) {
             loanType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ExistingLoanApiConstants.LoanType_Cv_Option,
                     loanTypeId);
@@ -102,7 +116,8 @@ public class ExistingLoanAssembler {
                 ExistingLoanApiConstants.installmentAmountParamName, element, locale);
 
         CodeValue externalLoanPurpose = null;
-        final Long externalPurposecvId = command.longValueOfParameterNamed(ExistingLoanApiConstants.externalLoanPurposeCvIdParamName);
+        final Long externalPurposecvId = this.fromApiJsonHelper.extractLongNamed(ExistingLoanApiConstants.externalLoanPurposeCvIdParamName,
+                element);
         if (externalPurposecvId != null) {
             externalLoanPurpose = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
                     ExistingLoanApiConstants.ExternalLoan_Purpose_Option, externalPurposecvId);
@@ -110,7 +125,7 @@ public class ExistingLoanAssembler {
         final Integer loanStatus = this.fromApiJsonHelper.extractIntegerNamed("loanStatusId", element, locale);
         final LocalDate disbursedDate = this.fromApiJsonHelper.extractLocalDateNamed("disbursedDate", element);
         final LocalDate maturityDate = this.fromApiJsonHelper.extractLocalDateNamed("maturityDate", element);
-        this.existingLoanDataValidator.validateMaturityOnDate(disbursedDate,maturityDate);
+        this.existingLoanDataValidator.validateMaturityOnDate(disbursedDate, maturityDate);
         final Integer gt0dpd3mths = this.fromApiJsonHelper.extractIntegerNamed("gt0dpd3mths", element, locale);
         final Integer dpd30mths12 = this.fromApiJsonHelper.extractIntegerNamed("dpd30mths12", element, locale);
         final Integer dpd30mths24 = this.fromApiJsonHelper.extractIntegerNamed("dpd30mths24", element, locale);
@@ -119,12 +134,9 @@ public class ExistingLoanAssembler {
         final String remark = this.fromApiJsonHelper.extractStringNamed("remark", element);
         final Integer archive = this.fromApiJsonHelper.extractIntegerNamed("archive", element, locale);
 
-        final ExistingLoan existingLoan = ExistingLoan.saveExistingLoan(client, loanApplicationId, loanId, sourceCvId, bureauCvId,
-                bureauEnqRefId, lenderCvId, lenderNotListed, loanType, amountBorrowed, currentOutstanding, amtOverdue, writtenoffamount,
-                loanTenure, loanTenurePeriodType, repaymentFrequency, repaymentFrequencyMultipleOf, installmentAmount, externalLoanPurpose,
-                loanStatus, disbursedDate, maturityDate, gt0dpd3mths, dpd30mths12, dpd30mths24, dpd60mths24, remark, archive);
-                
-
-        return existingLoan;
+        return ExistingLoan.saveExistingLoan(client, loanApplicationId, loanId, sourceCvId, bureauCvId, bureauEnqRefId, lenderCvId,
+                lenderNotListed, loanType, amountBorrowed, currentOutstanding, amtOverdue, writtenoffamount, loanTenure,
+                loanTenurePeriodType, repaymentFrequency, repaymentFrequencyMultipleOf, installmentAmount, externalLoanPurpose, loanStatus,
+                disbursedDate, maturityDate, gt0dpd3mths, dpd30mths12, dpd30mths24, dpd60mths24, remark, archive);
     }
 }

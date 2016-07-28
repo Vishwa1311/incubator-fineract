@@ -1,17 +1,15 @@
 package com.finflux.familydetail.service;
 
+import java.util.List;
 import java.util.Map;
 
-import org.apache.fineract.infrastructure.codes.domain.CodeValue;
-import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
-import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -22,107 +20,74 @@ import com.finflux.familydetail.FamilyDetailsApiConstants;
 import com.finflux.familydetail.data.FamilyDetailDataValidator;
 import com.finflux.familydetail.domain.FamilyDetail;
 import com.finflux.familydetail.domain.FamilyDetailsRepository;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 @Service
 public class FamilyDetailWritePlatformServiceImp implements FamilyDetailWritePlatromService {
 
     private final FamilyDetailsRepository familyDetailsRepository;
     private final PlatformSecurityContext context;
-    private final FamilyDetailDataValidator fromApiJsonDeserializer;
-    private ClientRepositoryWrapper clientRepository;
-    private final CodeValueRepositoryWrapper codeValueRepository;
+    private final FamilyDetailDataValidator validator;
+    private final ClientRepositoryWrapper clientRepository;
+    private final FromJsonHelper fromApiJsonHelper;
+    private final FamilyDetailDataAssembler assembler;
 
     @Autowired
-    public FamilyDetailWritePlatformServiceImp(FamilyDetailsRepository familyDetailsRepository, final PlatformSecurityContext context,
-            FamilyDetailDataValidator fromApiJsonDeserializer, ClientRepositoryWrapper clientRepository,
-            CodeValueRepositoryWrapper codeValueRepository) {
+    public FamilyDetailWritePlatformServiceImp(final FamilyDetailsRepository familyDetailsRepository,
+            final PlatformSecurityContext context, final FamilyDetailDataValidator validator,
+            final ClientRepositoryWrapper clientRepository, final FromJsonHelper fromApiJsonHelper,
+            final FamilyDetailDataAssembler assembler) {
         super();
         this.familyDetailsRepository = familyDetailsRepository;
         this.context = context;
-        this.fromApiJsonDeserializer = fromApiJsonDeserializer;
+        this.validator = validator;
         this.clientRepository = clientRepository;
-        this.codeValueRepository = codeValueRepository;
+        this.fromApiJsonHelper = fromApiJsonHelper;
+        this.assembler = assembler;
     }
 
     @Transactional
     @Override
     public CommandProcessingResult createFamilyDeatails(final Long clientId, final JsonCommand command) {
-
         try {
             this.context.authenticatedUser();
 
             final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId);
 
-            this.fromApiJsonDeserializer.validateForCreate(command.json());
+            this.validator.validateForCreate(command.json());
 
-            final String firstname = command.stringValueOfParameterNamed(FamilyDetailsApiConstants.firstnameParamName);
-            final String middlename = command.stringValueOfParameterNamed(FamilyDetailsApiConstants.middlenameParamName);
-            final String lastname = command.stringValueOfParameterNamed(FamilyDetailsApiConstants.lastnameParamName);
+            final List<FamilyDetail> familyDetails = this.assembler.assembleCreateForm(client, command);
 
-            final LocalDate dateOfBirth = command.localDateValueOfParameterNamed(FamilyDetailsApiConstants.dobParamName);
-
-            final Integer age = command.integerValueOfParameterNamed(FamilyDetailsApiConstants.ageParamName);
-
-            CodeValue gender = null;
-            final Long genderId = command.longValueOfParameterNamed(FamilyDetailsApiConstants.genderIdParamName);
-            if (genderId != null) {
-                gender = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(FamilyDetailsApiConstants.genderParamName,
-                        genderId);
-            }
-
-            CodeValue occupationDetails = null;
-            final Long occupationDetailsId = command.longValueOfParameterNamed(FamilyDetailsApiConstants.occupationDetailsIdParamName);
-            if (occupationDetailsId != null) {
-                occupationDetails = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                        FamilyDetailsApiConstants.occupationalDetailsParamName, occupationDetailsId);
-            }
-
-            CodeValue relationship = null;
-            final Long relationshipId = command.longValueOfParameterNamed(FamilyDetailsApiConstants.relationshipIdParamName);
-            if (relationshipId != null) {
-                relationship = this.codeValueRepository
-                        .findOneByCodeNameAndIdWithNotFoundDetection(FamilyDetailsApiConstants.relationshipParamName, relationshipId);
-            }
-
-            CodeValue education = null;
-            final Long educationId = command.longValueOfParameterNamed(FamilyDetailsApiConstants.educationIdParamName);
-            if (educationId != null) {
-                education = this.codeValueRepository
-                        .findOneByCodeNameAndIdWithNotFoundDetection(FamilyDetailsApiConstants.educationParamName, educationId);
-            }
-
-            CodeValue salutaion = null;
-            final Long salutaionId = command.longValueOfParameterNamed(FamilyDetailsApiConstants.salutationIdParamName);
-            if (salutaionId != null) {
-                salutaion = this.codeValueRepository
-                        .findOneByCodeNameAndIdWithNotFoundDetection(FamilyDetailsApiConstants.salutationParamName, salutaionId);
-            }
-
-            final FamilyDetail familyDetail = FamilyDetail.create(client, salutaion, firstname, middlename, lastname, relationship, gender,
-                    dateOfBirth, age, occupationDetails, education);
-
-            this.familyDetailsRepository.saveAndFlush(familyDetail);
+            this.familyDetailsRepository.save(familyDetails);
 
             return new CommandProcessingResultBuilder() //
                     .withCommandId(command.commandId()) //
                     .withClientId(client.getId()) //
-                    .withEntityId(familyDetail.getId()) //
+                    .withEntityId(familyDetails.get(0).getId()) //
                     .build();
 
         } catch (final DataIntegrityViolationException dve) {
             return CommandProcessingResult.empty();
         }
-
     }
 
     @Transactional
     @Override
-    public CommandProcessingResult updateFamilyDeatails(final Long clientId, Long id, final JsonCommand command) {
+    public CommandProcessingResult updateFamilyDeatails(final Long clientId, final Long id, final JsonCommand command) {
         try {
+
             this.context.authenticatedUser();
-            this.fromApiJsonDeserializer.validateForUpdate(command.json());
+
+            this.clientRepository.findOneWithNotFoundDetection(clientId);
+
+            this.validator.validateForUpdate(command.json());
+
             final FamilyDetail familyDetail = this.familyDetailsRepository.findByIdAndClientId(id, clientId);
+
             final Map<String, Object> changes = familyDetail.update(command);
+
             if (!CollectionUtils.isEmpty(changes)) {
                 this.familyDetailsRepository.save(familyDetail);
             }
@@ -151,6 +116,42 @@ public class FamilyDetailWritePlatformServiceImp implements FamilyDetailWritePla
                     .build();
         } catch (final DataIntegrityViolationException dve) {
             return CommandProcessingResult.empty();
+        }
+    }
+
+    @Override
+    @SuppressWarnings("null")
+    public void createOrUpdateFamilyDeatails(final Long clientId, final JsonCommand command) {
+        this.clientRepository.findOneWithNotFoundDetection(clientId);
+        final JsonElement elements = this.fromApiJsonHelper.parse(command.jsonFragment(FamilyDetailsApiConstants.familyMembersParamName));
+        final JsonArray array = elements.getAsJsonArray();
+        if (array != null && array.size() > 0) {
+            final JsonObject createJsonObject = new JsonObject();
+            final JsonArray createJsonArray = new JsonArray();
+            for (int i = 0; i < array.size(); i++) {
+                final JsonObject jsonObject = array.get(i).getAsJsonObject();
+                if (jsonObject.has(FamilyDetailsApiConstants.idParamName)) {
+                    /**
+                     * Call Update Service
+                     */
+                    final JsonElement element = this.fromApiJsonHelper.parse(jsonObject.toString());
+                    final JsonCommand newCommand = JsonCommand.fromExistingCommand(command, element);
+                    final Long id = this.fromApiJsonHelper.extractLongNamed(FamilyDetailsApiConstants.idParamName, element);
+                    updateFamilyDeatails(clientId, id, newCommand);
+                } else {
+                    final JsonElement element = this.fromApiJsonHelper.parse(jsonObject.toString());
+                    createJsonArray.add(element);
+                }
+            }
+            if (createJsonArray != null && createJsonArray.size() > 0) {
+                createJsonObject.add(FamilyDetailsApiConstants.familyMembersParamName, createJsonArray);
+                final JsonElement element = this.fromApiJsonHelper.parse(createJsonObject.toString());
+                final JsonCommand newCommand = JsonCommand.fromExistingCommand(command, element);
+                /**
+                 * Call Create Service
+                 */
+                createFamilyDeatails(clientId, newCommand);
+            }
         }
     }
 

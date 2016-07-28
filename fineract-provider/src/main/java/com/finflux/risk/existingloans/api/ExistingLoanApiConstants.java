@@ -77,4 +77,6 @@ public class ExistingLoanApiConstants {
             externalLoanPurposeCvIdParamName, loanStatusIdParamName, disbursedDateParamName, maturityDateParamName, gt0dpd3mthsParamName,
             dpd30mths12ParamName, dpd30mths24ParamName, dpd60mths24ParamName, remarkParamName, archiveParamName,loanStatusOptionsParamName));
 
+    public static final String existingLoansParamName = "existingLoans";
+
 }
