@@ -79,4 +79,6 @@ public interface ConfigurationDomainService {
     
     boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled();
     
+    boolean isForceLoanRepaymentFrequencyMatchWithMeetingFrequencyEnabled();
+    
 }
