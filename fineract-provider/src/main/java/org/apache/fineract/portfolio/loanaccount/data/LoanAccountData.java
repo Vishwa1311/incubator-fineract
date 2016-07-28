@@ -1379,13 +1379,7 @@ public class LoanAccountData {
         this.disbursementDetails = disbursementDetails;
         this.multiDisburseLoan = multiDisburseLoan;
 
-        Boolean canDefineEMIAmount = canDefineInstallmentAmount;
-        if (canDefineInstallmentAmount == null) {
-            canDefineEMIAmount = multiDisburseLoan;
-        } else if (multiDisburseLoan != null) {
-            canDefineEMIAmount = canDefineInstallmentAmount || multiDisburseLoan;
-        }
-        this.canDefineInstallmentAmount = canDefineEMIAmount;
+        this.canDefineInstallmentAmount = canDefineInstallmentAmount;
         this.fixedEmiAmount = fixedEmiAmount;
         this.maxOutstandingLoanBalance = maxOutstandingLoanBalance;
 
