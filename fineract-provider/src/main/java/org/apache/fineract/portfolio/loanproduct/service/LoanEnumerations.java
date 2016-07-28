@@ -18,6 +18,9 @@
  */
 package org.apache.fineract.portfolio.loanproduct.service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.fineract.accounting.common.AccountingEnumerations;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.portfolio.accountdetails.service.AccountEnumerations;
@@ -665,6 +668,17 @@ public class LoanEnumerations {
             break;
         }
         return optionData;
+    }
+    
+    public static List<LoanStatusEnumData> statusType(final LoanStatus[] loanStatusTypes) {
+        final List<LoanStatusEnumData> optionDatas = new ArrayList<>();
+        for (final LoanStatus loanStatus : loanStatusTypes) {
+            if (loanStatus.getValue().equals(LoanStatus.INVALID.getValue())) {
+                continue;
+            }
+            optionDatas.add(status(loanStatus));
+        }
+        return optionDatas;
     }
 
 }

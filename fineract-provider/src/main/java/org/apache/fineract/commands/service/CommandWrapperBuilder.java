@@ -2790,7 +2790,7 @@ public class CommandWrapperBuilder {
         this.href = "/centers/" + centerId + "?command=associateCenters";
         return this;
     }
-
+    
     public CommandWrapperBuilder updateFutureMeetingCalendar(final String entityType, final Long entityId, final Long calendarId) {
         this.actionName = "UPDATEFUTUREMEETINGS";
         this.entityName = "CALENDAR";
@@ -2910,4 +2910,57 @@ public class CommandWrapperBuilder {
         this.href = "/loanapplicationreferences/" + loanApplicationReferenceId;
         return this;
     }
+    
+    public CommandWrapperBuilder createFamilyDetails(final Long clientId) {
+        this.actionName = "CREATE";
+        this.entityName = "FAMILYDETAIL";
+        this.clientId = clientId;
+        this.href = "/clients" + "/" + clientId + "/familydetails";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateFamilyDetails(final Long clientId, final Long familyDetailsId) {
+        this.actionName = "UPDATE";
+        this.entityName = "FAMILYDETAIL";
+        this.entityId = familyDetailsId;
+        this.clientId = clientId;
+        this.href = "/clients" + "/" + clientId + "/familydetails/" + familyDetailsId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteFamilyDetails(final Long familyDetailsId, final Long clientId) {
+        this.actionName = "DELETE";
+        this.entityName = "FAMILYDETAIL";
+        this.entityId = familyDetailsId;
+        this.clientId = clientId;
+        this.href = "/clients" + "/" + clientId + "/familydetails/" + familyDetailsId;
+        return this;
+    }
+
+    public CommandWrapperBuilder storeExistingLoan(final Long clientId) {
+        this.actionName = "SAVE";
+        this.entityName = "EXISTINGLOAN";
+        this.clientId = clientId;
+        this.href = "clients/" + clientId + "/existingLoans/";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateExistingLoan(final Long clientId, final Long existingLoanId) {
+        this.actionName = "UPDATE";
+        this.entityName = "EXISTINGLOAN";
+        this.clientId = clientId;
+        this.entityId = existingLoanId;
+        this.href = "clients/" + clientId + "/existingLoans/" + existingLoanId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteExistingLoan(final Long clientId, final Long existingLoanId) {
+        this.actionName = "DELETE";
+        this.entityName = "EXISTINGLOAN";
+        this.entityId = existingLoanId;
+        this.clientId = clientId;
+        this.href = "clients/" + clientId + "/existingLoans/" + existingLoanId;
+        return this;
+    }
+
 }
