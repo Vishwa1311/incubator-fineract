@@ -138,7 +138,8 @@ public class LoansApiResource {
             "termFrequencyTypeOptions", "interestRateFrequencyTypeOptions", "fundOptions", "repaymentStrategyOptions", "chargeOptions",
             "loanOfficerOptions", "loanPurposeOptions", "loanCollateralOptions", "chargeTemplate", "calendarOptions",
             "syncDisbursementWithMeeting", "loanCounter", "loanProductCounter", "notes", "accountLinkingOptions", "linkedAccount",
-            "interestRateDifferential", "isFloatingInterestRate", "interestRatesPeriods"));
+            "interestRateDifferential", "isFloatingInterestRate", "interestRatesPeriods",
+            LoanProductConstants.considerFutureDisbursmentsInSchedule));
 
     private final Set<String> LOAN_APPROVAL_DATA_PARAMETERS = new HashSet<>(Arrays.asList("approvalDate", "approvalAmount"));
     private final String resourceNameForPermissions = "LOAN";

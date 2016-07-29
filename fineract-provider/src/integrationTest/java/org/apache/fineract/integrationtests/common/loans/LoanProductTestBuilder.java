@@ -131,6 +131,8 @@ public class LoanProductTestBuilder {
     private Integer minNumberOfRepayments = null;
     private Integer maxNumberOfRepayments = null;
     private Integer loanTenureFrequencyType = null;
+    private Boolean considerFutureDisbursmentsInSchedule = true;
+
 
     public String build(final String chargeId) {
         final HashMap<String, Object> map = new HashMap<>();
@@ -164,6 +166,7 @@ public class LoanProductTestBuilder {
         map.put("minPrincipal", this.minPrincipal);
         map.put("maxPrincipal", this.maxPrincipal);
         map.put("overdueDaysForNPA", this.overdueDaysForNPA);
+        map.put("considerFutureDisbursmentsInSchedule", this.considerFutureDisbursmentsInSchedule);
         if (this.minimumPeriodsBetweenDisbursalAndFirstRepayment != null) {
             map.put("minimumPeriodsBetweenDisbursalAndFirstRepayment", this.minimumPeriodsBetweenDisbursalAndFirstRepayment);
         }
@@ -360,6 +363,16 @@ public class LoanProductTestBuilder {
 
     public LoanProductTestBuilder withTranches(boolean multiDisburseLoan) {
         this.multiDisburseLoan = multiDisburseLoan;
+        return this;
+    }
+    
+    public LoanProductTestBuilder withFutureDisbursements(boolean considerFutureDisbursmentsInSchedule) {
+        this.considerFutureDisbursmentsInSchedule = considerFutureDisbursmentsInSchedule;
+        return this;
+    }
+    
+    public LoanProductTestBuilder withInterestRecalculation(boolean interestRecalculation) {
+        this.isInterestRecalculationEnabled = interestRecalculation;
         return this;
     }
 

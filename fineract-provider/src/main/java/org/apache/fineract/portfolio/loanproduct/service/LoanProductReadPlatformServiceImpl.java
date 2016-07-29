@@ -221,7 +221,7 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     + "lfr.is_floating_interest_rate_calculation_allowed as isFloatingInterestRateCalculationAllowed, "
                     + "lp.allow_variabe_installments as isVariableIntallmentsAllowed, "
                     + "lvi.minimum_gap as minimumGap, "
-                    + "lvi.maximum_gap as maximumGap, lp.close_loan_on_overpayment as closeLoanOnOverpayment "
+                    + "lvi.maximum_gap as maximumGap, lp.close_loan_on_overpayment as closeLoanOnOverpayment , lp.consider_future_disbursments_in_schedule AS considerfuturedisbursmentsinschedule "
                     + " from m_product_loan lp "
                     + " left join m_fund f on f.id = lp.fund_id "
                     + " left join m_product_loan_recalculation_details lpr on lpr.product_id=lp.id "
@@ -420,6 +420,7 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
             final Integer maxLoanTerm = JdbcSupport.getInteger(rs, "maxLoanTerm");
             EnumOptionData loanTenureFrequencyType = null;
             final Integer loanTenureFrequencyTypeEnum = JdbcSupport.getInteger(rs, "loanTenureFrequencyType");
+            final boolean considerFutureDisbursmentsInSchedule = rs.getBoolean("considerfuturedisbursmentsinschedule");
             if(loanTenureFrequencyTypeEnum != null){
             loanTenureFrequencyType = LoanEnumerations.loanTenureFrequencyType(loanTenureFrequencyTypeEnum.intValue());
             }
@@ -439,7 +440,7 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     floatingRateName, interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate,
                     maxDifferentialLendingRate, isFloatingInterestRateCalculationAllowed, isVariableIntallmentsAllowed, minimumGap,
                     maximumGap, closeLoanOnOverpayment,  syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment,
-                    minLoanTerm, maxLoanTerm, loanTenureFrequencyType);
+                    minLoanTerm, maxLoanTerm, loanTenureFrequencyType, considerFutureDisbursmentsInSchedule);
         }
     }
 

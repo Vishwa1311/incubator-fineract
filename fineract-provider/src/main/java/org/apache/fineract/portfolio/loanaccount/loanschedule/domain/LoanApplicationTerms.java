@@ -185,7 +185,8 @@ public final class LoanApplicationTerms {
 
     private final Integer numberOfDays;
 
-    private final boolean isSkipRepaymentOnFirstDayOfMonth;
+    private final boolean isSkipRepaymentOnFirstDayOfMonth;    
+    private final boolean considerFutureDisbursmentsInSchedule;
 
     public static LoanApplicationTerms assembleFrom(final ApplicationCurrency currency, final Integer loanTermFrequency,
             final PeriodFrequencyType loanTermPeriodFrequencyType, final Integer numberOfRepayments, final Integer repaymentEvery,
@@ -204,7 +205,7 @@ public final class LoanApplicationTerms {
             final BigDecimal principalThresholdForLastInstalment, final Integer installmentAmountInMultiplesOf,
             final LoanPreClosureInterestCalculationStrategy preClosureInterestCalculationStrategy, final Calendar loanCalendar,
             BigDecimal approvedAmount, List<LoanTermVariationsData> loanTermVariations, Boolean isInterestChargedFromDateSameAsDisbursalDateEnabled,
-            final Integer numberOfdays,boolean isSkipRepaymentOnFirstDayofMonth) {
+            final Integer numberOfdays,boolean isSkipRepaymentOnFirstDayofMonth, final boolean considerFutureDisbursmentsInSchedule) {
 
            
     	final LoanRescheduleStrategyMethod rescheduleStrategyMethod = null;
@@ -220,8 +221,8 @@ public final class LoanApplicationTerms {
                 interestRecalculationCompoundingMethod, restCalendarInstance, recalculationFrequencyType, compoundingCalendarInstance,
                 compoundingFrequencyType, principalThresholdForLastInstalment, installmentAmountInMultiplesOf,
                 preClosureInterestCalculationStrategy, loanCalendar, approvedAmount, loanTermVariations, calendarHistoryDataWrapper,
-                isInterestChargedFromDateSameAsDisbursalDateEnabled, numberOfdays, isSkipRepaymentOnFirstDayofMonth);
-
+                isInterestChargedFromDateSameAsDisbursalDateEnabled, numberOfdays, isSkipRepaymentOnFirstDayofMonth,
+                considerFutureDisbursmentsInSchedule);
     }
 
     public static LoanApplicationTerms assembleFrom(final ApplicationCurrency applicationCurrency, final Integer loanTermFrequency,
@@ -287,6 +288,7 @@ public final class LoanApplicationTerms {
         final DaysInYearType daysInYearType = loanProductRelatedDetail.fetchDaysInYearType();
         final boolean isInterestRecalculationEnabled = loanProductRelatedDetail.isInterestRecalculationEnabled();
         final boolean isInterestChargedFromDateSameAsDisbursalDateEnabled = false;
+        final boolean futureDisbursmentsInSchedule = loanProductRelatedDetail.getConsiderFutureDisbursmentsInSchedule();
         return new LoanApplicationTerms(applicationCurrency, loanTermFrequency, loanTermPeriodFrequencyType, numberOfRepayments,
                 repaymentEvery, repaymentPeriodFrequencyType, nthDay.getValue(), dayOfWeek, amortizationMethod, interestMethod,
                 interestRatePerPeriod, interestRatePeriodFrequencyType, annualNominalInterestRate, interestCalculationPeriodMethod,
@@ -297,7 +299,7 @@ public final class LoanApplicationTerms {
                 rescheduleStrategyMethod, compoundingMethod, restCalendarInstance, recalculationFrequencyType, compoundingCalendarInstance,
                 compoundingFrequencyType, principalThresholdForLastInstalment, installmentAmountInMultiplesOf,
                 loanPreClosureInterestCalculationStrategy, loanCalendar, approvedAmount, loanTermVariations, calendarHistoryDataWrapper,
-                isInterestChargedFromDateSameAsDisbursalDateEnabled, numberOfdays, isSkipRepaymentOnFirstDayofMonth);
+                isInterestChargedFromDateSameAsDisbursalDateEnabled, numberOfdays, isSkipRepaymentOnFirstDayofMonth, futureDisbursmentsInSchedule);
     }
 
     public static LoanApplicationTerms assembleFrom(final ApplicationCurrency applicationCurrency, final Integer loanTermFrequency,
@@ -342,6 +344,7 @@ public final class LoanApplicationTerms {
         }
         final CalendarHistoryDataWrapper calendarHistoryDataWrapper = null;
         final boolean isInterestChargedFromDateSameAsDisbursalDateEnabled = false;
+        final boolean considerFutureDisbursmentsInSchedule = loanProductRelatedDetail.getConsiderFutureDisbursmentsInSchedule();
 
         return new LoanApplicationTerms(applicationCurrency, loanTermFrequency, loanTermPeriodFrequencyType, numberOfRepayments,
                 repaymentEvery, repaymentPeriodFrequencyType, null, null, amortizationMethod, interestMethod, interestRatePerPeriod,
@@ -353,7 +356,8 @@ public final class LoanApplicationTerms {
                 rescheduleStrategyMethod, interestRecalculationCompoundingMethod, restCalendarInstance, recalculationFrequencyType,
                 compoundingCalendarInstance, compoundingFrequencyType, principalThresholdForLastInstalment, installmentAmountInMultiplesOf,
                 loanPreClosureInterestCalculationStrategy, loanCalendar, approvedAmount, loanTermVariations, calendarHistoryDataWrapper,
-                isInterestChargedFromDateSameAsDisbursalDateEnabled,  numberOfdays, isSkipRepaymentOnFirstDayofMonth);
+                isInterestChargedFromDateSameAsDisbursalDateEnabled, numberOfdays, isSkipRepaymentOnFirstDayofMonth,
+                considerFutureDisbursmentsInSchedule);
 
     }
 
@@ -378,7 +382,7 @@ public final class LoanApplicationTerms {
                 applicationTerms.preClosureInterestCalculationStrategy, applicationTerms.loanCalendar,
                 applicationTerms.approvedPrincipal.getAmount(), loanTermVariations, applicationTerms.calendarHistoryDataWrapper,
                 applicationTerms.isInterestChargedFromDateSameAsDisbursalDateEnabled, applicationTerms.numberOfDays, 
-                applicationTerms.isSkipRepaymentOnFirstDayOfMonth);
+                applicationTerms.isSkipRepaymentOnFirstDayOfMonth, applicationTerms.considerFutureDisbursmentsInSchedule);
  }
 
     private LoanApplicationTerms(final ApplicationCurrency currency, final Integer loanTermFrequency,
@@ -401,7 +405,7 @@ public final class LoanApplicationTerms {
             final LoanPreClosureInterestCalculationStrategy preClosureInterestCalculationStrategy, final Calendar loanCalendar,
             BigDecimal approvedAmount, List<LoanTermVariationsData> loanTermVariations,
             final CalendarHistoryDataWrapper calendarHistoryDataWrapper, Boolean isInterestChargedFromDateSameAsDisbursalDateEnabled, 
-            final Integer numberOfdays, final boolean isSkipRepaymentOnFirstDayofMonth) {
+            final Integer numberOfdays, final boolean isSkipRepaymentOnFirstDayofMonth, final boolean considerFutureDisbursmentsInSchedule) {
 
         this.currency = currency;
         this.loanTermFrequency = loanTermFrequency;
@@ -464,6 +468,7 @@ public final class LoanApplicationTerms {
         }
         this.calendarHistoryDataWrapper = calendarHistoryDataWrapper;
         this.isInterestChargedFromDateSameAsDisbursalDateEnabled = isInterestChargedFromDateSameAsDisbursalDateEnabled;
+        this.considerFutureDisbursmentsInSchedule = considerFutureDisbursmentsInSchedule;       
     }
 
     public Money adjustPrincipalIfLastRepaymentPeriod(final Money principalForPeriod, final Money totalCumulativePrincipalToDate,
@@ -1149,7 +1154,8 @@ public final class LoanApplicationTerms {
                 this.interestCalculationPeriodMethod, this.allowPartialPeriodInterestCalcualtion, this.repaymentEvery,
                 this.repaymentPeriodFrequencyType, this.numberOfRepayments, this.principalGrace, this.interestPaymentGrace,
                 this.interestChargingGrace, this.amortizationMethod, this.inArrearsTolerance.getAmount(), this.graceOnArrearsAgeing,
-                this.daysInMonthType.getValue(), this.daysInYearType.getValue(), this.interestRecalculationEnabled);
+                this.daysInMonthType.getValue(), this.daysInYearType.getValue(), this.interestRecalculationEnabled,
+                this.considerFutureDisbursmentsInSchedule);
     }
 
     public Integer getLoanTermFrequency() {
@@ -1477,4 +1483,8 @@ public final class LoanApplicationTerms {
         return isSkipRepaymentOnFirstDayOfMonth;
     }
 
+    public boolean isConsiderFutureDisbursmentsInSchedule() {
+        return this.considerFutureDisbursmentsInSchedule;
+    }
+    
 }
