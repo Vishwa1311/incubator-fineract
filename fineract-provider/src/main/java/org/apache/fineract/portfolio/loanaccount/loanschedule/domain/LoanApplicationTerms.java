@@ -1595,10 +1595,12 @@ public final class LoanApplicationTerms {
         this.actualFixedEmiAmount = actualFixedEmiAmount;
     }
 
-    public void updateTotalInterestDueForGlim(List<GroupLoanIndividualMonitoring> glimList) {
+    public void updateTotalInterestDueForGlim(final List<GroupLoanIndividualMonitoring> glimList) {
         Money totalInterestDueForGlim = Money.zero(getCurrency());
         for (GroupLoanIndividualMonitoring glim : glimList) {
-            totalInterestDueForGlim = totalInterestDueForGlim.plus(glim.getInterestAmount());
+            if (glim.isClientSelected()) {
+                totalInterestDueForGlim = totalInterestDueForGlim.plus(glim.getInterestAmount());
+            }
         }
         this.totalInterestForGlim = totalInterestDueForGlim;
     }

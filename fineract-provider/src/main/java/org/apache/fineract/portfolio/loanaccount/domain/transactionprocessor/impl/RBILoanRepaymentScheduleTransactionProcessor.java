@@ -334,8 +334,8 @@ public class RBILoanRepaymentScheduleTransactionProcessor extends AbstractLoanRe
             transactionAmountRemaining = transactionAmountRemaining.minus(principalPortion);
         }
 
-        groupLoanIndividualMonitoringTransaction = GroupLoanIndividualMonitoringTransaction.instance(
-                groupLoanIndividualMonitoringTransaction, tempPrincipalPortion.getAmount(), tempInterestPortion.getAmount(),
+        groupLoanIndividualMonitoringTransaction.updateComponents(tempPrincipalPortion.getAmount(), tempInterestPortion.getAmount(),
                 tempFeeChargesPortion.getAmount(), tempPenaltyChargesPortion.getAmount(), installmentAmount.getAmount());
+
     }
 }

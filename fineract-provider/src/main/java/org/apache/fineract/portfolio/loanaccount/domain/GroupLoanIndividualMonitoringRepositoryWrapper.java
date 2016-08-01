@@ -18,6 +18,8 @@
  */
 package org.apache.fineract.portfolio.loanaccount.domain;
 
+import java.util.Collection;
+
 import org.apache.fineract.portfolio.loanaccount.exception.GroupLoanIndividualMonitoringNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,10 @@ public class GroupLoanIndividualMonitoringRepositoryWrapper {
     }
 
     public void save(final GroupLoanIndividualMonitoring entity) {
+        this.groupLoanIndividualMonitoringRepository.save(entity);
+    }
+    
+    public void save(final Collection<GroupLoanIndividualMonitoring>  entity) {
         this.groupLoanIndividualMonitoringRepository.save(entity);
     }
 

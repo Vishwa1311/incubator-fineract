@@ -71,7 +71,7 @@ public class LoanRepaymentScheduleProcessingWrapper {
             final Money totalInterest, boolean isInstallmentChargeApplicable) {
 
         Money cumulative = Money.zero(monetaryCurrency);
-        Money totalLoanCharge = Money.zero(monetaryCurrency);
+        Money totalLoanCharges = Money.zero(monetaryCurrency);
         Integer numberOfRepayments = null;
 
         for (final LoanCharge loanCharge : loanCharges) {
@@ -86,7 +86,7 @@ public class LoanRepaymentScheduleProcessingWrapper {
                             amount = amount.add(period.getInterestCharged(monetaryCurrency).getAmount());
                         } else if (loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
                             numberOfRepayments = loanCharge.getLoan().fetchNumberOfInstallmensAfterExceptions();
-                            totalLoanCharge = totalLoanCharge.plus(loanCharge.amount()); 
+                            totalLoanCharges = totalLoanCharges.plus(loanCharge.amount()); 
                         } else {
                             amount = amount.add(period.getPrincipal(monetaryCurrency).getAmount());
                         }
@@ -122,10 +122,11 @@ public class LoanRepaymentScheduleProcessingWrapper {
             }
         }
         
-        if (numberOfRepayments != null && isLastRepaymentPeriod(numberOfRepayments, period.getInstallmentNumber())) {
-            Money totalFees = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
-            if (totalFees.compareTo(totalLoanCharge) != BigDecimal.ZERO.intValue()) {
-                cumulative = cumulative.minus((totalFees.minus(totalLoanCharge)));
+        if (numberOfRepayments != null && isLastRepaymentPeriod(numberOfRepayments, period.getInstallmentNumber())
+                && totalLoanCharges.compareTo(Money.zero(cumulative.getCurrency())) == 1) {
+            Money totalGlimCharges = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
+            if (totalGlimCharges.compareTo(totalLoanCharges) != BigDecimal.ZERO.intValue()) {
+                cumulative = cumulative.minus((totalGlimCharges.minus(totalLoanCharges)));
             }
         }
 
@@ -179,7 +180,7 @@ public class LoanRepaymentScheduleProcessingWrapper {
             final Money totalPrincipal, final Money totalInterest, boolean isInstallmentChargeApplicable) {
 
         Money cumulative = Money.zero(currency);
-        Money totalLoanCharge = Money.zero(currency);
+        Money totalLoanCharges = Money.zero(currency);
         Integer numberOfRepayments = null;
 
         for (final LoanCharge loanCharge : loanCharges) {
@@ -194,7 +195,7 @@ public class LoanRepaymentScheduleProcessingWrapper {
                             amount = amount.add(period.getInterestCharged(currency).getAmount());
                         } else if (loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
                             numberOfRepayments = loanCharge.getLoan().fetchNumberOfInstallmensAfterExceptions();
-                            totalLoanCharge = totalLoanCharge.plus(loanCharge.amount()); 
+                            totalLoanCharges = totalLoanCharges.plus(loanCharge.amount()); 
                         } else {
                             amount = amount.add(period.getPrincipal(currency).getAmount());
                         }
@@ -230,10 +231,11 @@ public class LoanRepaymentScheduleProcessingWrapper {
             }
         }
         
-        if (numberOfRepayments != null && isLastRepaymentPeriod(numberOfRepayments, period.getInstallmentNumber())) {
-            Money totalFees = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
-            if (totalFees.compareTo(totalLoanCharge) != BigDecimal.ZERO.intValue()) {
-                cumulative = cumulative.minus((totalFees.minus(totalLoanCharge)));
+        if (numberOfRepayments != null && isLastRepaymentPeriod(numberOfRepayments, period.getInstallmentNumber())
+                && totalLoanCharges.compareTo(Money.zero(cumulative.getCurrency())) == 1) {
+            Money totalGlimCharges = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
+            if (totalGlimCharges.compareTo(totalLoanCharges) != BigDecimal.ZERO.intValue()) {
+                cumulative = cumulative.minus((totalGlimCharges.minus(totalLoanCharges)));
             }
         }
 

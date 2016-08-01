@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.portfolio.loanaccount.service;
 
-import java.math.BigDecimal; 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -33,7 +33,6 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
-import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
@@ -120,7 +119,6 @@ import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargeData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanInstallmentChargeData;
-import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
 import org.apache.fineract.portfolio.loanaccount.domain.DefaultLoanLifecycleStateMachine;
@@ -725,12 +723,16 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final LocalDate recalculateFrom = null;
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
         
-        List<GroupLoanIndividualMonitoring> glimList  = this.groupLoanIndividualMonitoringRepository.findByLoanId(loanId);
+        List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringRepository.findByLoanId(loanId);
         HashMap<Long, BigDecimal> chargesMap = new HashMap<>();
         for (GroupLoanIndividualMonitoring glim : glimList) {
-            glim.setIsClientSelected(true);
-            this.groupLoanIndividualMonitoringAssembler.recalculateTotalFeeCharges(loan, chargesMap, glim.getApprovedAmount(),
-                    glim.getGroupLoanIndividualMonitoringCharges());
+            final BigDecimal approvedAmount = glim.getApprovedAmount();
+            if (approvedAmount != null) {
+                glim.setIsClientSelected(true);
+                glim.undoGlimTransaction();
+                this.groupLoanIndividualMonitoringAssembler.recalculateTotalFeeCharges(loan, chargesMap, approvedAmount,
+                        glim.getGroupLoanIndividualMonitoringCharges());
+            }
         }
         this.groupLoanIndividualMonitoringAssembler.updateLoanChargesForGlim(loan, chargesMap);
         loan.updateGlim(glimList);

@@ -2596,7 +2596,7 @@ public class Loan extends AbstractPersistable<Long> {
 
         final InterestMethod interestMethod = this.loanRepaymentScheduleDetail.getInterestMethod();
         final LoanApplicationTerms loanApplicationTerms = constructLoanApplicationTerms(scheduleGeneratorDTO);
-        updateInstallmentAmount(loanApplicationTerms);
+        updateInstallmentAmountForGlim(loanApplicationTerms);
         loanApplicationTerms.updateTotalInterestDueForGlim(this.glimList);
         final LoanScheduleGenerator loanScheduleGenerator = scheduleGeneratorDTO.getLoanScheduleFactory().create(interestMethod);
         final LoanScheduleModel loanSchedule = loanScheduleGenerator.generate(mc, loanApplicationTerms, charges(),
@@ -5370,7 +5370,7 @@ public class Loan extends AbstractPersistable<Long> {
         final MathContext mc = new MathContext(8, roundingMode);
 
         final LoanApplicationTerms loanApplicationTerms = constructLoanApplicationTerms(generatorDTO);
-        updateInstallmentAmount(loanApplicationTerms);
+        updateInstallmentAmountForGlim(loanApplicationTerms);
         loanApplicationTerms.updateTotalInterestDueForGlim(this.glimList);
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
                 .determineProcessor(this.transactionProcessingStrategy);
@@ -6119,19 +6119,22 @@ public class Loan extends AbstractPersistable<Long> {
         return this.glimList;
     }
     
-    public void updateInstallmentAmount(LoanApplicationTerms loanApplicationTerms) {
+    public void updateInstallmentAmountForGlim(LoanApplicationTerms loanApplicationTerms) {
         BigDecimal installmentAmount = BigDecimal.ZERO;
         for (GroupLoanIndividualMonitoring glim : glimList) {
-            BigDecimal totalFeeCharges = BigDecimal.ZERO;
-            for (GroupLoanIndividualMonitoringCharge groupLoanIndividualMonitoringCharge : glim.getGroupLoanIndividualMonitoringCharges()) {
-                if (groupLoanIndividualMonitoringCharge.getRevisedFeeAmount() != null) {
-                    totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getRevisedFeeAmount());
-                } else {
-                    totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getFeeAmount());
+            if (glim.isClientSelected()) {
+                BigDecimal totalFeeCharges = BigDecimal.ZERO;
+                for (GroupLoanIndividualMonitoringCharge groupLoanIndividualMonitoringCharge : glim
+                        .getGroupLoanIndividualMonitoringCharges()) {
+                    if (groupLoanIndividualMonitoringCharge.getRevisedFeeAmount() != null) {
+                        totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getRevisedFeeAmount());
+                    } else {
+                        totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getFeeAmount());
+                    }
                 }
+                installmentAmount = installmentAmount.add(calculateInstallmentAmount(glim.getInstallmentAmount(), totalFeeCharges,
+                        loanApplicationTerms.getNumberOfRepayments()));
             }
-            installmentAmount = installmentAmount.add(calculateInstallmentAmount(glim.getInstallmentAmount(), totalFeeCharges,
-                    loanApplicationTerms.getNumberOfRepayments()));
         }
         if (installmentAmount.compareTo(BigDecimal.ZERO) == 1) {
             loanApplicationTerms.setFixedEmiAmount(installmentAmount);

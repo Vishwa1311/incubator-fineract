@@ -178,6 +178,7 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
         final Money amountOutstanding = Money.of(incrementBy.getCurrency(), this.amountOutstanding);
         Money amountPaidPreviously = amountPaidToDate;
         Money amountPaidOnThisCharge = Money.zero(incrementBy.getCurrency());
+        //this.loancharge.getLoan().isGLIMLoan()
         if (incrementBy.isGreaterThanOrEqualTo(amountOutstanding)) {
             amountPaidOnThisCharge = amountOutstanding;
             amountPaidToDate = amountPaidToDate.plus(amountOutstanding);

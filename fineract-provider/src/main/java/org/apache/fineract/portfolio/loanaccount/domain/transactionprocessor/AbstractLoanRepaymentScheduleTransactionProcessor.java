@@ -46,6 +46,8 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.impl.CreocoreLoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.impl.HeavensFamilyLoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.impl.InterestPrincipalPenaltyFeesOrderLoanRepaymentScheduleTransactionProcessor;
+import org.apache.fineract.portfolio.loanaccount.service.GroupLoanIndividualMonitoringAssembler;
+import org.apache.fineract.portfolio.loanaccount.service.GroupLoanIndividualMonitoringTransactionAssembler;
 import org.joda.time.LocalDate;
 
 /**
@@ -645,26 +647,62 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
         final RoundingMode roundingMode = MoneyHelper.getRoundingMode();
         // final MathContext mc = new MathContext(0, RoundingMode.HALF_EVEN);
         final LoanTransaction loanTransaction = groupLoanIndividualMonitoringTransaction.getLoanTransaction();
-        final GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = groupLoanIndividualMonitoringTransaction
+        final GroupLoanIndividualMonitoring glim = groupLoanIndividualMonitoringTransaction
                 .getGroupLoanIndividualMonitoring();
         Loan loan = loanTransaction.getLoan();
+        BigDecimal totalInterestToBePaidByGroup = BigDecimal.ZERO;
+        List<LoanRepaymentScheduleInstallment>  reaymentSscheduleList = loan.getRepaymentScheduleInstallments();
+        BigDecimal interestRate =  loan.getLoanProductRelatedDetail().getNominalInterestRatePerPeriod();
         MonetaryCurrency currency = loan.getCurrency();
-        Money installmentAmount = Money.of(currency, groupLoanIndividualMonitoring.getInstallmentAmount());
-        Money feeAmount = Money.of(currency, groupLoanIndividualMonitoring.getChargeAmount());
-        Money interestAmount = Money.of(currency, groupLoanIndividualMonitoring.getInterestAmount());
+        BigDecimal currentTransactionInterest = loanTransaction.getInterestPortion(currency)==null?BigDecimal.ZERO:loanTransaction.getInterestPortion(currency).getAmount();
+        for (LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment : reaymentSscheduleList) {
+        	BigDecimal interestAmount = loanRepaymentScheduleInstallment.getInterestPaid(currency).getAmount();
+			totalInterestToBePaidByGroup = totalInterestToBePaidByGroup.add(interestAmount);
+		}
+        
+        BigDecimal totalInterestToBePaidByClient = GroupLoanIndividualMonitoringAssembler.percentageOf(totalInterestToBePaidByGroup, BigDecimal.valueOf(glim.getDisbursedAmount().doubleValue()*100/loan.getApprovedPrincipal().doubleValue()));
+        BigDecimal interestToBePaidByClient = totalInterestToBePaidByClient.subtract(glim.getPaidInterestAmount());
+        Money installmentAmount = Money.of(currency, glim.getInstallmentAmount());
+        Money feeAmount = Money.of(currency, glim.getChargeAmount());
         Money penaltyAmount = Money.zero(currency);
         Money individualAmount = Money.of(currency, individualTransactionAmount);
         Integer numberOfInstallments = loan.repaymentScheduleDetail().getNumberOfRepayments();
-
-        Money feePortion = Money.of(currency, (feeAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode).getAmount()
-                .setScale(0, RoundingMode.HALF_EVEN)));
+        /*
+        Integer paidInstallment = groupLoanIndividualMonitoring.getTotalPaidAmount().divide(installmentAmount.getAmount()).intValue();
+        BigDecimal paidInstallmentAmount = installmentAmount.getAmount().multiply(BigDecimal.valueOf(Double.valueOf(paidInstallment.toString())));
+        BigDecimal partialPaidAmountForInstallment = groupLoanIndividualMonitoring.getTotalPaidAmount().subtract(paidInstallmentAmount);
+        Boolean isPartialPaid = partialPaidAmountForInstallment.compareTo(BigDecimal.ZERO)>0;
+        BigDecimal paidCharge = groupLoanIndividualMonitoring.getPaidChargeAmount();
+        */
+        
+        BigDecimal calculatedCharge = GroupLoanIndividualMonitoringTransactionAssembler.getChargeSplit(glim, individualTransactionAmount, numberOfInstallments, currency);
+        
+        Money feePortion = Money.of(currency, calculatedCharge);
+        /*Money feePortion = Money.of(currency, (feeAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode).getAmount()));*/
+        
         Money penaltyPortion = Money.of(currency, (penaltyAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode)
-                .getAmount().setScale(0, RoundingMode.HALF_EVEN)));
+                .getAmount()));
 
-        Money interestPortion = Money.of(currency, (interestAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode)
-                .getAmount().setScale(0, RoundingMode.HALF_EVEN)));
+        /*Money interestPortion = Money.of(currency, (interestAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode)
+                .getAmount()));*/
+        
+        BigDecimal paidAmount = glim.getPaidPrincipalAmount();
+        
+        BigDecimal outstandingBalance = glim.getDisbursedAmount().subtract(paidAmount);
+        
+        BigDecimal outstandingBalanceInterest = GroupLoanIndividualMonitoringAssembler.percentageOf(outstandingBalance, interestRate);
+        
+        
+        
+        //BigDecimal interest = GroupLoanIndividualMonitoringTransactionAssembler.getInterestSplit(glim, individualTransactionAmount, numberOfInstallments, currency, groupLevelInterstPortion, outstandingBalanceInterest);
+        
+        Money interestPortion = Money.of(currency, interestToBePaidByClient);
+        
+        
         Money chargePortion = feePortion.plus(penaltyPortion);
-        Money principalPortion = installmentAmount.minus(chargePortion).minus(interestPortion);
+        
+        Money principalPortion = Money.of(currency,individualTransactionAmount.subtract(chargePortion.getAmount()).subtract(interestPortion.getAmount()));
+        		
         handleGLIMRepaymentInstallment(groupLoanIndividualMonitoringTransaction, individualAmount, principalPortion, interestPortion,
                 feePortion, penaltyPortion);
     }

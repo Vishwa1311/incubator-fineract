@@ -67,6 +67,10 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
             sql.append("glim.paid_amount as paidAmount, ");
             sql.append("glim.interest_amount as interestAmount, ");
             sql.append("glim.paid_interest_amount as paidInterestAmount, ");
+            sql.append("glim.paid_principal_amount as paidPrincipalAmount, ");
+            sql.append("glim.paid_charge_amount as paidChargeAmount, ");
+            sql.append("glim.waived_interest_amount as waivedInterestAmount, ");
+            sql.append("glim.waived_charge_amount as waivedChargeAmount, ");            
             sql.append("cv.id as loanPurposeId, cv.code_value as loanPurposeName, cv.code_description description, cv.order_position position, cv.is_active isActive  ");
             sql.append(" from m_loan_glim glim ");
             sql.append(" left join m_client c on glim.client_id = c.id ");
@@ -108,9 +112,15 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
             final BigDecimal paidInterestAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "paidInterestAmount");
             final BigDecimal interestAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "interestAmount");
 
+            final BigDecimal paidPrincipalAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "paidPrincipalAmount");
+            final BigDecimal paidChargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "paidChargeAmount");
+            final BigDecimal waivedInterestAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "waivedInterestAmount");
+            final BigDecimal waivedChargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "waivedChargeAmount");
+
             return GroupLoanIndividualMonitoringData.instance(id, loanId, totalLoanAmount, clientId, clientName, clientExternalID,
                     proposedAmount, approvedAmount, disbursedAmount, loanPurpose, isClientSelected, chargeAmount, adjustedAmount,
-                    installmentAmount, totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount);
+                    installmentAmount, totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount, paidPrincipalAmount, paidChargeAmount,
+                    waivedInterestAmount, waivedChargeAmount);
         }
     }
 

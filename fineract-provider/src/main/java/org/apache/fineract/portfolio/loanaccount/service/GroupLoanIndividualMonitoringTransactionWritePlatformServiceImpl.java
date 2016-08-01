@@ -19,7 +19,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanEventApiJsonValidator;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
-import org.apache.poi.ss.formula.functions.FinanceLib;
 import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,6 +43,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
 
     private final GroupLoanIndividualMonitoringTransactionAssembler groupLoanIndividualMonitoringTransactionAssembler;
+    
+    private final GroupLoanIndividualMonitoringAssembler glimAssembler;
 
     @Autowired
     public GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl(final LoanWritePlatformService loanWritePlatformService,
@@ -51,7 +52,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
             final LoanAccountDomainService loanAccountDomainService, final LoanRepositoryWrapper loanRepositoryWrapper,
             final LoanEventApiJsonValidator loanEventApiJsonValidator, final LoanAssembler loanAssembler,
             final PaymentDetailWritePlatformService paymentDetailWritePlatformService,
-            final GroupLoanIndividualMonitoringTransactionAssembler groupLoanIndividualMonitoringTransactionAssembler) {
+            final GroupLoanIndividualMonitoringTransactionAssembler groupLoanIndividualMonitoringTransactionAssembler,
+            final GroupLoanIndividualMonitoringAssembler glimAssembler) {
         this.loanWritePlatformService = loanWritePlatformService;
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper = groupLoanIndividualMonitoringTransactionRepositoryWrapper;
         this.loanAccountDomainService = loanAccountDomainService;
@@ -60,6 +62,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         this.loanAssembler = loanAssembler;
         this.paymentDetailWritePlatformService = paymentDetailWritePlatformService;
         this.groupLoanIndividualMonitoringTransactionAssembler = groupLoanIndividualMonitoringTransactionAssembler;
+        this.glimAssembler = glimAssembler;
     }
 
     @Transactional
@@ -97,7 +100,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
                 holidayDetailDto, isHolidayValidationDone);
         // FinanceLib.pmt(r, n, p, f, t);
         Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.groupLoanIndividualMonitoringTransactionAssembler
-                .assembleGLIMTransactions(command, loanTransaction);
+                .assembleGLIMTransactions(command, loanTransaction);      
+        this.glimAssembler.updateGLIMAfterRepayment(glimTransactions);
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper.saveAsList(glimTransactions);
         return commandProcessingResultBuilder.withCommandId(command.commandId()) //
                 .withTransactionId(loanTransaction.getId().toString()) //

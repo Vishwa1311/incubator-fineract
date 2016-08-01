@@ -220,8 +220,9 @@ public class CreocoreLoanRepaymentScheduleTransactionProcessor extends AbstractL
             tempPrincipalPortion = LoanUtilService.deductGivenComponent(transactionAmountRemaining, principalPortion);
             transactionAmountRemaining = transactionAmountRemaining.minus(principalPortion);
         }
-        groupLoanIndividualMonitoringTransaction = GroupLoanIndividualMonitoringTransaction.instance(
-                groupLoanIndividualMonitoringTransaction, tempPrincipalPortion.getAmount(), tempInterestPortion.getAmount(),
+        
+        groupLoanIndividualMonitoringTransaction.updateComponents(tempPrincipalPortion.getAmount(), tempInterestPortion.getAmount(),
                 tempFeeChargesPortion.getAmount(), tempPenaltyChargesPortion.getAmount(), installmentAmount.getAmount());
+
     }
 }

@@ -58,6 +58,8 @@ import org.apache.fineract.portfolio.calendar.domain.CalendarType;
 import org.apache.fineract.portfolio.calendar.exception.CalendarNotFoundException;
 import org.apache.fineract.portfolio.calendar.service.CalendarReadPlatformService;
 import org.apache.fineract.portfolio.charge.domain.Charge;
+import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.charge.exception.ChargeNotSupportedException;
 import org.apache.fineract.portfolio.client.domain.AccountNumberGenerator;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
@@ -81,7 +83,7 @@ import org.apache.fineract.portfolio.loanaccount.data.LoanChargeData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.DefaultLoanLifecycleStateMachine;
 import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoring;
-import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringRepositoryWrapper;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanDisbursementDetails;
@@ -127,6 +129,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 @Service
 public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements LoanApplicationWritePlatformService {
@@ -165,9 +168,10 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
     private final PledgeReadPlatformService pledgeReadPlatformService;
     private final LoanUtilService loanUtilService;
     private final CalendarReadPlatformService calendarReadPlatformService;
-    private final GroupLoanIndividualMonitoringRepositoryWrapper groupLoanIndividualMonitoringRepository;
+    private final GroupLoanIndividualMonitoringRepository groupLoanIndividualMonitoringRepository;
     private final CodeValueRepository codeValueRepository;
     private final GroupLoanIndividualMonitoringAssembler groupLoanIndividualMonitoringAssembler;
+    private final ChargeRepositoryWrapper chargeRepositoryWrapper;
 
     @Autowired
     public LoanApplicationWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context, final FromJsonHelper fromJsonHelper,
@@ -188,8 +192,8 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
             final BusinessEventNotifierService businessEventNotifierService, final ConfigurationDomainService configurationDomainService,
             final LoanScheduleAssembler loanScheduleAssembler, final PledgeRepositoryWrapper pledgeRepositoryWrapper, final PledgeReadPlatformService pledgeReadPlatformService, 
             final LoanUtilService loanUtilService, final CalendarReadPlatformService calendarReadPlatformService,
-            final GroupLoanIndividualMonitoringRepositoryWrapper groupLoanIndividualMonitoringRepository, final CodeValueRepository codeValueRepository, 
-            final GroupLoanIndividualMonitoringAssembler groupLoanIndividualMonitoringAssembler) {
+            final GroupLoanIndividualMonitoringRepository groupLoanIndividualMonitoringRepository, final CodeValueRepository codeValueRepository, 
+            final GroupLoanIndividualMonitoringAssembler groupLoanIndividualMonitoringAssembler, final ChargeRepositoryWrapper chargeRepositoryWrapper) {
         this.context = context;
         this.fromJsonHelper = fromJsonHelper;
         this.loanApplicationTransitionApiJsonValidator = loanApplicationTransitionApiJsonValidator;
@@ -225,6 +229,7 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
         this.groupLoanIndividualMonitoringRepository = groupLoanIndividualMonitoringRepository;
         this.codeValueRepository = codeValueRepository;
         this.groupLoanIndividualMonitoringAssembler = groupLoanIndividualMonitoringAssembler;
+        this.chargeRepositoryWrapper = chargeRepositoryWrapper;
     }
 
     private LoanLifecycleStateMachine defaultLoanLifecycleStateMachine() {
@@ -309,12 +314,9 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
                 this.accountAssociationsRepository.save(accountAssociations);
             }
             
-            List<GroupLoanIndividualMonitoring> glimList = newLoanApplication.getGroupLoanIndividualMonitoringList();
-
-            for(GroupLoanIndividualMonitoring groupLoanIndividualMonitoring : glimList) {
-                groupLoanIndividualMonitoring.setLoan(newLoanApplication);
-                this.groupLoanIndividualMonitoringRepository.save(groupLoanIndividualMonitoring);
-            }
+            // save GroupLoanIndividualMonitoring clients
+            final List<GroupLoanIndividualMonitoring> glimList = newLoanApplication.getGroupLoanIndividualMonitoringList();
+            this.groupLoanIndividualMonitoringRepository.save(glimList);
             
             attachLoanAccountToPledge(command, newLoanApplication);
 
@@ -332,7 +334,7 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
         }
     }
 
-private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProduct, final JsonCommand command) {
+    private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProduct, final JsonCommand command) {
 
         final AppUser currentUser = getAppUserIfPresent();
 
@@ -340,11 +342,15 @@ private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProd
         this.fromApiJsonDeserializer.validateForCreate(command.json(), isMeetingMandatoryForJLGLoans, loanProduct);
 
         validateCollateralAmountWithPrincipal(command, loanProduct);
-        
-      //validate for glim application
-        if(command.hasParameter(LoanApiConstants.clientMembersParamName)){
-        	GroupLoanIndividualMonitoringDataValidator.validateForGroupLoanIndividualMonitoring(command, LoanApiConstants.principalParamName);
+
+        // validate for glim application
+        if (command.hasParameter(LoanApiConstants.clientMembersParamName)) {
+            GroupLoanIndividualMonitoringDataValidator.validateForGroupLoanIndividualMonitoring(command,
+                    LoanApiConstants.principalParamName);
         }
+
+        // validate glim charges
+        validateGlimCharges(command);
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("loan");
@@ -365,8 +371,8 @@ private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProd
         }
         if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }
 
-        final Loan newLoanApplication = this.loanAssembler.assembleFrom(command, currentUser);        
-        
+        final Loan newLoanApplication = this.loanAssembler.assembleFrom(command, currentUser);
+
         validateSubmittedOnDate(newLoanApplication.getSubmittedOnDate(), newLoanApplication.getExpectedFirstRepaymentOnDate(),
                 newLoanApplication.loanProduct(), newLoanApplication.client());
 
@@ -381,10 +387,24 @@ private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProd
                         newLoanApplication.getTermPeriodFrequencyType(), productRelatedDetail.getNumberOfRepayments(),
                         productRelatedDetail.getRepayEvery(), productRelatedDetail.getRepaymentPeriodFrequencyType().getValue(),
                         newLoanApplication);
-        
+
         return newLoanApplication;
     }
 	
+    private void validateGlimCharges(JsonCommand command) {
+        final String loanTypeParameterName = "loanType";
+        final String loanTypeStr = command.stringValueOfParameterNamed(loanTypeParameterName);
+        if (AccountType.fromName(loanTypeStr).isGLIMAccount()) {
+            JsonArray glimCharges = command.arrayOfParameterNamed(LoanApiConstants.chargesParameterName);
+            for (JsonElement glimCharge : glimCharges) {
+                JsonObject jsonObject = glimCharge.getAsJsonObject();
+                Long chargeId = jsonObject.get("chargeId").getAsLong();
+                Charge charge = this.chargeRepositoryWrapper.findOneWithNotFoundDetection(chargeId);
+                if (!charge.isGlimCharge()) { throw new ChargeNotSupportedException(charge.getId()); }
+            }
+        }
+    }
+
     private void updateProductRelatedDetails(LoanProductRelatedDetail productRelatedDetail, Loan loan) {
         final Boolean amortization = loan.loanProduct().getLoanProductConfigurableAttributes().getAmortizationBoolean();
         final Boolean arrearsTolerance = loan.loanProduct().getLoanProductConfigurableAttributes().getArrearsToleranceBoolean();
@@ -530,6 +550,9 @@ private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProd
             if(command.hasParameter(LoanApiConstants.clientMembersParamName)){
             	GroupLoanIndividualMonitoringDataValidator.validateForGroupLoanIndividualMonitoring(command, LoanApiConstants.principalParamName);
             }
+            
+            // validate glim charges
+            validateGlimCharges(command);
 
             final Set<LoanCharge> existingCharges = existingLoanApplication.charges();
             Map<Long, LoanChargeData> chargesMap = new HashMap<>();
@@ -692,20 +715,28 @@ private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProd
                 existingLoanApplication.updateLoanCharges(possiblyModifedLoanCharges);
             }
             
-            //modify glim data
-            List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringAssembler.updateFromJson(command.parsedJson(), "proposedAmount",
-                    existingLoanApplication, existingLoanApplication.fetchNumberOfInstallmensAfterExceptions(), existingLoanApplication.getLoanProductRelatedDetail().getAnnualNominalInterestRate());
+            // modify glim data
+            final BigDecimal interestRate = existingLoanApplication.getLoanProductRelatedDetail().getAnnualNominalInterestRate();
+            final Integer numberOfRepayments = existingLoanApplication.fetchNumberOfInstallmensAfterExceptions();
+            List<GroupLoanIndividualMonitoring> glimList  = this.groupLoanIndividualMonitoringAssembler.createOrUpdateIndividualClientsAmountSplit(existingLoanApplication, command.parsedJson(), interestRate,
+                            numberOfRepayments);
 
+            List<GroupLoanIndividualMonitoring> existingGlimList = this.groupLoanIndividualMonitoringRepository.findByLoanId(loanId);
+            if (!existingGlimList.isEmpty()) {
+                this.groupLoanIndividualMonitoringRepository.delete(existingGlimList);
+            }
+            
             if (changes.containsKey("recalculateLoanSchedule")) {
                 changes.remove("recalculateLoanSchedule");
 
                 final JsonElement parsedQuery = this.fromJsonHelper.parse(command.json());
                 final JsonQuery query = JsonQuery.from(command.json(), parsedQuery, this.fromJsonHelper);
-
-                final LoanScheduleModel loanSchedule = this.calculationPlatformService.calculateLoanSchedule(query, false);
                 existingLoanApplication.updateGlim(glimList);
+                final LoanScheduleModel loanSchedule = this.calculationPlatformService.calculateLoanSchedule(query, false);
                 existingLoanApplication.updateLoanSchedule(loanSchedule, currentUser);
                 existingLoanApplication.recalculateAllCharges();
+                // save GroupLoanIndividualMonitoring clients
+                this.groupLoanIndividualMonitoringRepository.save(glimList);
             }
 
             this.fromApiJsonDeserializer.validateLoanTermAndRepaidEveryValues(existingLoanApplication.getTermFrequency(),
@@ -1012,10 +1043,10 @@ private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProd
             // to recompute the schedule
             if (changes.containsKey(LoanApiConstants.approvedLoanAmountParameterName) || changes.containsKey("recalculateLoanSchedule")
                     || changes.containsKey("expectedDisbursementDate")) {
-                LocalDate recalculateFrom = null;
-                ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
                 this.groupLoanIndividualMonitoringAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(),  loan.fetchNumberOfInstallmensAfterExceptions(),
                         glimList);
+                LocalDate recalculateFrom = null;
+                ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
                 loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser);
             }
             
@@ -1063,6 +1094,20 @@ private Loan validateAndAssembleSubmitLoanApplication(final LoanProduct loanProd
 
             if (changes.containsKey(LoanApiConstants.approvedLoanAmountParameterName)
                     || changes.containsKey(LoanApiConstants.disbursementPrincipalParameterName)) {
+                List<GroupLoanIndividualMonitoring> glimList  = this.groupLoanIndividualMonitoringRepository.findByLoanId(loanId);
+                HashMap<Long, BigDecimal> chargesMap = new HashMap<>();
+                for (GroupLoanIndividualMonitoring glim : glimList) {
+                    final BigDecimal proposedAmount = glim.getProposedAmount();
+                    if (proposedAmount != null) {
+                        glim.setIsClientSelected(true);
+                        this.groupLoanIndividualMonitoringAssembler.recalculateTotalFeeCharges(loan, chargesMap, proposedAmount,
+                                glim.getGroupLoanIndividualMonitoringCharges());
+                    }
+                }
+                this.groupLoanIndividualMonitoringAssembler.updateLoanChargesForGlim(loan, chargesMap);
+                loan.updateGlim(glimList);
+                this.groupLoanIndividualMonitoringAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(),
+                        loan.fetchNumberOfInstallmensAfterExceptions(), glimList);
                 LocalDate recalculateFrom = null;
                 ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
                 loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser);

@@ -237,8 +237,8 @@ public class EarlyPaymentLoanRepaymentScheduleTransactionProcessor extends Abstr
             transactionAmountRemaining = transactionAmountRemaining.minus(feeChargesPortion);
         }
 
-        groupLoanIndividualMonitoringTransaction = GroupLoanIndividualMonitoringTransaction.instance(
-                groupLoanIndividualMonitoringTransaction, tempPrincipalPortion.getAmount(), tempInterestPortion.getAmount(),
+        groupLoanIndividualMonitoringTransaction.updateComponents(tempPrincipalPortion.getAmount(), tempInterestPortion.getAmount(),
                 tempFeeChargesPortion.getAmount(), tempPenaltyChargesPortion.getAmount(), installmentAmount.getAmount());
+
     }
 }
