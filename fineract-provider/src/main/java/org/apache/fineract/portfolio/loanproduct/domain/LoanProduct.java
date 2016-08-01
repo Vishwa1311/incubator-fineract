@@ -351,6 +351,8 @@ public class LoanProduct extends AbstractPersistable<Long> {
         final Integer minLoanTerm = command.integerValueOfParameterNamed(LoanProductConstants.minLoanTerm);
         final Integer loanTermFrequencyTypeEnum = command.integerValueOfParameterNamed(LoanProductConstants.loanTenureFrequencyType);
         final PeriodFrequencyType loanTenureFrequencyType = PeriodFrequencyType.fromInt(loanTermFrequencyTypeEnum);
+        final Boolean considerFutureDisbursmentsInSchedule = command
+                .booleanPrimitiveValueOfParameterNamed(LoanProductConstants.considerFutureDisbursmentsInSchedule);
 
         return new LoanProduct(fund, loanTransactionProcessingStrategy, name, shortName, description, currency, principal, minPrincipal,
                 maxPrincipal, interestRatePerPeriod, minInterestRatePerPeriod, maxInterestRatePerPeriod, interestFrequencyType,
@@ -366,7 +368,8 @@ public class LoanProduct extends AbstractPersistable<Long> {
                 interestRateDifferential, minDifferentialLendingRate, maxDifferentialLendingRate, defaultDifferentialLendingRate,
                 isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGapBetweenInstallments,
                 maximumGapBetweenInstallments, closeLoanOnOverpayment, syncExpectedWithDisbursementDate, 
-                minimumPeriodsBetweenDisbursalAndFirstRepayment, minLoanTerm , maxLoanTerm, loanTenureFrequencyType);
+                minimumPeriodsBetweenDisbursalAndFirstRepayment, minLoanTerm, maxLoanTerm, loanTenureFrequencyType,
+                considerFutureDisbursmentsInSchedule);
     }
 
     public void updateLoanProductInRelatedClasses() {
@@ -598,7 +601,8 @@ public class LoanProduct extends AbstractPersistable<Long> {
             Boolean isFloatingInterestRateCalculationAllowed, final Boolean isVariableInstallmentsAllowed,
             final Integer minimumGapBetweenInstallments, final Integer maximumGapBetweenInstallments, final Boolean closeLoanOnOverpayment,
             final Boolean syncExpectedWithDisbursementDate, final Integer minimumPeriodsBetweenDisbursalAndFirstRepayment,
-            final Integer minLoanTerm, final Integer maxLoanTerm, final PeriodFrequencyType loanTenureFrequencyType) {
+            final Integer minLoanTerm, final Integer maxLoanTerm, final PeriodFrequencyType loanTenureFrequencyType,
+            final Boolean considerFutureDisbursmentsInSchedule) {
     	
         this.fund = fund;
         this.transactionProcessingStrategy = transactionProcessingStrategy;
@@ -631,7 +635,7 @@ public class LoanProduct extends AbstractPersistable<Long> {
                 interestPeriodFrequencyType, defaultAnnualNominalInterestRate, interestMethod, interestCalculationPeriodMethod,
                 considerPartialPeriodInterest, repayEvery, repaymentFrequencyType, defaultNumberOfInstallments, graceOnPrincipalPayment,
                 graceOnInterestPayment, graceOnInterestCharged, amortizationMethod, inArrearsTolerance, graceOnArrearsAgeing,
-                daysInMonthType.getValue(), daysInYearType.getValue(), isInterestRecalculationEnabled);
+                daysInMonthType.getValue(), daysInYearType.getValue(), isInterestRecalculationEnabled, considerFutureDisbursmentsInSchedule);
 
         this.loanProductRelatedDetail.validateRepaymentPeriodWithGraceSettings();
 

@@ -71,6 +71,7 @@ public final class LoanProductDataValidator {
             "accountingRule", "includeInBorrowerCycle", "startDate", "closeDate", "externalId", "isLinkedToFloatingInterestRates",
             "floatingRatesId", "interestRateDifferential", "minDifferentialLendingRate", "defaultDifferentialLendingRate",
             "maxDifferentialLendingRate", "isFloatingInterestRateCalculationAllowed",
+            LoanProductConstants.considerFutureDisbursmentsInSchedule,
             LOAN_PRODUCT_ACCOUNTING_PARAMS.FEES_RECEIVABLE.getValue(), LOAN_PRODUCT_ACCOUNTING_PARAMS.FUND_SOURCE.getValue(),
             LOAN_PRODUCT_ACCOUNTING_PARAMS.INCOME_FROM_FEES.getValue(), LOAN_PRODUCT_ACCOUNTING_PARAMS.INCOME_FROM_PENALTIES.getValue(),
             LOAN_PRODUCT_ACCOUNTING_PARAMS.INTEREST_ON_LOANS.getValue(), LOAN_PRODUCT_ACCOUNTING_PARAMS.INTEREST_RECEIVABLE.getValue(),
@@ -107,7 +108,7 @@ public final class LoanProductDataValidator {
             LoanProductConstants.allowVariableInstallmentsParamName, LoanProductConstants.minimumGapBetweenInstallments,
             LoanProductConstants.maximumGapBetweenInstallments, LoanProductConstants.closeLoanOnOverpayment,
             LoanProductConstants.syncExpectedWithDisbursementDate, LoanProductConstants.minLoanTerm, LoanProductConstants.maxLoanTerm,
-            LoanProductConstants.loanTenureFrequencyType));
+            LoanProductConstants.loanTenureFrequencyType, LoanProductConstants.considerFutureDisbursmentsInSchedule));
 
     private final FromJsonHelper fromApiJsonHelper;
 

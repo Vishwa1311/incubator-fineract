@@ -1920,7 +1920,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 periods.add(disbursementPeriod);
                 principal = principal.add(disbursementData.amount());
             } else if (!excludePastUndisbursed || disbursementData.isDisbursed()
-                    || !disbursementData.disbursementDate().isBefore(DateUtils.getLocalDateOfTenant())) {
+                    || (loanApplicationTerms.isConsiderFutureDisbursmentsInSchedule() && !disbursementData.disbursementDate().isBefore(DateUtils.getLocalDateOfTenant()))) {
                 disurseDetail.put(disbursementData.disbursementDate(), Money.of(currency, disbursementData.amount()));
             }
         }

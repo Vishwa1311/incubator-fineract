@@ -92,7 +92,8 @@ public class LoanProductsApiResource {
             "accountingRuleOptions", "accountingMappingOptions", "floatingRateOptions", "isLinkedToFloatingInterestRates",
             "floatingRatesId", "interestRateDifferential", "minDifferentialLendingRate", "defaultDifferentialLendingRate",
             "maxDifferentialLendingRate", "isFloatingInterestRateCalculationAllowed", LoanProductConstants.minLoanTerm, 
-            LoanProductConstants.maxLoanTerm, LoanProductConstants.loanTenureFrequencyType));
+            LoanProductConstants.maxLoanTerm, LoanProductConstants.loanTenureFrequencyType,
+            LoanProductConstants.considerFutureDisbursmentsInSchedule));
 
     private final Set<String> PRODUCT_MIX_DATA_PARAMETERS = new HashSet<>(Arrays.asList("productId", "productName", "restrictedProducts",
             "allowedProducts", "productOptions"));
@@ -304,7 +305,6 @@ public class LoanProductsApiResource {
         final List<FloatingRateData> floatingRateOptions = this.floatingRateReadPlatformService.retrieveLookupActive();
         final boolean closeLoanOnOverpayment = productData.closeLoanOnOverpayment();
         
-
         return new LoanProductData(productData, chargeOptions, penaltyOptions, paymentTypeOptions, currencyOptions,
                 amortizationTypeOptions, interestTypeOptions, interestCalculationPeriodTypeOptions, repaymentFrequencyTypeOptions,
                 interestRateFrequencyTypeOptions, fundOptions, transactionProcessingStrategyOptions, accountOptions,

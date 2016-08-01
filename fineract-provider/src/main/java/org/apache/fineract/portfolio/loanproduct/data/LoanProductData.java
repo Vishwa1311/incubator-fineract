@@ -182,6 +182,7 @@ public class LoanProductData {
     private final Integer minLoanTerm;
     private final Integer maxLoanTerm;
     private final EnumOptionData loanTenureFrequencyType;
+    private final boolean considerFutureDisbursmentsInSchedule;
 
     /**
      * Used when returning lookup information about loan product for dropdowns.
@@ -261,6 +262,7 @@ public class LoanProductData {
         final Integer minLoanTerm = null;
         final Integer maxLoanTerm = null;
         final EnumOptionData loanTenureFrequencyType = null;
+        final boolean considerFutureDisbursmentsInSchedule = false;
 
         return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                 numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
@@ -277,7 +279,7 @@ public class LoanProductData {
                 interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate, maxDifferentialLendingRate,
                 isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap,
                 closeLoanOnOverpayment, syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment,
-                minLoanTerm, maxLoanTerm, loanTenureFrequencyType);
+                minLoanTerm, maxLoanTerm, loanTenureFrequencyType, considerFutureDisbursmentsInSchedule);
     }
 
     public static LoanProductData lookupWithCurrency(final Long id, final String name, final CurrencyData currency) {
@@ -356,6 +358,7 @@ public class LoanProductData {
         final Integer minLoanTerm = null;
         final Integer maxLoanTerm = null;
         final EnumOptionData loanTenureFrequencyType = null;
+        final boolean considerFutureDisbursmentsInSchedule = false;
 
         return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                 numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
@@ -372,7 +375,7 @@ public class LoanProductData {
                 interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate, maxDifferentialLendingRate,
                 isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap, isoverpaymentcloseloan,
                 syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment,
-                minLoanTerm, maxLoanTerm, loanTenureFrequencyType);
+                minLoanTerm, maxLoanTerm, loanTenureFrequencyType, considerFutureDisbursmentsInSchedule);
     }
 
     public static LoanProductData sensibleDefaultsForNewLoanProductCreation() {
@@ -458,6 +461,7 @@ public class LoanProductData {
         final Integer minLoanTerm = null;
         final Integer maxLoanTerm = null;
         final EnumOptionData loanTenureFrequencyType = null;
+        final boolean considerFutureDisbursmentsInSchedule = false;
 
         return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                 numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
@@ -474,7 +478,7 @@ public class LoanProductData {
                 floatingRateName, interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate,
                 maxDifferentialLendingRate, isFloatingInterestRateCalculationAllowed, isVariableInstallmentsAllowed, minimumGap, maximumGap,
                 isoverpaymentcloseloan, syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment,
-                minLoanTerm, maxLoanTerm, loanTenureFrequencyType);
+                minLoanTerm, maxLoanTerm, loanTenureFrequencyType, considerFutureDisbursmentsInSchedule);
     }
 
     public static LoanProductData withAccountingDetails(final LoanProductData productData, final Map<String, Object> accountingMappings,
@@ -514,7 +518,8 @@ public class LoanProductData {
             boolean isFloatingInterestRateCalculationAllowed, final boolean isVariableInstallmentsAllowed,
             final Integer minimumGapBetweenInstallments, final Integer maximumGapBetweenInstallments, final boolean closeLoanOnOverpayment, 
             final boolean syncExpectedWithDisbursementDate,  final Integer minimumPeriodsBetweenDisbursalAndFirstRepayment,
-            final Integer minLoanTerm, final Integer maxLoanTerm, final EnumOptionData loanTenureFrequencyType) {
+            final Integer minLoanTerm, final Integer maxLoanTerm, final EnumOptionData loanTenureFrequencyType,
+            final boolean considerFutureDisbursmentsInSchedule) {
 
         this.id = id;
         this.name = name;
@@ -619,6 +624,7 @@ public class LoanProductData {
         this.minLoanTerm = minLoanTerm;
         this.maxLoanTerm = maxLoanTerm;
         this.loanTenureFrequencyType = loanTenureFrequencyType;
+        this.considerFutureDisbursmentsInSchedule = considerFutureDisbursmentsInSchedule;
 
         this.minimumPeriodsBetweenDisbursalAndFirstRepayment = minimumPeriodsBetweenDisbursalAndFirstRepayment;
     }
@@ -755,6 +761,7 @@ public class LoanProductData {
         this.minLoanTerm = productData.minLoanTerm;
         this.maxLoanTerm = productData.maxLoanTerm;
         this.loanTenureFrequencyType = productData.loanTenureFrequencyType;
+        this.considerFutureDisbursmentsInSchedule = productData.considerFutureDisbursmentsInSchedule;
     }
 
     private Collection<ChargeData> nullIfEmpty(final Collection<ChargeData> charges) {
