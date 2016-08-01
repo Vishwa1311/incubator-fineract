@@ -41,7 +41,6 @@ import org.apache.fineract.organisation.staff.exception.StaffRoleException;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDays;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
 import org.apache.fineract.portfolio.accountdetails.service.AccountEnumerations;
-import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
@@ -87,9 +86,7 @@ import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 
 @Service
 public class LoanAssembler {
@@ -300,7 +297,10 @@ public class LoanAssembler {
         }
         
         final LoanApplicationTerms loanApplicationTerms = this.loanScheduleAssembler.assembleLoanTerms(element);
-        final List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringAssembler.individualClientCalculation(loanApplication , element, loanApplicationTerms);
+        // GLIM individual clients amount split
+        final BigDecimal interestRate = loanApplicationTerms.getAnnualNominalInterestRate();
+        final Integer numberOfRepayments = loanApplicationTerms.getNumberOfRepayments();
+        final List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringAssembler.createOrUpdateIndividualClientsAmountSplit(loanApplication, element, interestRate, numberOfRepayments);
         loanApplicationTerms.updateTotalInterestDueForGlim(glimList);
         final boolean isHolidayEnabled = this.configurationDomainService.isRescheduleRepaymentsOnHolidaysEnabled();
         final List<Holiday> holidays = this.holidayRepository.findByOfficeIdAndGreaterThanDate(loanApplication.getOfficeId(),

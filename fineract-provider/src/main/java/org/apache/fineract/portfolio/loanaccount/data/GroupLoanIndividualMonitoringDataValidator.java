@@ -21,7 +21,10 @@ package org.apache.fineract.portfolio.loanaccount.data;
 import java.math.BigDecimal;
 
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+import org.apache.fineract.portfolio.accountdetails.domain.AccountType;
+import org.apache.fineract.portfolio.accountdetails.service.AccountEnumerations;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.exception.ClientSharesNotEqualToPrincipalAmountException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidClientShareInGroupLoanException;
@@ -57,6 +60,7 @@ public class GroupLoanIndividualMonitoringDataValidator {
         } else {
             throw new InvalidClientShareInGroupLoanException();
         }
+        
     }
 
     public static boolean isClientsAmountValid(JsonArray clientMembers) {

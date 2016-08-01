@@ -37,7 +37,7 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
 
     @ManyToOne
     @JoinColumn(name = "glim_id")
-    private GroupLoanIndividualMonitoring glim;
+    private GroupLoanIndividualMonitoring groupLoanIndividualMonitoring;
 
     @ManyToOne
     @JoinColumn(name = "client_id")
@@ -58,7 +58,7 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
 
     public GroupLoanIndividualMonitoringCharge(final GroupLoanIndividualMonitoring glim, final Client client, final Charge charge,
             final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek) {
-        this.glim = glim;
+        this.groupLoanIndividualMonitoring = glim;
         this.client = client;
         this.charge = charge;
         this.feeAmount = feeAmount;
@@ -76,11 +76,11 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
     }
 
     public GroupLoanIndividualMonitoring getGlim() {
-        return this.glim;
+        return this.groupLoanIndividualMonitoring;
     }
 
     public void setGlim(GroupLoanIndividualMonitoring glim) {
-        this.glim = glim;
+        this.groupLoanIndividualMonitoring = glim;
     }
 
     public Client getClient() {

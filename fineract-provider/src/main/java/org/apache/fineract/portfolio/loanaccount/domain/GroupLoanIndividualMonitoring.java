@@ -88,8 +88,23 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
     @Column(name = "percentage", scale = 6, precision = 19, nullable = true)
     private BigDecimal percentage;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "glim", orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "groupLoanIndividualMonitoring", orphanRemoval = true)
     private Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharge = new HashSet<>();
+    
+    @Column(name = "paid_principal_amount", scale = 6, precision = 19, nullable = true)
+    private BigDecimal paidPrincipalAmount;
+
+    @Column(name = "paid_charge_amount", scale = 6, precision = 19, nullable = true)
+    private BigDecimal paidChargeAmount;
+
+    @Column(name = "waived_interest_amount", scale = 6, precision = 19, nullable = true)
+    private BigDecimal waivedInterestAmount;
+
+    @Column(name = "waived_charge_amount", scale = 6, precision = 19, nullable = true)
+    private BigDecimal waivedChargeAmount;
+
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "groupLoanIndividualMonitoring", orphanRemoval = true)
+    private Set<GroupLoanIndividualMonitoringTransaction> groupLoanIndividualMonitoringTransactions = new HashSet<>();
 
     public GroupLoanIndividualMonitoring() {
         
@@ -118,7 +133,11 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
         this.totalPaidAmount = null;
         this.interestAmount = null;
         this.groupLoanIndividualMonitoringCharge = groupLoanIndividualMonitoringCharge;
-        this.percentage = percentage;
+        this.percentage = null;
+        this.paidPrincipalAmount = null;
+        this.paidChargeAmount = null;
+        this.waivedInterestAmount = null;
+        this.waivedChargeAmount = null;
     }
 
     public static GroupLoanIndividualMonitoring createDefaultInstance(final Loan loan, final Client client) {
@@ -136,11 +155,12 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
             final BigDecimal approvedAmount, final BigDecimal disbursedAmount, final CodeValue loanPurpose, final Boolean isClientSelected,
             final BigDecimal adjustedAmount, final BigDecimal installmentAmount, final BigDecimal totalPaybleAmount,
             final BigDecimal paidInterestAmount, final BigDecimal totalPaidAmount, final BigDecimal interestAmount,
-            final Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharges, BigDecimal percentage) {
+            final Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharges,final BigDecimal percentage,final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
+            final BigDecimal waivedChargeAmount) {
         final BigDecimal chargeAmount = null;
         return new GroupLoanIndividualMonitoring(loan, client, proposedAmount, approvedAmount, disbursedAmount, loanPurpose,
                 isClientSelected, chargeAmount, adjustedAmount, installmentAmount, totalPaybleAmount, paidInterestAmount, totalPaidAmount,
-                interestAmount, groupLoanIndividualMonitoringCharges, percentage);
+                interestAmount, groupLoanIndividualMonitoringCharges, percentage, paidPrincipalAmount, paidChargeAmount, waivedInterestAmount, waivedChargeAmount);
     }
 
     public GroupLoanIndividualMonitoring(final Loan loan, final Client client, final BigDecimal proposedAmount,
@@ -148,7 +168,8 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
             final BigDecimal chargeAmount, final BigDecimal adjustedAmount, final BigDecimal installmentAmount,
             final BigDecimal totalPaybleAmount, final BigDecimal paidInterestAmount, final BigDecimal paidAmount,
             final BigDecimal interestAmount, final Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharge,
-            final BigDecimal percentage) {
+            final BigDecimal percentage,final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
+            final BigDecimal waivedChargeAmount) {
         this.loan = loan;
         this.client = client;
         this.proposedAmount = proposedAmount;
@@ -161,10 +182,14 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
         this.installmentAmount = installmentAmount;
         this.totalPaybleAmount = totalPaybleAmount;
         this.paidInterestAmount = paidInterestAmount;
-        this.totalPaidAmount = totalPaidAmount;
+        this.totalPaidAmount = paidAmount;
         this.interestAmount = interestAmount;
         this.groupLoanIndividualMonitoringCharge = groupLoanIndividualMonitoringCharge;
         this.percentage = percentage;
+        this.paidPrincipalAmount = paidPrincipalAmount;
+        this.paidChargeAmount = paidChargeAmount;
+        this.waivedInterestAmount = waivedInterestAmount;
+        this.waivedChargeAmount = waivedChargeAmount;
     }
 
     public Loan getLoan() {
@@ -286,4 +311,45 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
     public void updatePercentage(BigDecimal updatedPercentage) {
         this.percentage = updatedPercentage;
     }
+
+	public BigDecimal getPaidPrincipalAmount() {
+		return this.paidPrincipalAmount;
+	}
+
+	public void setPaidPrincipalAmount(BigDecimal paidPrincipalAmount) {
+		this.paidPrincipalAmount = paidPrincipalAmount;
+	}
+
+	public BigDecimal getPaidChargeAmount() {
+		return this.paidChargeAmount;
+	}
+
+	public void setPaidChargeAmount(BigDecimal paidChargeAmount) {
+		this.paidChargeAmount = paidChargeAmount;
+	}
+
+	public BigDecimal getWaivedInterestAmount() {
+		return this.waivedInterestAmount;
+	}
+
+	public void setWaivedInterestAmount(BigDecimal waivedInterestAmount) {
+		this.waivedInterestAmount = waivedInterestAmount;
+	}
+
+	public BigDecimal getWaivedChargeAmount() {
+		return this.waivedChargeAmount;
+	}
+
+	public void setWaivedChargeAmount(BigDecimal waivedChargeAmount) {
+		this.waivedChargeAmount = waivedChargeAmount;
+	}    
+        
+    public void updateGlimTransaction(final GroupLoanIndividualMonitoringTransaction glimTransaction) {
+        this.groupLoanIndividualMonitoringTransactions.add(glimTransaction);
+    }
+
+    public void undoGlimTransaction() {
+        this.groupLoanIndividualMonitoringTransactions.clear();
+    }
+
 }
