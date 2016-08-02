@@ -79,37 +79,13 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
         BigDecimal partialPaidAmountForInstallment = (paidInstallment==0)?totalPaidAmount:totalPaidAmount.subtract(paidInstallmentAmount);
         Boolean isPartialPaid = partialPaidAmountForInstallment.compareTo(BigDecimal.ZERO)>0;
     	Money installmentCharge = Money.of(currency, BigDecimal.valueOf(glim.getChargeAmount().doubleValue()/numberOfInstallments.doubleValue())) ;
+    	if(paidInstallment.intValue()==numberOfInstallments.intValue()){
+    		return glim.getChargeAmount().subtract(glim.getPaidChargeAmount());
+    	}
     	BigDecimal paidInstallmentCharge = installmentCharge.getAmount().multiply(BigDecimal.valueOf(Double.valueOf(paidInstallment.toString())));
     	if(isPartialPaid){
     		return paidInstallmentCharge.add(installmentCharge.getAmount()).subtract(glim.getPaidChargeAmount());
     	}
-    	return paidInstallmentCharge.subtract(glim.getPaidChargeAmount()) ;
-        /*Integer paidInstallment = glim.getTotalPaidAmount().divide(glim.getInstallmentAmount()).intValue();
-        BigDecimal paidInstallmentAmount = (paidInstallment==0)?BigDecimal.ZERO:glim.getInstallmentAmount().multiply(BigDecimal.valueOf(Double.valueOf(paidInstallment.toString())));
-        BigDecimal partialPaidAmountForInstallment = (paidInstallment==0)?glim.getTotalPaidAmount():glim.getTotalPaidAmount().subtract(paidInstallmentAmount);
-        Boolean isPartialPaid = partialPaidAmountForInstallment.compareTo(BigDecimal.ZERO)>0;
-        BigDecimal paidCharge = glim.getPaidChargeAmount();
-        Integer currentInstallment = paidInstallment+1;
-        Money installmentCharge = Money.of(currency, glim.getChargeAmount().divide(BigDecimal.valueOf(numberOfInstallments.longValue()))) ;
-        Integer paidChargeForInstallment = (glim.getPaidChargeAmount().compareTo(BigDecimal.ZERO)>0)?0:glim.getPaidChargeAmount().divide(installmentCharge.getAmount()).intValue();
-        BigDecimal paidInstallmentCharge = (paidChargeForInstallment==0)?BigDecimal.ZERO:installmentCharge.getAmount().multiply(BigDecimal.valueOf(Double.valueOf(paidChargeForInstallment.toString())));
-        BigDecimal partialPaidChargeForInstallment = (paidChargeForInstallment==0)?glim.getPaidChargeAmount():glim.getPaidChargeAmount().subtract(paidInstallmentCharge);
-        if(isPartialPaid){
-        	
-        }else{
-        	if(transactionAmount.compareTo(glim.getInstallmentAmount())==0){
-        		return installmentCharge.getAmount();
-        	}else if(transactionAmount.compareTo(glim.getInstallmentAmount())>0){
-        		
-        	}else{
-        		
-        	}
-        }
-	*/	
-    	
-    }
-    
-    public static BigDecimal getInterestSplit(GroupLoanIndividualMonitoring glim, BigDecimal transactionAmount, Integer numberOfInstallments, MonetaryCurrency currency, Money groupLevelInterstPortion, BigDecimal outstandingInterest){
-    	return null;
+    	return paidInstallmentCharge.subtract(glim.getPaidChargeAmount()) ;           	
     }
 }

@@ -3,6 +3,7 @@ package org.apache.fineract.portfolio.loanaccount.service;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
@@ -10,6 +11,8 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoring;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringTransactionRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
@@ -45,6 +48,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
     private final GroupLoanIndividualMonitoringTransactionAssembler groupLoanIndividualMonitoringTransactionAssembler;
     
     private final GroupLoanIndividualMonitoringAssembler glimAssembler;
+    private final GroupLoanIndividualMonitoringRepository glimRepository;
 
     @Autowired
     public GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl(final LoanWritePlatformService loanWritePlatformService,
@@ -53,7 +57,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
             final LoanEventApiJsonValidator loanEventApiJsonValidator, final LoanAssembler loanAssembler,
             final PaymentDetailWritePlatformService paymentDetailWritePlatformService,
             final GroupLoanIndividualMonitoringTransactionAssembler groupLoanIndividualMonitoringTransactionAssembler,
-            final GroupLoanIndividualMonitoringAssembler glimAssembler) {
+            final GroupLoanIndividualMonitoringAssembler glimAssembler, final GroupLoanIndividualMonitoringRepository glimRepository) {
         this.loanWritePlatformService = loanWritePlatformService;
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper = groupLoanIndividualMonitoringTransactionRepositoryWrapper;
         this.loanAccountDomainService = loanAccountDomainService;
@@ -63,6 +67,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         this.paymentDetailWritePlatformService = paymentDetailWritePlatformService;
         this.groupLoanIndividualMonitoringTransactionAssembler = groupLoanIndividualMonitoringTransactionAssembler;
         this.glimAssembler = glimAssembler;
+        this.glimRepository = glimRepository;
     }
 
     @Transactional
@@ -89,6 +94,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
             changes.put("note", noteText);
         }
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
+        List<GroupLoanIndividualMonitoring> glimList = this.glimRepository.findByLoanId(loanId);
+        loan.updateGlim(glimList);
         final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
         final Boolean isHolidayValidationDone = false;
         final boolean isRecoveryRepayment = false;

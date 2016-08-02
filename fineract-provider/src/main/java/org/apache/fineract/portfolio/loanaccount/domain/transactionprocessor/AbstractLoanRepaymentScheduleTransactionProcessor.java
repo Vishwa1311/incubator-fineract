@@ -652,50 +652,32 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
         Loan loan = loanTransaction.getLoan();
         BigDecimal totalInterestToBePaidByGroup = BigDecimal.ZERO;
         List<LoanRepaymentScheduleInstallment>  reaymentSscheduleList = loan.getRepaymentScheduleInstallments();
-        BigDecimal interestRate =  loan.getLoanProductRelatedDetail().getNominalInterestRatePerPeriod();
         MonetaryCurrency currency = loan.getCurrency();
-        BigDecimal currentTransactionInterest = loanTransaction.getInterestPortion(currency)==null?BigDecimal.ZERO:loanTransaction.getInterestPortion(currency).getAmount();
         for (LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment : reaymentSscheduleList) {
         	BigDecimal interestAmount = loanRepaymentScheduleInstallment.getInterestPaid(currency).getAmount();
 			totalInterestToBePaidByGroup = totalInterestToBePaidByGroup.add(interestAmount);
 		}
-        
+        BigDecimal totalPaidAmount = glim.getTotalPaidAmount().add(individualTransactionAmount);
+    	Integer paidInstallment = BigDecimal.valueOf(totalPaidAmount.doubleValue()/glim.getInstallmentAmount().doubleValue()).intValue();    	
         BigDecimal totalInterestToBePaidByClient = GroupLoanIndividualMonitoringAssembler.percentageOf(totalInterestToBePaidByGroup, BigDecimal.valueOf(glim.getDisbursedAmount().doubleValue()*100/loan.getApprovedPrincipal().doubleValue()));
+        
         BigDecimal interestToBePaidByClient = totalInterestToBePaidByClient.subtract(glim.getPaidInterestAmount());
-        Money installmentAmount = Money.of(currency, glim.getInstallmentAmount());
-        Money feeAmount = Money.of(currency, glim.getChargeAmount());
+        
         Money penaltyAmount = Money.zero(currency);
         Money individualAmount = Money.of(currency, individualTransactionAmount);
         Integer numberOfInstallments = loan.repaymentScheduleDetail().getNumberOfRepayments();
-        /*
-        Integer paidInstallment = groupLoanIndividualMonitoring.getTotalPaidAmount().divide(installmentAmount.getAmount()).intValue();
-        BigDecimal paidInstallmentAmount = installmentAmount.getAmount().multiply(BigDecimal.valueOf(Double.valueOf(paidInstallment.toString())));
-        BigDecimal partialPaidAmountForInstallment = groupLoanIndividualMonitoring.getTotalPaidAmount().subtract(paidInstallmentAmount);
-        Boolean isPartialPaid = partialPaidAmountForInstallment.compareTo(BigDecimal.ZERO)>0;
-        BigDecimal paidCharge = groupLoanIndividualMonitoring.getPaidChargeAmount();
-        */
         
         BigDecimal calculatedCharge = GroupLoanIndividualMonitoringTransactionAssembler.getChargeSplit(glim, individualTransactionAmount, numberOfInstallments, currency);
         
         Money feePortion = Money.of(currency, calculatedCharge);
-        /*Money feePortion = Money.of(currency, (feeAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode).getAmount()));*/
+        
         
         Money penaltyPortion = Money.of(currency, (penaltyAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode)
                 .getAmount()));
-
-        /*Money interestPortion = Money.of(currency, (interestAmount.dividedBy(BigDecimal.valueOf(numberOfInstallments), roundingMode)
-                .getAmount()));*/
         
-        BigDecimal paidAmount = glim.getPaidPrincipalAmount();
-        
-        BigDecimal outstandingBalance = glim.getDisbursedAmount().subtract(paidAmount);
-        
-        BigDecimal outstandingBalanceInterest = GroupLoanIndividualMonitoringAssembler.percentageOf(outstandingBalance, interestRate);
-        
-        
-        
-        //BigDecimal interest = GroupLoanIndividualMonitoringTransactionAssembler.getInterestSplit(glim, individualTransactionAmount, numberOfInstallments, currency, groupLevelInterstPortion, outstandingBalanceInterest);
-        
+        if(paidInstallment==numberOfInstallments){
+        	interestToBePaidByClient = glim.getInterestAmount().subtract(glim.getPaidInterestAmount());
+        }
         Money interestPortion = Money.of(currency, interestToBePaidByClient);
         
         
