@@ -4798,6 +4798,10 @@ public class Loan extends AbstractPersistable<Long> {
                 } else if (loanCharge.isInstalmentFee() && loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
                     BigDecimal numberOfRepayments = new BigDecimal(this.fetchNumberOfInstallmensAfterExceptions());
                     amount = (loanCharge.amount().divide(numberOfRepayments, MoneyHelper.getRoundingMode()));
+                    BigDecimal totalAmountFromInstallment = amount.multiply(numberOfRepayments);
+                    if((numberOfRepayments.intValue() == installment.getInstallmentNumber().intValue()) && (loanCharge.amount().compareTo(totalAmountFromInstallment) != 0)){                    	
+                    	amount = amount.add(loanCharge.amount().subtract(totalAmountFromInstallment));
+                    }
                 } else {
                     amount = calculateInstallmentChargeAmount(loanCharge.getChargeCalculation(), loanCharge.getPercentage(), installment)
                             .getAmount();
