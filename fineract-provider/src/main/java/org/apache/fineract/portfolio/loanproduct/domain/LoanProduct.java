@@ -682,7 +682,11 @@ public class LoanProduct extends AbstractPersistable<Long> {
         this.syncExpectedWithDisbursementDate = syncExpectedWithDisbursementDate;
         this.minLoanTerm = minLoanTerm;
         this.maxLoanTerm = maxLoanTerm;
-        this.loanTenureFrequencyType = loanTenureFrequencyType;
+		if (loanTenureFrequencyType == null) {
+			this.loanTenureFrequencyType = PeriodFrequencyType.INVALID;
+		} else {
+			this.loanTenureFrequencyType = loanTenureFrequencyType;
+		}
     }
 
     public MonetaryCurrency getCurrency() {
