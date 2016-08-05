@@ -204,6 +204,7 @@ public class GroupLoanIndividualMonitoringAssembler {
             if (glim.isClientSelected()) {
                 BigDecimal totalCharge = BigDecimal.ZERO;
                 BigDecimal emiAmount = BigDecimal.ZERO;
+                BigDecimal recalculateEmiAmount = BigDecimal.ZERO;
                 BigDecimal totalPaybleAmount = BigDecimal.ZERO;
                 BigDecimal totalAmountBeforeAdjustment = BigDecimal.ZERO;
                 BigDecimal revisedTotalFee = BigDecimal.ZERO;
@@ -222,11 +223,12 @@ public class GroupLoanIndividualMonitoringAssembler {
                 } else {
                     totalAmountBeforeAdjustment = glim.getProposedAmount().add(glim.getInterestAmount()).add(totalCharge);
                 }
-
-                emiAmount = BigDecimal.valueOf(Math.ceil(totalAmountBeforeAdjustment.doubleValue() / numberOfRepayment.doubleValue()));
-                 
+                BigDecimal beforeRoundingEmiAmount = BigDecimal.valueOf((totalAmountBeforeAdjustment.doubleValue() / numberOfRepayment.doubleValue()));
+                
+                emiAmount = BigDecimal.valueOf(Math.round(totalAmountBeforeAdjustment.doubleValue() / numberOfRepayment.doubleValue()));
+                Boolean isGreater = emiAmount.subtract(beforeRoundingEmiAmount).compareTo(BigDecimal.valueOf(0.49d)) >= 0;
                 glim.setInstallmentAmount(emiAmount);
-                totalPaybleAmount = BigDecimal.valueOf(Math.round(emiAmount.multiply(BigDecimal.valueOf(numberOfRepayment)).doubleValue()));
+                totalPaybleAmount = BigDecimal.valueOf(emiAmount.multiply(BigDecimal.valueOf(numberOfRepayment)).doubleValue());
                 glim.setTotalPaybleAmount(totalPaybleAmount);
 
                 // adjust rounding off amount to applicable charge
@@ -234,8 +236,30 @@ public class GroupLoanIndividualMonitoringAssembler {
                     if (glimCharge.getCharge().isEmiRoundingGoalSeek()) {
                         BigDecimal differenceAmount = totalPaybleAmount.subtract(totalAmountBeforeAdjustment);
                         revisedTotalFee = glimCharge.getFeeAmount().add(differenceAmount);
-                        glimCharge.setRevisedFeeAmount(BigDecimal.valueOf(Math.round(revisedTotalFee.doubleValue())));
+                        /*  if diff amount is ZERO and max cap is equal to revisedTotalFee then
+                         *  then substract one from EMI then multiply with no of installments
+                         *  get diff amount add to revised fee 
+                         */ 
+                        BigDecimal maxCap = BigDecimal.valueOf(Math.ceil(glimCharge.getCharge().getMaxCap().doubleValue()));
+                        if (revisedTotalFee.compareTo(maxCap) == 0) {
+                            recalculateEmiAmount = emiAmount.subtract(BigDecimal.ONE);
+                            glim.setInstallmentAmount(recalculateEmiAmount);
+                            totalPaybleAmount = BigDecimal.valueOf(recalculateEmiAmount.multiply(BigDecimal.valueOf(numberOfRepayment)).doubleValue());
+                            glim.setTotalPaybleAmount(totalPaybleAmount);
+                            differenceAmount = totalPaybleAmount.subtract(totalAmountBeforeAdjustment);
+                            revisedTotalFee = glimCharge.getFeeAmount().add(differenceAmount);
+                        } else if(revisedTotalFee.compareTo(maxCap) == 1) {
+                            emiAmount = BigDecimal.valueOf(Math.floor(beforeRoundingEmiAmount.doubleValue()));
+                            /*recalculateEmiAmount = BigDecimal.valueOf(Math.floor(totalAmountBeforeAdjustment.doubleValue() / numberOfRepayment.doubleValue()));
+                            glim.setInstallmentAmount(recalculateEmiAmount);*/
+                            totalPaybleAmount = BigDecimal.valueOf(emiAmount.multiply(BigDecimal.valueOf(numberOfRepayment)).doubleValue());
+                            glim.setTotalPaybleAmount(totalPaybleAmount);
+                            differenceAmount = totalPaybleAmount.subtract(totalAmountBeforeAdjustment);
+                            revisedTotalFee = glimCharge.getFeeAmount().add(differenceAmount);
+                        }
+                        /*revisedTotalFee = (isGreater)?glimCharge.getFeeAmount().subtract(differenceAmount):glimCharge.getFeeAmount().add(differenceAmount);*/
                         totalCharge = totalCharge.add(differenceAmount);
+                        glimCharge.setRevisedFeeAmount(BigDecimal.valueOf(Math.round(revisedTotalFee.doubleValue())));
                         for (LoanCharge loanCharge : loanCharges) {
                             if (loanCharge.getCharge().isEmiRoundingGoalSeek()
                                     && loanCharge.getCharge().getId().equals(glimCharge.getCharge().getId())) {
@@ -428,7 +452,8 @@ public class GroupLoanIndividualMonitoringAssembler {
         if (maxCap != null) {
             final int maximumCap = totalChargeAmount.compareTo(maxCap);
             if (maximumCap == 1) {
-                minMaxCap = maxCap;
+                //apply ceiling because to get diff amount for fee adjusting 
+                minMaxCap = BigDecimal.valueOf(Math.ceil(maxCap.doubleValue()));
                 return minMaxCap;
             }
         }

@@ -3406,7 +3406,7 @@ public class Loan extends AbstractPersistable<Long> {
         Money possibleInterestToWaive = totalInterestOutstanding.copy();
         LocalDate transactionDate = new LocalDate();
 
-        if (totalInterestOutstanding.isGreaterThanZero()) {
+        if (totalInterestOutstanding.isGreaterThanZero() && !this.isGLIMLoan()) {
             // find earliest known instance of overdue interest and default to
             // that
             for (final LoanRepaymentScheduleInstallment scheduledRepayment : this.repaymentScheduleInstallments) {

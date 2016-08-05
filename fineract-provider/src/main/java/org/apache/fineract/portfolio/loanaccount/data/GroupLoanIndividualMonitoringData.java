@@ -47,14 +47,16 @@ public class GroupLoanIndividualMonitoringData {
     private BigDecimal paidChargeAmount;
     private BigDecimal waivedInterestAmount;
     private BigDecimal waivedChargeAmount;
+    private BigDecimal transactionAmount;
+    private BigDecimal remainingTransactionAmount;
 
     public GroupLoanIndividualMonitoringData(final Long id, final Long loanId, final BigDecimal totalLoanAmount, final Long clientId,
             final String clientName, final String clientExternalID, final BigDecimal proposedAmount, final BigDecimal approvedAmount,
             final BigDecimal disbursedAmount, final CodeValueData loanPurpose, final Boolean isClientSelected,
             final BigDecimal chargeAmount, final BigDecimal adjustedAmount, final BigDecimal installmentAmount,
             final BigDecimal totalPaybleAmount, final BigDecimal paidInterestAmount, final BigDecimal paidAmount,
-            final BigDecimal interestAmount,final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
-            final BigDecimal waivedChargeAmount) {
+            final BigDecimal interestAmount, final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
+            final BigDecimal waivedChargeAmount, final BigDecimal remainingTransactionAmount, BigDecimal transactionAmount) {
         this.id = id;
         this.loanId = loanId;
         this.totalLoanAmount = totalLoanAmount;
@@ -77,6 +79,12 @@ public class GroupLoanIndividualMonitoringData {
         this.paidChargeAmount = paidChargeAmount;
         this.waivedInterestAmount = waivedInterestAmount;
         this.waivedChargeAmount = waivedChargeAmount;
+        this.remainingTransactionAmount = remainingTransactionAmount;
+        this.transactionAmount = transactionAmount;
+        /*// calculate unpaid interest
+        if (this.paidInterestAmount != null && this.paidInterestAmount.compareTo(BigDecimal.ZERO) == 1) {
+            this.totalUnpaidInterest = this.interestAmount.subtract(this.paidInterestAmount);
+        }*/
     }
 
     public static GroupLoanIndividualMonitoringData instance(final Long id, final Long loanId, final BigDecimal totalLoanAmount,
@@ -86,10 +94,12 @@ public class GroupLoanIndividualMonitoringData {
             final BigDecimal installmentAmount, final BigDecimal totalPaybleAmount, final BigDecimal paidInterestAmount,
             final BigDecimal paidAmount, final BigDecimal interestAmount,final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
             final BigDecimal waivedChargeAmount) {
-
+        BigDecimal totalUnpaidInterest = null;
+        BigDecimal transactionAmount = null;
         return new GroupLoanIndividualMonitoringData(id, loanId, totalLoanAmount, clientId, clientName, clientExternalID, proposedAmount,
                 approvedAmount, disbursedAmount, loanPurpose, isClientSelected, chargeAmount, adjustedAmount, installmentAmount,
-                totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount, paidPrincipalAmount, paidChargeAmount, waivedInterestAmount, waivedChargeAmount);
+                totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount, paidPrincipalAmount, paidChargeAmount, waivedInterestAmount, 
+                waivedChargeAmount, totalUnpaidInterest, transactionAmount);
     }
 
     public BigDecimal getInstallmentAmount() {
@@ -111,6 +121,31 @@ public class GroupLoanIndividualMonitoringData {
     public void setInterestAmount(BigDecimal interestAmount) {
         this.interestAmount = interestAmount;
     }
-    
+
+    public static GroupLoanIndividualMonitoringData waiveInterestDetails(final Long id, final Long clientId, final String clientName,
+            final BigDecimal paidInterestAmount, final BigDecimal interestAmount, BigDecimal remainingTransactionAmount, 
+            BigDecimal transactionAmount) {
+        final Long loanId = null;
+        final BigDecimal totalLoanAmount = null;
+        BigDecimal proposedAmount = null;
+        BigDecimal approvedAmount = null;
+        BigDecimal disbursedAmount = null;
+        CodeValueData loanPurpose = null;
+        Boolean isClientSelected = null;
+        BigDecimal chargeAmount = null;
+        BigDecimal adjustedAmount = null;
+        BigDecimal installmentAmount = null;
+        BigDecimal totalPaybleAmount = null;
+        BigDecimal paidAmount = null;
+        BigDecimal paidPrincipalAmount = null;
+        BigDecimal paidChargeAmount = null;
+        BigDecimal waivedInterestAmount = null;
+        BigDecimal waivedChargeAmount = null;
+        String clientExternalID = null;
+        return new GroupLoanIndividualMonitoringData(id, loanId, totalLoanAmount, clientId, clientName, clientExternalID, proposedAmount,
+                approvedAmount, disbursedAmount, loanPurpose, isClientSelected, chargeAmount, adjustedAmount, installmentAmount,
+                totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount, paidPrincipalAmount, paidChargeAmount,
+                waivedInterestAmount, waivedChargeAmount, remainingTransactionAmount, transactionAmount);
+    }
     
 }

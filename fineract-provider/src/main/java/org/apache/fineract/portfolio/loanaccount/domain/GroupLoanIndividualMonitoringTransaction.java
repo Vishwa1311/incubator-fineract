@@ -32,6 +32,9 @@ public class GroupLoanIndividualMonitoringTransaction extends AbstractPersistabl
     @OneToOne
     @JoinColumn(name = "loan_transaction_id")
     private LoanTransaction loanTransaction;
+    
+    @Column(name = "transaction_type_enum", nullable = false)
+    private Integer typeOf; 
 
     @Column(name = "principal_portion", scale = 6, precision = 19, nullable = true)
     private BigDecimal principalPortion;
@@ -48,40 +51,48 @@ public class GroupLoanIndividualMonitoringTransaction extends AbstractPersistabl
     @Column(name = "total_amount", scale = 6, precision = 19, nullable = true)
     private BigDecimal totalAmount;
 
-    public GroupLoanIndividualMonitoringTransaction() {
-        // TODO Auto-generated constructor stub
+    protected GroupLoanIndividualMonitoringTransaction() {
+        
     }
 
     public GroupLoanIndividualMonitoringTransaction(final GroupLoanIndividualMonitoring groupLoanIndividualMonitoring,
-            final LoanTransaction loanTransaction, final BigDecimal principalPortion, final BigDecimal interestPortion,
+            final LoanTransaction loanTransaction, final Integer typeOf, final BigDecimal principalPortion, final BigDecimal interestPortion,
             final BigDecimal feePortion, final BigDecimal penaltyPortion, final BigDecimal totalAmount) {
         this.groupLoanIndividualMonitoring = groupLoanIndividualMonitoring;
         this.loanTransaction = loanTransaction;
+        this.typeOf = typeOf;
         this.principalPortion = principalPortion;
         this.interestPortion = interestPortion;
         this.feePortion = feePortion;
         this.penaltyPortion = penaltyPortion;
-        this.feePortion = totalAmount;
+        this.totalAmount = totalAmount;
     }
 
     public static GroupLoanIndividualMonitoringTransaction instance(final GroupLoanIndividualMonitoring groupLoanIndividualMonitoring,
-            final LoanTransaction loanTransaction, final BigDecimal principalPortion, final BigDecimal interestPortion,
+            final LoanTransaction loanTransaction, final Integer typeOf, final BigDecimal principalPortion, final BigDecimal interestPortion,
             final BigDecimal feePortion, final BigDecimal penaltyPortion, final BigDecimal totalAmount) {
-        return new GroupLoanIndividualMonitoringTransaction(groupLoanIndividualMonitoring, loanTransaction, principalPortion,
+        return new GroupLoanIndividualMonitoringTransaction(groupLoanIndividualMonitoring, loanTransaction, typeOf, principalPortion,
                 interestPortion, feePortion, penaltyPortion, totalAmount);
     }
 
     public static GroupLoanIndividualMonitoringTransaction instance(final GroupLoanIndividualMonitoring groupLoanIndividualMonitoring,
-            final LoanTransaction loanTransaction) {
-        return new GroupLoanIndividualMonitoringTransaction(groupLoanIndividualMonitoring, loanTransaction, BigDecimal.ZERO,
+            final LoanTransaction loanTransaction, final Integer typeOf) {
+        return new GroupLoanIndividualMonitoringTransaction(groupLoanIndividualMonitoring, loanTransaction, typeOf, BigDecimal.ZERO,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+    }
+    
+    public static GroupLoanIndividualMonitoringTransaction waiveInterest(final GroupLoanIndividualMonitoring groupLoanIndividualMonitoring,
+            final LoanTransaction loanTransaction, final BigDecimal transactionAmount, final Integer typeOf) {
+        return new GroupLoanIndividualMonitoringTransaction(groupLoanIndividualMonitoring, loanTransaction, typeOf, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, transactionAmount);
     }
 
     public static GroupLoanIndividualMonitoringTransaction instance(
             final GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction, final BigDecimal principalPortion,
             final BigDecimal interestPortion, final BigDecimal feePortion, final BigDecimal penaltyPortion, final BigDecimal totalAmount) {
         return new GroupLoanIndividualMonitoringTransaction(groupLoanIndividualMonitoringTransaction.groupLoanIndividualMonitoring,
-                groupLoanIndividualMonitoringTransaction.loanTransaction, principalPortion, interestPortion, feePortion, penaltyPortion,
+                groupLoanIndividualMonitoringTransaction.loanTransaction, groupLoanIndividualMonitoringTransaction.loanTransaction.getTypeOf().getValue(),
+                principalPortion, interestPortion, feePortion, penaltyPortion,
                 totalAmount);
     }
 

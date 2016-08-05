@@ -5,8 +5,8 @@ import org.apache.fineract.infrastructure.core.exception.AbstractPlatformResourc
 
 public class ChargeNotSupportedException extends AbstractPlatformResourceNotFoundException {
 
-    public ChargeNotSupportedException(final Long chargeId) {
-        super("error.msg.charge.not.support.for.glim.loan", "Charge With identifier " + chargeId +" is not supported for GLIM Loan ", chargeId);
+    public ChargeNotSupportedException(final String entityName, final Long chargeId, final String userErrorMessage) {
+        super("error.msg.charge.not.supported.to."+entityName+"", "Charge With identifier " + chargeId +" "+userErrorMessage+" ", chargeId);
     }
 
 }

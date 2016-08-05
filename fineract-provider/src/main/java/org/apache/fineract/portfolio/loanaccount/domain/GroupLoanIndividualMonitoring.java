@@ -352,4 +352,14 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
         this.groupLoanIndividualMonitoringTransactions.clear();
     }
 
+    public void resetDerievedComponents() {
+        this.paidChargeAmount = BigDecimal.ZERO;
+        this.paidInterestAmount = BigDecimal.ZERO;
+        this.paidPrincipalAmount = BigDecimal.ZERO;
+        this.totalPaidAmount = BigDecimal.ZERO;
+        this.waivedChargeAmount = BigDecimal.ZERO;
+        this.waivedInterestAmount = BigDecimal.ZERO;
+
+    }
+
 }
