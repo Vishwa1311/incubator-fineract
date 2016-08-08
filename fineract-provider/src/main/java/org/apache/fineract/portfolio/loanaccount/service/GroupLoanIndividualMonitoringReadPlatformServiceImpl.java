@@ -27,12 +27,11 @@ import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.portfolio.loanaccount.data.GroupLoanIndividualMonitoringData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
-
-import org.apache.fineract.portfolio.loanaccount.data.GroupLoanIndividualMonitoringData;
 
 @Service
 public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements GroupLoanIndividualMonitoringReadPlatformService {
@@ -141,7 +140,7 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
 
         GroupLoanIndividualMonitoringMapper rm = new GroupLoanIndividualMonitoringMapper();
 
-        String sql = "select " + rm.schema() + " where glim.loan_id = ? and glim.client_id = ?";
+        String sql = "select " + rm.schema() + " where glim.loan_id = ? and glim.client_id = ? and glim.is_client_selected = 1";
 
         return this.jdbcTemplate.queryForObject(sql, rm, new Object[] { loanId, clientId });
     }
@@ -170,4 +169,66 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
         return this.jdbcTemplate.queryForObject(sql, rm, new Object[] { id });
     }
 
+    @Override
+    public Collection<GroupLoanIndividualMonitoringData> retrieveSelectedClientsByLoanId(Long loanId) {
+        
+        GroupLoanIndividualMonitoringMapper rm = new GroupLoanIndividualMonitoringMapper();
+
+        String sql = "select " + rm.schema() + " where glim.loan_id = ? and glim.is_client_selected = 1";
+
+        return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
+    }
+
+    @Override
+    public Collection<GroupLoanIndividualMonitoringData> retrieveWaiveInterestTemplate(Long loanId) {
+        
+        GroupLoanIndividualMonitoringWaiveInterestMapper rm = new GroupLoanIndividualMonitoringWaiveInterestMapper();
+        
+        String sql = "select " + rm.schema() + " where glim.loan_id = ? and glim.is_client_selected = 1";
+       
+        return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
+    }
+    
+    @SuppressWarnings("unused")
+    private static final class GroupLoanIndividualMonitoringWaiveInterestMapper implements RowMapper<GroupLoanIndividualMonitoringData> {
+
+        final String schema;
+
+        private GroupLoanIndividualMonitoringWaiveInterestMapper() {
+            final StringBuilder sql = new StringBuilder(400);
+            sql.append("glim.id as id, ");
+            sql.append("glim.client_id as clientId, c.display_name as clientName, ");
+            sql.append("glim.interest_amount as interestAmount, ");
+            sql.append("glim.paid_interest_amount as paidInterestAmount, glim.waived_interest_amount as waivedInterestAmount ");
+            sql.append(" from m_loan_glim glim ");
+            sql.append(" left join m_client c on glim.client_id = c.id ");
+            sql.append(" left join m_loan l on glim.loan_id = l.id ");
+            this.schema = sql.toString();
+        }
+        
+        public String schema() {
+            return this.schema;
+        }
+
+        @Override
+        public GroupLoanIndividualMonitoringData mapRow(ResultSet rs, int rowNum) throws SQLException {
+            final Long id = JdbcSupport.getLong(rs, "id");
+            final Long clientId = JdbcSupport.getLong(rs, "clientId");
+            final String clientName = rs.getString("clientName");
+            final BigDecimal interestAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "interestAmount");
+            final BigDecimal paidInterestAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "paidInterestAmount");
+            final BigDecimal waivedInterestAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "waivedInterestAmount");
+
+            // calculate unpaid interest
+            BigDecimal remainingTransactionAmount = interestAmount;
+            BigDecimal transactionAmount = interestAmount;
+            if (paidInterestAmount.compareTo(BigDecimal.ZERO) == 1 || waivedInterestAmount.compareTo(BigDecimal.ZERO) == 1) {
+                remainingTransactionAmount = interestAmount.subtract(paidInterestAmount.add(waivedInterestAmount));
+                transactionAmount = remainingTransactionAmount;
+            }
+
+            return GroupLoanIndividualMonitoringData.waiveInterestDetails(id, clientId, clientName, paidInterestAmount, interestAmount,
+                    remainingTransactionAmount, transactionAmount);
+        }
+    }
 }

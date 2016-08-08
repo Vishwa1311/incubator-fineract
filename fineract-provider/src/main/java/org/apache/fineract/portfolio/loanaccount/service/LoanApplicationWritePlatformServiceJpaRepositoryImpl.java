@@ -58,7 +58,9 @@ import org.apache.fineract.portfolio.calendar.domain.CalendarType;
 import org.apache.fineract.portfolio.calendar.exception.CalendarNotFoundException;
 import org.apache.fineract.portfolio.calendar.service.CalendarReadPlatformService;
 import org.apache.fineract.portfolio.charge.domain.Charge;
+import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.ChargeNotSupportedException;
 import org.apache.fineract.portfolio.client.domain.AccountNumberGenerator;
 import org.apache.fineract.portfolio.client.domain.Client;
@@ -393,16 +395,64 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
 	
     private void validateGlimCharges(JsonCommand command) {
         final String loanTypeParameterName = "loanType";
+        final String chargesParameterName = "charges";
         final String loanTypeStr = command.stringValueOfParameterNamed(loanTypeParameterName);
-        if (AccountType.fromName(loanTypeStr).isGLIMAccount()) {
-            JsonArray glimCharges = command.arrayOfParameterNamed(LoanApiConstants.chargesParameterName);
+        if (command.hasParameter(chargesParameterName)) {
+            JsonArray charges = command.arrayOfParameterNamed(LoanApiConstants.chargesParameterName);
+            if (AccountType.fromName(loanTypeStr).isGLIMAccount()) {
+                for (JsonElement glimCharge : charges) {
+                    JsonObject jsonObject = glimCharge.getAsJsonObject();
+                    Long chargeId = jsonObject.get("chargeId").getAsLong();
+                    Charge charge = this.chargeRepositoryWrapper.findOneWithNotFoundDetection(chargeId);
+                    if (!charge.isGlimCharge()) {
+                        final String entityName = " GLIM Loan";
+                        final String userErrorMessage = "Charge can not be applied to GLIM Loan";
+                        throw new ChargeNotSupportedException(entityName, charge.getId(), userErrorMessage);
+                    }
+                }
+            } else {
+                for (JsonElement element : charges) {
+                    JsonObject jsonObject = element.getAsJsonObject();
+                    Long chargeId = jsonObject.get("chargeId").getAsLong();
+                    Charge charge = this.chargeRepositoryWrapper.findOneWithNotFoundDetection(chargeId);
+                    performChargeTimeNCalculationTypeValidation(chargeId, charge.getChargeTimeType(), charge.getChargeCalculation());
+                }
+            }
+        }
+/*        if (AccountType.fromName(loanTypeStr).isGLIMAccount()) {
+            
             for (JsonElement glimCharge : glimCharges) {
                 JsonObject jsonObject = glimCharge.getAsJsonObject();
                 Long chargeId = jsonObject.get("chargeId").getAsLong();
                 Charge charge = this.chargeRepositoryWrapper.findOneWithNotFoundDetection(chargeId);
-                if (!charge.isGlimCharge()) { throw new ChargeNotSupportedException(charge.getId()); }
+                if (!charge.isGlimCharge()) {
+                    final String entityName = " GLIM Loan";
+                    final String userErrorMessage = "Charge can not be applied to GLIM Loan";
+                    throw new ChargeNotSupportedException(entityName, charge.getId(), userErrorMessage);
+                }
             }
+        } else {
+            if (command.hasParameter(chargesParameterName)) {
+                final JsonObject topLevelJsonElement = command.parsedJson().getAsJsonObject();
+                final JsonArray array = topLevelJsonElement.get("charges").getAsJsonArray();
+                for (JsonElement element : array) {
+                    JsonObject jsonObject = element.getAsJsonObject();
+                    Long chargeId = jsonObject.get("chargeId").getAsLong();
+                    Charge charge = this.chargeRepositoryWrapper.findOneWithNotFoundDetection(chargeId);
+                    performChargeTimeNCalculationTypeValidation(chargeId, charge.getChargeTimeType(), charge.getChargeCalculation());
+                }
+            }
+        }*/
+    }
+
+    private void performChargeTimeNCalculationTypeValidation(Long chargeId, Integer chargeTimeType, Integer chargeCalculation) {
+        if(chargeTimeType.equals(ChargeTimeType.INSTALMENT_FEE.getValue()) && 
+                chargeCalculation.equals(ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT.getValue())) {
+            final String entityName = "Loan";
+            final String userErrorMessage = "Charge can be applied only to GLIM Loan";
+            throw new ChargeNotSupportedException(entityName, chargeId, userErrorMessage);
         }
+        
     }
 
     private void updateProductRelatedDetails(LoanProductRelatedDetail productRelatedDetail, Loan loan) {

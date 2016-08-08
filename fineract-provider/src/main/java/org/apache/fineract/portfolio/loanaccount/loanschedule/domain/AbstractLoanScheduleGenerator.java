@@ -364,7 +364,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 Money totalInterestForGlim = loanApplicationTerms.getTotalInterestForGlim();
                 Money totalCumulativeInterest = scheduleParams.getTotalCumulativeInterest();
                 Money interestForCurrentPeriod = currentPeriodParams.getInterestForThisPeriod();
-                if (totalInterestForGlim.compareTo(totalCumulativeInterest) != BigDecimal.ZERO.intValue()) {
+                if (totalInterestForGlim.isGreaterThan(Money.zero(currency)) && totalInterestForGlim.compareTo(totalCumulativeInterest) != 0) {
                     Money adjustTotalCumulativeInterest = totalCumulativeInterest.minus(totalInterestForGlim);
                     Money adjustedInterestForCurrentPeriod = interestForCurrentPeriod.minus(adjustTotalCumulativeInterest);
                     currentPeriodParams.setInterestForThisPeriod(adjustedInterestForCurrentPeriod);
@@ -2190,7 +2190,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
         
         if (isLastRepaymentPeriod(numberOfRepayments, periodNumber) && totalLoanCharges.compareTo(Money.zero(cumulative.getCurrency())) == 1) {
             Money totalGlimCharges = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
-            if (totalGlimCharges.compareTo(totalLoanCharges) != BigDecimal.ZERO.intValue()) {
+            if (totalGlimCharges.compareTo(totalLoanCharges) != 0) {
                 cumulative = cumulative.minus((totalGlimCharges.minus(totalLoanCharges)));
             }
         }
@@ -2268,7 +2268,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
         
         if (isLastRepaymentPeriod(numberOfRepayments, periodNumber) && totalLoanCharges.compareTo(Money.zero(cumulative.getCurrency())) == 1) {
             Money totalGlimCharges = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
-            if (totalGlimCharges.compareTo(totalLoanCharges) != BigDecimal.ZERO.intValue()) {
+            if (totalGlimCharges.compareTo(totalLoanCharges) != 0) {
                 cumulative = cumulative.minus((totalGlimCharges.minus(totalLoanCharges)));
             }
         }

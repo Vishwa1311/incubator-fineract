@@ -661,7 +661,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
     	Integer paidInstallment = BigDecimal.valueOf(totalPaidAmount.doubleValue()/glim.getInstallmentAmount().doubleValue()).intValue();    	
         BigDecimal totalInterestToBePaidByClient = GroupLoanIndividualMonitoringAssembler.percentageOf(totalInterestToBePaidByGroup, BigDecimal.valueOf(glim.getDisbursedAmount().doubleValue()*100/loan.getApprovedPrincipal().doubleValue()));
         
-        BigDecimal interestToBePaidByClient = totalInterestToBePaidByClient.subtract(glim.getPaidInterestAmount());
+        BigDecimal interestToBePaidByClient = totalInterestToBePaidByClient.subtract(glim.getPaidInterestAmount().subtract(defaultToZeroIfNull(glim.getWaivedInterestAmount())));
         
         Money penaltyAmount = Money.zero(currency);
         Money individualAmount = Money.of(currency, individualTransactionAmount);
@@ -676,7 +676,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
                 .getAmount()));
         
         if(paidInstallment==numberOfInstallments){
-        	interestToBePaidByClient = glim.getInterestAmount().subtract(glim.getPaidInterestAmount());
+        	interestToBePaidByClient = glim.getInterestAmount().subtract(glim.getPaidInterestAmount().subtract(defaultToZeroIfNull(glim.getWaivedInterestAmount())));
         }
         Money interestPortion = Money.of(currency, interestToBePaidByClient);
         
@@ -692,4 +692,12 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
     protected abstract void handleGLIMRepaymentInstallment(
             GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction, Money installmentAmount,
             Money principalPortion, Money interestPortion, Money feePortion, Money penaltyPortion);
+    
+    private static BigDecimal defaultToZeroIfNull(final BigDecimal value) {
+        BigDecimal result = BigDecimal.ZERO;
+        if (value != null) {
+            result = value;
+        }
+        return result;
+    }
 }

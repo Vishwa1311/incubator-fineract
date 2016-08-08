@@ -19,6 +19,8 @@
 package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.organisation.monetary.domain.Money;
@@ -60,5 +62,9 @@ public interface LoanAccountDomainService {
     void recalculateAccruals(Loan loan);
 
     void saveLoanWithDataIntegrityViolationChecks(Loan loan);
+
+    LoanTransaction waiveInterest(Loan loan, CommandProcessingResultBuilder builderResult, LocalDate transactionDate,
+            BigDecimal transactionAmount, String noteText, Map<String, Object> changes, List<Long> existingTransactionIds,
+            List<Long> existingReversedTransactionIds);
 
 }

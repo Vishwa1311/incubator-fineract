@@ -1,6 +1,7 @@
 package org.apache.fineract.portfolio.loanaccount.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,21 +33,13 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         GroupLoanIndividualMonitoringTransactionWritePlatformService {
 
     private final LoanWritePlatformService loanWritePlatformService;
-
     private final GroupLoanIndividualMonitoringTransactionRepositoryWrapper groupLoanIndividualMonitoringTransactionRepositoryWrapper;
-
     private final LoanAccountDomainService loanAccountDomainService;
-
     private final LoanRepositoryWrapper loanRepositoryWrapper;
-
     private final LoanEventApiJsonValidator loanEventApiJsonValidator;
-
     private final LoanAssembler loanAssembler;
-
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
-
     private final GroupLoanIndividualMonitoringTransactionAssembler groupLoanIndividualMonitoringTransactionAssembler;
-    
     private final GroupLoanIndividualMonitoringAssembler glimAssembler;
     private final GroupLoanIndividualMonitoringRepository glimRepository;
 
@@ -111,6 +104,40 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         this.glimAssembler.updateGLIMAfterRepayment(glimTransactions);
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper.saveAsList(glimTransactions);
         return commandProcessingResultBuilder.withCommandId(command.commandId()) //
+                .withTransactionId(loanTransaction.getId().toString()) //
+                .with(changes) //
+                .build();
+    }
+
+    @Transactional
+    @Override
+    public CommandProcessingResult waiveInterest(final Long loanId, final JsonCommand command) {
+
+        this.loanEventApiJsonValidator.validateTransaction(command.json());
+        
+        this.loanEventApiJsonValidator.validateGlimForWaiveInterest(command.json());
+        
+        final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
+        final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        
+        final List<Long> existingTransactionIds = new ArrayList<>();
+        final List<Long> existingReversedTransactionIds = new ArrayList<>();
+        
+        final Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("transactionDate", command.stringValueOfParameterNamed("transactionDate"));
+        changes.put("transactionAmount", command.stringValueOfParameterNamed("transactionAmount"));
+        changes.put("locale", command.locale());
+        changes.put("dateFormat", command.dateFormat());
+        
+        final Loan loan = this.loanAssembler.assembleFrom(loanId);
+        final String noteText = command.stringValueOfParameterNamed("note");
+        final CommandProcessingResultBuilder builderResult = new CommandProcessingResultBuilder();
+        LoanTransaction loanTransaction = this.loanAccountDomainService.waiveInterest(loan, builderResult, transactionDate,
+                transactionAmount, noteText, changes, existingTransactionIds, existingReversedTransactionIds);
+        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.groupLoanIndividualMonitoringTransactionAssembler.waiveInterestForClients(command, loanTransaction);
+        this.groupLoanIndividualMonitoringTransactionRepositoryWrapper.saveAsList(glimTransactions);
+        
+        return builderResult.withCommandId(command.commandId()) //
                 .withTransactionId(loanTransaction.getId().toString()) //
                 .with(changes) //
                 .build();

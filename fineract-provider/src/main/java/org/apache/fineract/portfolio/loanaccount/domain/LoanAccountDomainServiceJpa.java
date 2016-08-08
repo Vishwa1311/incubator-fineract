@@ -672,4 +672,73 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         map.put(entityEvent, entity);
         return map;
     }
+
+    @Override
+    public LoanTransaction waiveInterest(Loan loan, CommandProcessingResultBuilder builderResult, LocalDate transactionDate,
+            BigDecimal transactionAmount, String noteText, Map<String, Object> changes, List<Long> existingTransactionIds,
+            List<Long> existingReversedTransactionIds) {
+        
+        AppUser currentUser = getAppUserIfPresent();
+        
+        final Money transactionAmountAsMoney = Money.of(loan.getCurrency(), transactionAmount);
+        Money unrecognizedIncome = transactionAmountAsMoney.zero();
+        Money interestComponent = transactionAmountAsMoney;
+        if (loan.isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
+            Money receivableInterest = loan.getReceivableInterest(transactionDate);
+            if (transactionAmountAsMoney.isGreaterThan(receivableInterest)) {
+                interestComponent = receivableInterest;
+                unrecognizedIncome = transactionAmountAsMoney.minus(receivableInterest);
+            }
+        }
+        
+        final LoanTransaction waiveInterestTransaction = LoanTransaction.waiver(loan.getOffice(), loan, transactionAmountAsMoney,
+                transactionDate, interestComponent, unrecognizedIncome, DateUtils.getLocalDateTimeOfTenant(), currentUser);
+        this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_WAIVE_INTEREST,
+                constructEntityMap(BUSINESS_ENTITY.LOAN_TRANSACTION, waiveInterestTransaction));
+        LocalDate recalculateFrom = null;
+        if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
+            recalculateFrom = transactionDate;
+        }
+
+        ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
+        final ChangedTransactionDetail changedTransactionDetail = loan.waiveInterest(waiveInterestTransaction,
+                defaultLoanLifecycleStateMachine(), existingTransactionIds, existingReversedTransactionIds, scheduleGeneratorDTO,
+                currentUser);
+
+        this.loanTransactionRepository.save(waiveInterestTransaction);
+
+        /***
+         * TODO Vishwas Batch save is giving me a
+         * HibernateOptimisticLockingFailureException, looping and saving for
+         * the time being, not a major issue for now as this loop is entered
+         * only in edge cases (when a waiver is made before the latest payment
+         * recorded against the loan)
+         ***/
+        saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
+        if (changedTransactionDetail != null) {
+            for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
+                this.loanTransactionRepository.save(mapEntry.getValue());
+                // update loan with references to the newly created transactions
+                loan.getLoanTransactions().add(mapEntry.getValue());
+                updateLoanTransaction(mapEntry.getKey(), mapEntry.getValue());
+            }
+        }
+
+        if (StringUtils.isNotBlank(noteText)) {
+            changes.put("note", noteText);
+            final Note note = Note.loanTransactionNote(loan, waiveInterestTransaction, noteText);
+            this.noteRepository.save(note);
+        }
+        final boolean isAccountTransfer = false;
+        postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
+        recalculateAccruals(loan);
+        this.businessEventNotifierService.notifyBusinessEventWasExecuted(BUSINESS_EVENTS.LOAN_WAIVE_INTEREST,
+                constructEntityMap(BUSINESS_ENTITY.LOAN_TRANSACTION, waiveInterestTransaction));
+        
+        builderResult.withEntityId(waiveInterestTransaction.getId()).withOfficeId(loan.getOfficeId()) //
+                .withClientId(loan.getClientId()) //
+                .withGroupId(loan.getGroupId());
+        
+        return waiveInterestTransaction;
+    }
 }

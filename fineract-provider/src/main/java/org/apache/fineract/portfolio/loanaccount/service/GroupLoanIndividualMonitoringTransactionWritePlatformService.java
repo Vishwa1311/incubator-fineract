@@ -6,4 +6,6 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 public interface GroupLoanIndividualMonitoringTransactionWritePlatformService {
 
     CommandProcessingResult repayGLIM(Long loanId, JsonCommand command);
+
+    CommandProcessingResult waiveInterest(Long loanId, JsonCommand command);
 }

@@ -45,6 +45,7 @@ import org.joda.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 
@@ -491,6 +492,37 @@ public final class LoanEventApiJsonValidator {
 
         validatePaymentDetails(baseDataValidator, element);
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
+    }
+
+    public void validateGlimForWaiveInterest(final String json) {
+
+        if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
+        
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("glimloan.transaction");
+        
+        final JsonElement element = this.fromApiJsonHelper.parse(json);
+        final JsonArray clients = this.fromApiJsonHelper.extractJsonArrayNamed("clientMembers", element);
+        baseDataValidator.reset().parameter("clientMembers").value(clients).notNull();
+        
+        if (clients != null) {
+            for (JsonElement innerElement : clients) {
+                final Long clientId = this.fromApiJsonHelper.extractLongNamed("clientId", innerElement);
+                baseDataValidator.reset().parameter("clientId").value(clientId).notNull().longGreaterThanZero();
+
+                final String clientName = this.fromApiJsonHelper.extractStringNamed("clientName", innerElement);
+                baseDataValidator.reset().parameter("clientName").value(clientName).notNull().notBlank();
+
+                final String remainigInterestAmount = this.fromApiJsonHelper.extractStringNamed("remainingTransactionAmount", innerElement);
+                baseDataValidator.reset().parameter("remainingTransactionAmount").value(remainigInterestAmount).notNull();
+
+                final String transactionAmount = this.fromApiJsonHelper.extractStringNamed("transactionAmount", innerElement);
+                baseDataValidator.reset().parameter("transactionAmount").value(transactionAmount).notNull().zeroOrPositiveAmount();
+            }
+        }
+        
+        throwExceptionIfValidationWarningsExist(dataValidationErrors);
+        
     }
 
 }

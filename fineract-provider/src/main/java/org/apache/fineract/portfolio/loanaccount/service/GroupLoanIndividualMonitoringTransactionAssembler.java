@@ -3,6 +3,7 @@ package org.apache.fineract.portfolio.loanaccount.service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Locale;
 
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
@@ -16,6 +17,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTra
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
 import org.apache.fineract.portfolio.loanaccount.exception.ClientInstallmentNotEqualToTransactionAmountException;
+import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanStateTransitionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -59,7 +61,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = this.groupLoanIndividualMonitoringRepositoryWrapper
                         .findOneWithNotFoundDetection(glimId);
                 GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction = GroupLoanIndividualMonitoringTransaction
-                        .instance(groupLoanIndividualMonitoring, loanTransaction);
+                        .instance(groupLoanIndividualMonitoring, loanTransaction, loanTransaction.getTypeOf().getValue());
                 loanRepaymentScheduleTransactionProcessor.handleGLIMRepayment(groupLoanIndividualMonitoringTransaction, individualTransactionAmount);
                 groupLoanIndividualMonitoring.updateGlimTransaction(groupLoanIndividualMonitoringTransaction);
                 glimTransactions.add(groupLoanIndividualMonitoringTransaction);
@@ -87,5 +89,43 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
     		return paidInstallmentCharge.add(installmentCharge.getAmount()).subtract(glim.getPaidChargeAmount());
     	}
     	return paidInstallmentCharge.subtract(glim.getPaidChargeAmount()) ;           	
+    }
+
+    public Collection<GroupLoanIndividualMonitoringTransaction> waiveInterestForClients(final JsonCommand command,
+            final LoanTransaction loanTransaction) {
+        JsonArray clients = command.arrayOfParameterNamed(LoanApiConstants.clientMembersParamName);
+        final Locale locale = command.extractLocale();
+        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = new ArrayList<>();
+        for (JsonElement element : clients) {
+            final Long glimId = this.fromApiJsonHelper.extractLongNamed(LoanApiConstants.idParameterName, element);
+            GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = this.groupLoanIndividualMonitoringRepositoryWrapper
+                    .findOneWithNotFoundDetection(glimId);
+            
+            final BigDecimal transactionAmount = this.fromApiJsonHelper.extractBigDecimalNamed(LoanApiConstants.transactionAmountParamName, element, locale);
+            BigDecimal totalInterestOutstandingOnLoan = BigDecimal.ZERO;
+            BigDecimal paidInterestAmount = groupLoanIndividualMonitoring.getPaidInterestAmount();
+            BigDecimal totalInterestAmount = groupLoanIndividualMonitoring.getInterestAmount();
+            BigDecimal totalWaivedInterest = groupLoanIndividualMonitoring.getWaivedInterestAmount();
+            if (paidInterestAmount != null && totalInterestAmount != null) {
+                totalInterestOutstandingOnLoan = totalInterestAmount.subtract(paidInterestAmount);
+            }
+
+            if (totalInterestOutstandingOnLoan.compareTo(BigDecimal.ZERO) == 1) {
+                if (transactionAmount.compareTo(totalInterestOutstandingOnLoan) == 1) {
+                    final String errorMessage = "The amount of interest to waive cannot be greater than total interest outstanding on loan.";
+                    throw new InvalidLoanStateTransitionException("waive.interest", "amount.exceeds.total.outstanding.interest",
+                            errorMessage, transactionAmount, totalInterestOutstandingOnLoan);
+                }
+                //totalInterestOutstandingOnLoan = totalInterestOutstandingOnLoan.subtract(transactionAmount);
+                totalWaivedInterest = totalWaivedInterest.add(transactionAmount);
+                groupLoanIndividualMonitoring.setWaivedInterestAmount(totalWaivedInterest);
+                GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction = GroupLoanIndividualMonitoringTransaction
+                        .waiveInterest(groupLoanIndividualMonitoring, loanTransaction, transactionAmount, loanTransaction.getTypeOf().getValue());
+                groupLoanIndividualMonitoring.updateGlimTransaction(groupLoanIndividualMonitoringTransaction);
+                glimTransactions.add(groupLoanIndividualMonitoringTransaction);
+            }
+
+        }
+        return glimTransactions;
     }
 }
