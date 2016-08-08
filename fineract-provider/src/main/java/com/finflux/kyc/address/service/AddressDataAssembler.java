@@ -90,46 +90,31 @@ public class AddressDataAssembler {
             final JsonCommand command) {
 
         final Map<String, Object> actualChanges = address.update(command);
-        Country country = null;
-        State state = null;
-        District district = null;
-        
-        if (command.parameterExists(AddressApiConstants.countryIdParamName)) {
 
-        	 final Long countryId = command.longValueOfParameterNamed(AddressApiConstants.countryIdParamName);
-        	 if(countryId != null){
-        		 country = this.countryRepository.findOneWithNotFoundDetection(countryId);
-        	 }
-        	 address.updateCountry(country);
-        		 
-        	 }
-        	 
-             if (command.parameterExists(AddressApiConstants.stateIdParamName)) {
-            	 final Long stateId = command.longValueOfParameterNamed(AddressApiConstants.stateIdParamName);
-            	 if(stateId != null){
-            	 if(address.getCountryId()!= null){
-            		 state = this.stateRepository.findOneWithNotFoundDetection(stateId);
-            	 validateStateWithCountryAndGetCountryObject(state, address.getCountryId());
-            	 }else{
-            		 state = this.stateRepository.findOneWithNotFoundDetection(stateId); 
-            	 }
-             }
-            	 address.updateState(state);
-          
-             if (command.parameterExists(AddressApiConstants.districtIdParamName)) {
-            	 final Long districtId = command.longValueOfParameterNamed(AddressApiConstants.districtIdParamName);
-            	 if(districtId != null){
-            	 if(address.getStateId()!= null){
-            	 district = this.districtRepository.findOneWithNotFoundDetection(districtId);
-            	 validateDistrictWithStateAndGetStateObject(district, address.getStateId());
-            	 }else{
-            		 district = this.districtRepository.findOneWithNotFoundDetection(districtId);
-            	}
-            	 address.updateDistrict(district);
-             }
-           }
+        if (actualChanges.containsKey(AddressApiConstants.countryIdParamName)) {
+            final Long countryId = (Long) actualChanges.get(AddressApiConstants.countryIdParamName);
+            final Country country = this.countryRepository.findOneWithNotFoundDetection(countryId);
+            address.updateCountry(country);
         }
-        
+
+        if (actualChanges.containsKey(AddressApiConstants.stateIdParamName)) {
+            final Long stateId = (Long) actualChanges.get(AddressApiConstants.stateIdParamName);
+            final State state = this.stateRepository.findOneWithNotFoundDetection(stateId);
+            if (address.getCountryId() != null) {
+                validateStateWithCountryAndGetCountryObject(state, address.getCountryId());
+            }
+            address.updateState(state);
+        }
+
+        if (actualChanges.containsKey(AddressApiConstants.districtIdParamName)) {
+            final Long districtId = (Long) actualChanges.get(AddressApiConstants.districtIdParamName);
+            final District district = this.districtRepository.findOneWithNotFoundDetection(districtId);
+            if (address.getStateId() != null) {
+                validateDistrictWithStateAndGetStateObject(district, address.getStateId());
+            }
+            address.updateDistrict(district);
+        }
+
         final JsonElement element = command.parsedJson();
         final String[] addressTypes = this.fromApiJsonHelper.extractArrayNamed(AddressApiConstants.addressTypesParamName, element);
 
@@ -219,21 +204,17 @@ public class AddressDataAssembler {
 
     private Country validateStateWithCountryAndGetCountryObject(final State state, final Long countryId) {
         final Country country = this.countryRepository.findOneWithNotFoundDetection(countryId);
-        if (state != null && state.getCountryId() != null
-                && state.getCountryId() != countryId) { throw new GeneralPlatformDomainRuleException(
-                        "error.msg.address.state.does.not.belongs.to.country",
-                        "" + state.getStateName() + " state does not belongs to " + country.getCountryName() + " country",
-                        state.getStateName(), country.getCountryName()); }
+        if (state != null && state.getCountryId() != null && state.getCountryId() != countryId) { throw new GeneralPlatformDomainRuleException(
+                "error.msg.address.state.does.not.belongs.to.country", "" + state.getStateName() + " state does not belongs to "
+                        + country.getCountryName() + " country", state.getStateName(), country.getCountryName()); }
         return country;
     }
 
     private State validateDistrictWithStateAndGetStateObject(final District district, final Long stateId) {
         final State state = this.stateRepository.findOneWithNotFoundDetection(stateId);
-        if (district != null && district.getStateId() != null
-                && district.getStateId() != stateId) { throw new GeneralPlatformDomainRuleException(
-                        "error.msg.address.district.does.not.belongs.to.state",
-                        "" + district.getDistrictName() + " district does not belongs to " + state.getStateName() + " state",
-                        district.getDistrictName(), state.getStateName()); }
+        if (district != null && district.getStateId() != null && district.getStateId() != stateId) { throw new GeneralPlatformDomainRuleException(
+                "error.msg.address.district.does.not.belongs.to.state", "" + district.getDistrictName() + " district does not belongs to "
+                        + state.getStateName() + " state", district.getDistrictName(), state.getStateName()); }
         return state;
     }
 

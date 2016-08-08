@@ -150,31 +150,31 @@ public class Address extends AbstractAuditableCustom<AppUser, Long> {
 
         if (this.district != null) {
             if (command.isChangeInLongParameterNamed(AddressApiConstants.districtIdParamName, this.district.getId())) {
-                final String newValue = command.stringValueOfParameterNamed(AddressApiConstants.districtIdParamName);
+                final Long newValue = command.longValueOfParameterNamed(AddressApiConstants.districtIdParamName);
                 actualChanges.put(AddressApiConstants.districtIdParamName, newValue);
             }
         } else if (command.parameterExists(AddressApiConstants.districtIdParamName)) {
-            final String newValue = command.stringValueOfParameterNamed(AddressApiConstants.districtIdParamName);
+            final Long newValue = command.longValueOfParameterNamed(AddressApiConstants.districtIdParamName);
             actualChanges.put(AddressApiConstants.districtIdParamName, newValue);
         }
 
         if (this.state != null) {
             if (command.isChangeInLongParameterNamed(AddressApiConstants.stateIdParamName, this.state.getId())) {
-                final String newValue = command.stringValueOfParameterNamed(AddressApiConstants.stateIdParamName);
+                final Long newValue = command.longValueOfParameterNamed(AddressApiConstants.stateIdParamName);
                 actualChanges.put(AddressApiConstants.stateIdParamName, newValue);
             }
         } else if (command.parameterExists(AddressApiConstants.stateIdParamName)) {
-            final String newValue = command.stringValueOfParameterNamed(AddressApiConstants.stateIdParamName);
+            final Long newValue = command.longValueOfParameterNamed(AddressApiConstants.stateIdParamName);
             actualChanges.put(AddressApiConstants.stateIdParamName, newValue);
         }
 
         if (this.country != null) {
             if (command.isChangeInLongParameterNamed(AddressApiConstants.countryIdParamName, this.country.getId())) {
-                final String newValue = command.stringValueOfParameterNamed(AddressApiConstants.countryIdParamName);
+                final Long newValue = command.longValueOfParameterNamed(AddressApiConstants.countryIdParamName);
                 actualChanges.put(AddressApiConstants.countryIdParamName, newValue);
             }
         } else if (command.parameterExists(AddressApiConstants.countryIdParamName)) {
-            final String newValue = command.stringValueOfParameterNamed(AddressApiConstants.countryIdParamName);
+            final Long newValue = command.longValueOfParameterNamed(AddressApiConstants.countryIdParamName);
             actualChanges.put(AddressApiConstants.countryIdParamName, newValue);
         }
 
