@@ -85,7 +85,6 @@ public class AddressDataAssembler {
         return addresses;
     }
 
-    @SuppressWarnings("null")
     public Map<String, Object> assembleUpdateForm(final Address address, final Long entityId, final Integer entityTypeEnum,
             final JsonCommand command) {
 
@@ -144,7 +143,6 @@ public class AddressDataAssembler {
         return address;
     }
 
-    @SuppressWarnings("null")
     private Address constructAddressObject(final JsonObject element, final Locale locale) {
 
         final String houseNo = this.fromApiJsonHelper.extractStringNamed(AddressApiConstants.houseNoParamName, element);
@@ -204,17 +202,21 @@ public class AddressDataAssembler {
 
     private Country validateStateWithCountryAndGetCountryObject(final State state, final Long countryId) {
         final Country country = this.countryRepository.findOneWithNotFoundDetection(countryId);
-        if (state != null && state.getCountryId() != null && state.getCountryId() != countryId) { throw new GeneralPlatformDomainRuleException(
-                "error.msg.address.state.does.not.belongs.to.country", "" + state.getStateName() + " state does not belongs to "
-                        + country.getCountryName() + " country", state.getStateName(), country.getCountryName()); }
+        if (state != null && state.getCountryId() != null
+                && state.getCountryId() != countryId) { throw new GeneralPlatformDomainRuleException(
+                        "error.msg.address.state.does.not.belongs.to.country",
+                        "" + state.getStateName() + " state does not belongs to " + country.getCountryName() + " country",
+                        state.getStateName(), country.getCountryName()); }
         return country;
     }
 
     private State validateDistrictWithStateAndGetStateObject(final District district, final Long stateId) {
         final State state = this.stateRepository.findOneWithNotFoundDetection(stateId);
-        if (district != null && district.getStateId() != null && district.getStateId() != stateId) { throw new GeneralPlatformDomainRuleException(
-                "error.msg.address.district.does.not.belongs.to.state", "" + district.getDistrictName() + " district does not belongs to "
-                        + state.getStateName() + " state", district.getDistrictName(), state.getStateName()); }
+        if (district != null && district.getStateId() != null
+                && district.getStateId() != stateId) { throw new GeneralPlatformDomainRuleException(
+                        "error.msg.address.district.does.not.belongs.to.state",
+                        "" + district.getDistrictName() + " district does not belongs to " + state.getStateName() + " state",
+                        district.getDistrictName(), state.getStateName()); }
         return state;
     }
 

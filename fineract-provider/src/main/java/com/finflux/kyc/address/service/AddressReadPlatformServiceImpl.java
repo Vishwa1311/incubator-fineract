@@ -213,7 +213,7 @@ public class AddressReadPlatformServiceImpl implements AddressReadPlatformServic
         } catch (final EmptyResultDataAccessException e) {
 
         }
-        return null;
+        return new ArrayList<AddressData>();
     }
 
     private static final class AddressDataMapper implements RowMapper<AddressData> {
