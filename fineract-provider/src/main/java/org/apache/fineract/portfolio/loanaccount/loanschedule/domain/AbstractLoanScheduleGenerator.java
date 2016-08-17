@@ -2171,19 +2171,31 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                     isFirstRepayment = false;
                     lastInstallmentDate = this.scheduledDateGenerator.adjustRepaymentDate(actualRepaymentDate, loanApplicationTerms,
                             holidayDetailDTO);
-                    if (!lastInstallmentDate.isBefore(rescheduleFrom)) {
-                        actualRepaymentDate = previousRepaymentDate;
-                        break;
-                    }
-                    periodNumber++;
                     // check for date changes
+                    ArrayList<LoanTermVariationsData> dueDateVariationsDataList = new ArrayList<>();
                     while (loanApplicationTerms.getLoanTermVariations().hasDueDateVariation(lastInstallmentDate)) {
                         LoanTermVariationsData variation = loanApplicationTerms.getLoanTermVariations().nextDueDateVariation();
                         if (!variation.isSpecificToInstallment()) {
                             actualRepaymentDate = variation.getDateValue();
+                            lastInstallmentDate = actualRepaymentDate;
                         }
-                        variation.setProcessed(true);
+                        dueDateVariationsDataList.add(variation);
                     }
+                    if (!lastInstallmentDate.isBefore(rescheduleFrom)) {
+                        actualRepaymentDate = previousRepaymentDate;
+                        int dateVariations  = dueDateVariationsDataList.size(); 
+						while (dateVariations > 0) {
+							loanApplicationTerms.getLoanTermVariations()
+									.previousDueDateVariation();
+							dateVariations--;
+						}
+                        break;
+                    }
+                    for (LoanTermVariationsData dueDateVariation : dueDateVariationsDataList) {
+                        dueDateVariation.setProcessed(true);
+                    }
+                    periodNumber++;
+                    
                 }
 
                 for (Map.Entry<LocalDate, Money> disburseDetail : disburseDetailMap.entrySet()) {
