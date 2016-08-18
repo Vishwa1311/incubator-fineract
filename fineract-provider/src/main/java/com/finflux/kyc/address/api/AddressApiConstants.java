@@ -23,6 +23,7 @@ public class AddressApiConstants {
     public static final String enumTypeCenters = "CENTERS";
     public static final String enumTypeOffices = "OFFICES";
     public static final String enumTypeBusinessCorrespondents = "BUSINESSCORRESPONDENTS";
+    public static final String enumTypeVillages = "VILLAGES";
 
     /**
      * Address Parameters

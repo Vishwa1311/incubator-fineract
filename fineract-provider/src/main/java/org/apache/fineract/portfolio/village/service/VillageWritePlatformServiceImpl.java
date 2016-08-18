@@ -52,6 +52,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.finflux.kyc.address.api.AddressApiConstants;
+import com.finflux.kyc.address.data.AddressEntityTypeEnums;
+import com.finflux.kyc.address.service.AddressWritePlatformService;
+
 @Service
 public class VillageWritePlatformServiceImpl implements VillageWritePlatformService {
 
@@ -64,9 +68,10 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
     private final GroupRepository centerRepository;
     private final CommandProcessingService commandProcessingService;
     private final VillageRepository villageRepo;
+    private final AddressWritePlatformService addressWritePlatformService;
     @Autowired
     public VillageWritePlatformServiceImpl(PlatformSecurityContext context, VillageDataValidator fromApiJsonDeserializer, VillageRepositoryWrapper villageRepository, 
-            OfficeRepository officeRepository, GroupRepository centerRepository, CommandProcessingService commandProcessingService,VillageRepository villageRepo) {
+            OfficeRepository officeRepository, GroupRepository centerRepository, CommandProcessingService commandProcessingService,VillageRepository villageRepo, final AddressWritePlatformService addressWritePlatformService) {
 
         this.context = context;
         this.fromApiJsonDeserializer = fromApiJsonDeserializer;
@@ -75,6 +80,7 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
         this.centerRepository = centerRepository;
         this.commandProcessingService = commandProcessingService;
         this.villageRepo=villageRepo;
+        this.addressWritePlatformService = addressWritePlatformService;
     }
     
     
@@ -137,6 +143,15 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
                 throw new DuplicateVillageNameException(villageName);
             }
             this.villageRepository.save(newVillage);
+            
+            /**
+             * Call Address Service
+             */
+            if (newVillage != null && newVillage.getId() != null && command.parameterExists(AddressApiConstants.addressesParamName)) {
+                final AddressEntityTypeEnums entityType = AddressEntityTypeEnums.VILLAGES;
+                this.addressWritePlatformService.createOrUpdateAddress(entityType, newVillage.getId(), command);
+            }
+
             
             return new CommandProcessingResultBuilder() //
                         .withCommandId(command.commandId()) //

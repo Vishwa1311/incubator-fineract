@@ -30,7 +30,7 @@ import com.finflux.kyc.address.api.AddressApiConstants;
 @Table(name = "f_address")
 public class Address extends AbstractAuditableCustom<AppUser, Long> {
 
-    @Column(name = "house_no", length = 20, nullable = false)
+    @Column(name = "house_no", length = 20, nullable = true)
     private String houseNo;
 
     @Column(name = "street_no", length = 20, nullable = true)
@@ -63,7 +63,7 @@ public class Address extends AbstractAuditableCustom<AppUser, Long> {
     @JoinColumn(name = "country_id")
     private Country country;
 
-    @Column(name = "postal_code", length = 10)
+    @Column(name = "postal_code", length = 10,nullable = true)
     private String postalCode;
 
     @Column(name = "latitude", scale = 6, precision = 19, nullable = true)

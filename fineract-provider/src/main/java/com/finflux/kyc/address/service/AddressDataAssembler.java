@@ -234,44 +234,51 @@ public class AddressDataAssembler {
         }
         final Set<AddressEntity> addressEntities = new HashSet();
 
-        if (address != null && addressTypes != null) {
-            final Set<String> addressTypesSet = Arrays.stream(addressTypes).collect(Collectors.toSet());
-            int i = 0;
-            for (final String id : addressTypesSet) {
-                final Long addressTypeId = Long.parseLong(id);
-                final CodeValue addressType = this.codeValueRepository.findOneWithNotFoundDetection(addressTypeId);
-                AddressEntity addressEntity = findByAddressTypeAndEntityIdAndEntityTypeEnum(addressType, entityId, entityTypeEnum);
-                CodeValue parentAddressType = null;
-                if (i == 0) {
-                    if (addressEntity != null) {
-                        addressEntity.assignAddressAndMakeItActive(address, parentAddressType);
-                    } else {
-                        addressEntity = AddressEntity.create(address, addressType, entityId, entityTypeEnum, parentAddressType);
+        if (address != null) {
+            if(addressTypes != null){
+                final Set<String> addressTypesSet = Arrays.stream(addressTypes).collect(Collectors.toSet());
+                int i = 0;
+                for (final String id : addressTypesSet) {
+                    final Long addressTypeId = Long.parseLong(id);
+                    CodeValue parentAddressType = null;
+                    if(i > 0){
+                        parentAddressType = this.codeValueRepository.findOneWithNotFoundDetection(Long.parseLong(addressTypes[0]));
                     }
-                } else {
-                    parentAddressType = this.codeValueRepository.findOneWithNotFoundDetection(Long.parseLong(addressTypes[0]));
-                    if (addressEntity != null) {
-                        addressEntity.assignAddressAndMakeItActive(address, parentAddressType);
-                    } else {
-                        addressEntity = AddressEntity.create(address, addressType, entityId, entityTypeEnum, parentAddressType);
-                    }
+                    final CodeValue addressType = this.codeValueRepository.findOneWithNotFoundDetection(addressTypeId);
+                    constructAddressEntity(addressEntities,address,addressType,parentAddressType,entityId, entityTypeEnum, i);
+                    i++;
                 }
-                if (addressEntity != null) {
-                    addressEntities.add(addressEntity);
-                } else {
-                    /**
-                     * Through error message while constructing the address
-                     * entity with address type
-                     */
-                }
-                i++;
+            }else{
+                constructAddressEntity(addressEntities, address, null, null, entityId, entityTypeEnum, 0);
             }
-        } else {
-            /**
-             * Through error message for address object is null
-             */
         }
         return addressEntities;
+    }
+
+    private void constructAddressEntity(Set<AddressEntity> addressEntities, Address address, CodeValue addressType,
+            CodeValue parentAddressType, Long entityId, Integer entityTypeEnum, int i) {
+        AddressEntity addressEntity = findByAddressTypeAndEntityIdAndEntityTypeEnum(addressType, entityId, entityTypeEnum);
+        if (i == 0) {
+            if (addressEntity != null) {
+                addressEntity.assignAddressAndMakeItActive(address, parentAddressType);
+            } else {
+                addressEntity = AddressEntity.create(address, addressType, entityId, entityTypeEnum, parentAddressType);
+            }
+        } else {
+            if (addressEntity != null) {
+                addressEntity.assignAddressAndMakeItActive(address, parentAddressType);
+            } else {
+                addressEntity = AddressEntity.create(address, addressType, entityId, entityTypeEnum, parentAddressType);
+            }
+        }
+        if (addressEntity != null) {
+            addressEntities.add(addressEntity);
+        } else {
+            /**
+             * Through error message while constructing the address entity with
+             * address type
+             */
+        }
     }
 
     private AddressEntity findByAddressTypeAndEntityIdAndEntityTypeEnum(final CodeValue addressType, final Long entityId,

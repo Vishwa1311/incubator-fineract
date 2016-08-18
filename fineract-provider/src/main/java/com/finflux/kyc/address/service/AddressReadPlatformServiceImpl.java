@@ -335,7 +335,7 @@ public class AddressReadPlatformServiceImpl implements AddressReadPlatformServic
             sqlBuilder.append(
                     "ae.parent_address_type AS parentAddressTypeId, paddressTypeCv.code_value AS parentAddressTypeName,paddressTypeCv.is_active AS parentAddressTypeIsActive ");
             sqlBuilder.append("FROM f_address_entity ae ");
-            sqlBuilder.append("JOIN m_code_value addressTypeCv ON addressTypeCv.id = ae.address_type ");
+            sqlBuilder.append("LEFT JOIN m_code_value addressTypeCv ON addressTypeCv.id = ae.address_type ");
             sqlBuilder.append("LEFT JOIN m_code_value paddressTypeCv ON paddressTypeCv.id = ae.parent_address_type ");
             this.schema = sqlBuilder.toString();
         }
