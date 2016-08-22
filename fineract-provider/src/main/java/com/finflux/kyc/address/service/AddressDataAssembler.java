@@ -24,6 +24,8 @@ import com.finflux.infrastructure.gis.district.domain.District;
 import com.finflux.infrastructure.gis.district.domain.DistrictRepositoryWrapper;
 import com.finflux.infrastructure.gis.state.domain.State;
 import com.finflux.infrastructure.gis.state.domain.StateRepositoryWrapper;
+import com.finflux.infrastructure.gis.taluka.domain.Taluka;
+import com.finflux.infrastructure.gis.taluka.domain.TalukaRepositoryWrapper;
 import com.finflux.kyc.address.api.AddressApiConstants;
 import com.finflux.kyc.address.domain.Address;
 import com.finflux.kyc.address.domain.AddressEntity;
@@ -41,17 +43,19 @@ public class AddressDataAssembler {
     private final CountryRepositoryWrapper countryRepository;
     private final StateRepositoryWrapper stateRepository;
     private final DistrictRepositoryWrapper districtRepository;
+    private final TalukaRepositoryWrapper talukaRepository;
 
     @Autowired
     public AddressDataAssembler(final FromJsonHelper fromApiJsonHelper, final CodeValueRepositoryWrapper codeValueRepository,
             final AddressEntityRepository addressEntityRepository, final CountryRepositoryWrapper countryRepository,
-            final StateRepositoryWrapper stateRepository, final DistrictRepositoryWrapper districtRepository) {
+            final StateRepositoryWrapper stateRepository, final DistrictRepositoryWrapper districtRepository,final TalukaRepositoryWrapper talukaRepository) {
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.codeValueRepository = codeValueRepository;
         this.addressEntityRepository = addressEntityRepository;
         this.countryRepository = countryRepository;
         this.stateRepository = stateRepository;
         this.districtRepository = districtRepository;
+        this.talukaRepository = talukaRepository;
     }
 
     /**
@@ -113,6 +117,14 @@ public class AddressDataAssembler {
             }
             address.updateDistrict(district);
         }
+        if (actualChanges.containsKey(AddressApiConstants.talukaIdParamName)) {
+            final Long talukaId = (Long) actualChanges.get(AddressApiConstants.talukaIdParamName);
+            final Taluka taluka = this.talukaRepository.findOneWithNotFoundDetection(talukaId);
+            if (address.getDistrictId() != null) {
+                validateTalukaWithDistrictAndGetDistrictObject(taluka, address.getDistrictId());
+            }
+            address.updateTaluka(taluka);
+        }
 
         final JsonElement element = command.parsedJson();
         final String[] addressTypes = this.fromApiJsonHelper.extractArrayNamed(AddressApiConstants.addressTypesParamName, element);
@@ -157,13 +169,20 @@ public class AddressDataAssembler {
 
         final String villageTown = this.fromApiJsonHelper.extractStringNamed(AddressApiConstants.villageTownParamName, element);
 
-        final String taluka = this.fromApiJsonHelper.extractStringNamed(AddressApiConstants.talukaParamName, element);
+        final Long talukaId = this.fromApiJsonHelper.extractLongNamed(AddressApiConstants.talukaIdParamName, element);
+        Taluka taluka = null;
+        if (talukaId != null) {
+            taluka = this.talukaRepository.findOneWithNotFoundDetection(talukaId);
+        }
 
         final Long districtId = this.fromApiJsonHelper.extractLongNamed(AddressApiConstants.districtIdParamName, element);
         District district = null;
         if (districtId != null) {
-            district = this.districtRepository.findOneWithNotFoundDetection(districtId);
+            district = validateTalukaWithDistrictAndGetDistrictObject(taluka, districtId);
+        }else if(taluka !=null && taluka.getDistrict()!= null && district == null){
+            //district = this.districtRepository.findOneWithNotFoundDetection(taluka.getDistrictId());
         }
+        
         final Long stateId = this.fromApiJsonHelper.extractLongNamed(AddressApiConstants.stateIdParamName, element);
         State state = null;
         if (stateId != null) {
@@ -218,6 +237,15 @@ public class AddressDataAssembler {
                         "" + district.getDistrictName() + " district does not belongs to " + state.getStateName() + " state",
                         district.getDistrictName(), state.getStateName()); }
         return state;
+    }
+    private District validateTalukaWithDistrictAndGetDistrictObject(final Taluka taluka, final Long districtId) {
+        final District district = this.districtRepository.findOneWithNotFoundDetection(districtId);
+        if (taluka != null && taluka.getDistrictId() != null
+                && taluka.getDistrictId() != districtId) { throw new GeneralPlatformDomainRuleException(
+                        "error.msg.address.taluka.does.not.belongs.to.district",
+                        "" + taluka.getTalukaName() + " taluka does not belongs to " + district.getDistrictName() + " district",
+                        taluka.getTalukaName(), district.getDistrictName()); }
+        return district;
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })

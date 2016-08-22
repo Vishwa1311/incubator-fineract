@@ -46,10 +46,10 @@ public class AddressTest {
         HashMap actualChanges = (HashMap) this.helper.updateAddress("clients", clientId.toString(), addressId.toString());
         System.out.println(".................address update changes......" + actualChanges);
         Assert.assertNotNull(actualChanges);
-        Assert.assertEquals(32, ((HashMap) (actualChanges.get("changes"))).get("districtId"));
+        Assert.assertEquals(7, ((HashMap) (actualChanges.get("changes"))).get("districtId"));
         Assert.assertEquals("560080", ((HashMap) (actualChanges.get("changes"))).get("postalCode"));
         Assert.assertEquals("145", ((HashMap) (actualChanges.get("changes"))).get("houseNo"));
-        Assert.assertEquals(17, ((HashMap) (actualChanges.get("changes"))).get("stateId"));
+        Assert.assertEquals(10, ((HashMap) (actualChanges.get("changes"))).get("talukaId"));
         Assert.assertEquals("addressLineTwo", ((HashMap) (actualChanges.get("changes"))).get("addressLineOne"));
 
         List<HashMap> error = (List<HashMap>) this.helper.updateStateAddress("clients", clientId.toString(), addressId.toString(),

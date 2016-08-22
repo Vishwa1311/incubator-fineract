@@ -21,5 +21,5 @@ INSERT INTO `c_configuration` (`id`, `name`,`value`, `enabled`, `description`)
 VALUES (NULL, 'enable-clients-address', '0', '0',"Enable the address while creating client");
 
 INSERT INTO `c_configuration` (`id`, `name`,`value`, `enabled`, `description`) 
-VALUES (NULL, 'populate_address_from_villages', '0', '0',"Populate address from villages");
+VALUES (NULL, 'populate_client_address_from_villages', '0', '0',"Populate client address from villages");
 	

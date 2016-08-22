@@ -22,12 +22,16 @@ public class AddressHelper {
     public Integer createAddress(final String entityType, final String entityId) {
         System.out.println("--------------------------------- Create Address " + entityType + " -------------------------------");
         System.out.println(createAddressOperationURL(entityType, entityId));
+        System.out.println(getAddressTemplateURL(entityType));
         final Integer addressId = Utils.performServerPost(this.requestSpec, this.responseSpec,
                 createAddressOperationURL(entityType, entityId), getTestCreateAddressAsJSON(entityId), "resourceId");
         System.out.println("Address Id : " + addressId);
         return addressId;
     }
 
+    private String getAddressTemplateURL(final String entityType) {
+        return API_URL + "/" + entityType + "/addresses" + "/template?" + Utils.TENANT_IDENTIFIER;
+    }
     private String createAddressOperationURL(final String entityType, final String entityId) {
         return API_URL + "/" + entityType + "/" + entityId + "/addresses?" + Utils.TENANT_IDENTIFIER;
     }
@@ -39,8 +43,9 @@ public class AddressHelper {
         map.put("addressTypes", new Integer[] { 14 });
         map.put("houseNo", "123");
         map.put("addressLineOne", "addressLineOne");
-        map.put("districtId", "1");
-        map.put("stateId", "1");
+        map.put("talukaId", "13");
+        map.put("districtId", "8");
+        map.put("stateId", "17");
         map.put("countryId", "101");
         map.put("postalCode", "560079");
         map.put("locale", "en");
@@ -82,7 +87,8 @@ public class AddressHelper {
         map.put("addressTypes", new Integer[] { 15 });
         map.put("houseNo", "145");
         map.put("addressLineOne", "addressLineTwo");
-        map.put("districtId", "32");
+        map.put("talukaId","10");
+        map.put("districtId", "7");
         map.put("stateId", "17");
         map.put("countryId", "101");
         map.put("postalCode", "560080");
