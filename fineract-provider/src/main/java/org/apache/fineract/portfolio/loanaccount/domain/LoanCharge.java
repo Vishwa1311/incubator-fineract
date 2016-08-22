@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -1265,5 +1266,18 @@ public class LoanCharge extends AbstractPersistable<Long> {
             this.waived = true;
         }
         return amountWaived;
+    }
+
+    public BigDecimal updateWriteOffAmount(MonetaryCurrency loanCurrency, Money writeOffAmount, Integer loanInstallmentNumber, BigDecimal totalLoanChargeAmount,
+            BigDecimal chargeAmountPerGlim) {
+        final LoanInstallmentCharge chargePerInstallment = getInstallmentLoanCharge(loanInstallmentNumber);
+        final Money amountWrittenOff = chargePerInstallment.writeOffGlimLoanCharge(writeOffAmount);
+        if (this.amountWrittenOff == null) {
+            this.amountWrittenOff = BigDecimal.ZERO;
+        }
+        
+        this.amountWrittenOff = this.amountWrittenOff.add(writeOffAmount.getAmount());
+        this.amountOutstanding = this.amountOutstanding.subtract(writeOffAmount.getAmount());
+        return writeOffAmount.getAmount();
     }
 }

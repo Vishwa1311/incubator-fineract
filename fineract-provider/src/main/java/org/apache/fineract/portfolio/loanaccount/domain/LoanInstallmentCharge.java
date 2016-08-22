@@ -304,10 +304,17 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
     	BigDecimal amount = chargeAmountToBeWaived==null?BigDecimal.ZERO:chargeAmountToBeWaived.getAmount();    	
         this.amountWaived = this.amountWaived==null?amount:this.amountWaived.add(amount);
         this.amountOutstanding = this.amountOutstanding.subtract(amount);
-        this.paid = false;
+        this.paid = false; 
         if(this.amountOutstanding.compareTo(BigDecimal.ZERO) == 0) {
             this.waived = true;
         }
         return chargeAmountToBeWaived;
+    }
+    
+    public Money writeOffGlimLoanCharge(Money writeOffAmount) {
+        BigDecimal amount = writeOffAmount == null ? BigDecimal.ZERO : writeOffAmount.getAmount();
+        this.amountWrittenOff = this.amountWrittenOff == null ? amount : this.amountWrittenOff.add(amount);
+        this.amountOutstanding = this.amountOutstanding.subtract(amount);
+        return writeOffAmount;
     }
 }
