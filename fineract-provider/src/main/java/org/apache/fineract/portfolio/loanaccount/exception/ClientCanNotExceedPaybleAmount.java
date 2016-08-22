@@ -16,19 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.service;
+package org.apache.fineract.portfolio.loanaccount.exception;
 
-import java.util.Collection;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-import org.apache.fineract.portfolio.charge.data.GroupLoanIndividualMonitoringChargeData;
+public class ClientCanNotExceedPaybleAmount extends
+		AbstractPlatformDomainRuleException {
 
-public interface GroupLoanIndividualMonitoringChargeReadPlatformService {
+	public ClientCanNotExceedPaybleAmount() {
+		super("error.msg.glim.client.can.not.do.over.payment",
+				"Client can not do over payment.");
+		// TODO Auto-generated constructor stub
+	}
 
-	GroupLoanIndividualMonitoringChargeData retrieveGLIMCharge(Long id);
-
-	Collection<GroupLoanIndividualMonitoringChargeData> retrieveGLIMChargeByGlimId(
-			Long glimId);
-	
-	GroupLoanIndividualMonitoringChargeData retrieveGLIMChargeByGlimIdAndChargeId(
-			Long glimId, Long chargeId);
 }

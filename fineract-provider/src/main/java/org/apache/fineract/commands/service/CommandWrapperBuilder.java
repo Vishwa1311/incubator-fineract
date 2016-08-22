@@ -3172,4 +3172,20 @@ public class CommandWrapperBuilder {
         this.loanId = loanId;
         return this;
     }
+    
+    public CommandWrapperBuilder waiveChargeTransactionForGlim(final Long loanId) {
+        this.actionName = "WAIVECHARGE";
+        this.entityName = "GLIMTRANSACTION";
+        this.href = "/glim/" + loanId + "/transactions?command=waivecharge";
+        this.loanId = loanId;
+        return this;
+    }
+
+    public CommandWrapperBuilder writeOffTransactionForGlim(final Long loanId) {
+        this.actionName = "WRITEOFF";
+        this.entityName = "GLIMTRANSACTION";
+        this.href = "/glim/" + loanId + "/transactions?command=writeoff";
+        this.loanId = loanId;
+        return this;
+    }
 }

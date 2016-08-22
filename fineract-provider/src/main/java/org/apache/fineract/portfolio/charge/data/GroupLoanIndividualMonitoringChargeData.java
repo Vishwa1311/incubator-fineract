@@ -27,24 +27,26 @@ public class GroupLoanIndividualMonitoringChargeData {
 	private final Long charge;
 	private final BigDecimal feeAmount;
 	private final BigDecimal revisedFeeAmount;
+	private final BigDecimal waivedChargeAmount;
 
 	public GroupLoanIndividualMonitoringChargeData(final Long id,
 			final Long glim, final Long client, final Long charge,
-			final BigDecimal feeAmount, final BigDecimal revisedFeeAmount) {
+			final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final BigDecimal waivedChargeAmount) {
 		this.id = id;
 		this.glim = glim;
 		this.client = client;
 		this.charge = charge;
 		this.feeAmount = feeAmount;
 		this.revisedFeeAmount = revisedFeeAmount;
+		this.waivedChargeAmount = waivedChargeAmount;
 	}
 
 	public static GroupLoanIndividualMonitoringChargeData instance(
 			final Long id, final Long glim, final Long client,
 			final Long charge, final BigDecimal feeAmount,
-			final BigDecimal revisedFeeAmount) {
+			final BigDecimal revisedFeeAmount, final BigDecimal waivedChargeAmount) {
 		return new GroupLoanIndividualMonitoringChargeData(id, glim, client,
-				charge, feeAmount, revisedFeeAmount);
+				charge, feeAmount, revisedFeeAmount, waivedChargeAmount);
 	}
 
 	public Long getId() {
@@ -70,5 +72,9 @@ public class GroupLoanIndividualMonitoringChargeData {
 	public BigDecimal getRevisedFeeAmount() {
 		return this.revisedFeeAmount;
 	}
+
+	public BigDecimal getWaivedChargeAmount() {
+		return this.waivedChargeAmount;
+	}	
 
 }

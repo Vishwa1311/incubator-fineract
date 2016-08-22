@@ -31,6 +31,7 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -740,5 +741,57 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
                 .withGroupId(loan.getGroupId());
         
         return waiveInterestTransaction;
+    }
+
+    @Override
+    public LoanTransaction writeOffForGlimLoan(JsonCommand command, Loan loan, CommandProcessingResultBuilder builderResult,
+            String noteText, Map<String, Object> changes, List<Long> existingTransactionIds, List<Long> existingReversedTransactionIds) {
+
+        AppUser currentUser = getAppUserIfPresent();
+
+        checkClientOrGroupActive(loan);
+
+        LocalDate recalculateFrom = null;
+        ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
+
+        final LocalDate writtenOffOnLocalDate = command.localDateValueOfParameterNamed("transactionDate");
+        final String txnExternalId = command.stringValueOfParameterNamedAllowingNull("externalId");
+        LocalDateTime createdDate = DateUtils.getLocalDateTimeOfTenant();
+
+        LoanTransaction writeoffTransaction = LoanTransaction.writeOffForGlimLoan(loan, loan.getOffice(), writtenOffOnLocalDate,
+                txnExternalId, createdDate, currentUser, LoanTransactionSubType.PARTIAL_WRITEOFF);
+
+        final ChangedTransactionDetail changedTransactionDetail = loan.GlimLoanCloseAsWrittenOff(command, writtenOffOnLocalDate,
+                writeoffTransaction, defaultLoanLifecycleStateMachine(), changes, existingTransactionIds, existingReversedTransactionIds,
+                currentUser, scheduleGeneratorDTO);
+        
+        
+
+        saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
+        if (changedTransactionDetail != null) {
+            for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
+                this.loanTransactionRepository.save(mapEntry.getValue());
+                // update loan with references to the newly created transactions
+                loan.getLoanTransactions().add(mapEntry.getValue());
+                updateLoanTransaction(mapEntry.getKey(), mapEntry.getValue());
+            }
+        }
+
+        if (StringUtils.isNotBlank(noteText)) {
+            changes.put("note", noteText);
+            final Note note = Note.loanTransactionNote(loan, writeoffTransaction, noteText);
+            this.noteRepository.save(note);
+        }
+        final boolean isAccountTransfer = false;
+        postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
+        recalculateAccruals(loan);
+        this.businessEventNotifierService.notifyBusinessEventWasExecuted(BUSINESS_EVENTS.LOAN_WAIVE_INTEREST,
+                constructEntityMap(BUSINESS_ENTITY.LOAN_TRANSACTION, writeoffTransaction));
+
+        builderResult.withEntityId(writeoffTransaction.getId()).withOfficeId(loan.getOfficeId()) //
+                .withClientId(loan.getClientId()) //
+                .withGroupId(loan.getGroupId());
+
+        return writeoffTransaction;
     }
 }

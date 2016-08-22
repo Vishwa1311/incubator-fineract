@@ -16,19 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.charge.service;
+package org.apache.fineract.portfolio.loanaccount.exception;
 
-import java.util.Collection;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-import org.apache.fineract.portfolio.charge.data.GroupLoanIndividualMonitoringChargeData;
-
-public interface GroupLoanIndividualMonitoringChargeReadPlatformService {
-
-	GroupLoanIndividualMonitoringChargeData retrieveGLIMCharge(Long id);
-
-	Collection<GroupLoanIndividualMonitoringChargeData> retrieveGLIMChargeByGlimId(
-			Long glimId);
-	
-	GroupLoanIndividualMonitoringChargeData retrieveGLIMChargeByGlimIdAndChargeId(
-			Long glimId, Long chargeId);
+public class ClientAlreadyWriteOffException  extends
+AbstractPlatformDomainRuleException {
+	public ClientAlreadyWriteOffException() {
+		super("error.msg.glim.client.already.write.off.can.not.make.transaction",
+				"Client already write off so can not make transaction.");
+		// TODO Auto-generated constructor stub
+	}
 }

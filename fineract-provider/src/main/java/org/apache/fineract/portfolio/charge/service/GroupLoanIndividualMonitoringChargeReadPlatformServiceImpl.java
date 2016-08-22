@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.List;
 
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
@@ -31,9 +32,9 @@ public class GroupLoanIndividualMonitoringChargeReadPlatformServiceImpl implemen
 
     private static final class GroupLoanIndividualMonitoringChargeMapper implements RowMapper<GroupLoanIndividualMonitoringChargeData> {
 
-        private final String sqlQuery = " glimcharge.id as id, name, glimcharge.glim_id as glim,"
+        private final String sqlQuery = " glimcharge.id as id, glimcharge.glim_id as glim,"
                 + " glimcharge.client_id as client, glimcharge.charge_id as charge,"
-                + " glimcharge.fee_amount feeAmount, glimcharge.revised_fee_amount as revisedFeeAmount "
+                + " glimcharge.fee_amount as feeAmount, glimcharge.revised_fee_amount as revisedFeeAmount, glimcharge.waived_charge_amount as waivedChargeAmount "
                 + " from m_loan_glim_charges glimcharge ";
 
         public String schema() {
@@ -50,8 +51,8 @@ public class GroupLoanIndividualMonitoringChargeReadPlatformServiceImpl implemen
             final Long charge = rs.getLong("charge");
             final BigDecimal feeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "feeAmount");
             final BigDecimal revisedFeeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "revisedFeeAmount");
-
-            return GroupLoanIndividualMonitoringChargeData.instance(id, glim, client, charge, feeAmount, revisedFeeAmount);
+            final BigDecimal waivedChargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "waivedChargeAmount");
+            return GroupLoanIndividualMonitoringChargeData.instance(id, glim, client, charge, feeAmount, revisedFeeAmount, waivedChargeAmount);
         }
 
     }
@@ -77,5 +78,13 @@ public class GroupLoanIndividualMonitoringChargeReadPlatformServiceImpl implemen
 
         return this.jdbcTemplate.query(sql, rm, new Object[] { glimId });
     }
+
+	@Override
+	public GroupLoanIndividualMonitoringChargeData retrieveGLIMChargeByGlimIdAndChargeId(
+			Long glimId, Long chargeId) {
+		final GroupLoanIndividualMonitoringChargeMapper rm = new GroupLoanIndividualMonitoringChargeMapper();
+        String sql = "select " + rm.schema() + " where glimcharge.glim_id = ? and glimcharge.charge_id = ? ";
+        return this.jdbcTemplate.queryForObject(sql, rm, new Object[] { glimId, chargeId });
+	}
 
 }

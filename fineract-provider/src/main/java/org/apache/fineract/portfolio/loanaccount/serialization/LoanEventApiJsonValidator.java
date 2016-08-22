@@ -507,6 +507,9 @@ public final class LoanEventApiJsonValidator {
         
         if (clients != null) {
             for (JsonElement innerElement : clients) {
+                final Long glimId = this.fromApiJsonHelper.extractLongNamed("id", innerElement);
+                baseDataValidator.reset().parameter("id").value(glimId).notNull().longGreaterThanZero();
+                
                 final Long clientId = this.fromApiJsonHelper.extractLongNamed("clientId", innerElement);
                 baseDataValidator.reset().parameter("clientId").value(clientId).notNull().longGreaterThanZero();
 
@@ -524,5 +527,115 @@ public final class LoanEventApiJsonValidator {
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
         
     }
+    
+    
+    public void validateGlimForWriteOff(final String json) {
+
+        if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
+        
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("glimloan.transaction");
+        
+        final JsonElement element = this.fromApiJsonHelper.parse(json);
+        final JsonArray clients = this.fromApiJsonHelper.extractJsonArrayNamed("clientMembers", element);
+        baseDataValidator.reset().parameter("clientMembers").value(clients).notNull();
+        
+        if (clients != null) {
+            for (JsonElement innerElement : clients) {
+                final Long glimId = this.fromApiJsonHelper.extractLongNamed("id", innerElement);
+                baseDataValidator.reset().parameter("id").value(glimId).notNull().longGreaterThanZero();
+                
+                final Long clientId = this.fromApiJsonHelper.extractLongNamed("clientId", innerElement);
+                baseDataValidator.reset().parameter("clientId").value(clientId).notNull().longGreaterThanZero();
+
+                final String clientName = this.fromApiJsonHelper.extractStringNamed("clientName", innerElement);
+                baseDataValidator.reset().parameter("clientName").value(clientName).notNull().notBlank();
+
+                final String transactionAmount = this.fromApiJsonHelper.extractStringNamed("transactionAmount", innerElement);
+                baseDataValidator.reset().parameter("transactionAmount").value(transactionAmount).notNull().zeroOrPositiveAmount();
+            }
+        }
+        
+        throwExceptionIfValidationWarningsExist(dataValidationErrors);
+        
+    }
+    
+    public void validateGLIMWaiveChargeTransaction(final String json) {
+
+        if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
+
+        final Set<String> transactionParameters = new HashSet<>(Arrays.asList("transactionDate", "transactionAmount", "externalId", "note",
+                "locale", "dateFormat", "clientMembers","isClientSelected"));
+
+        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, transactionParameters);
+
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("loan.transaction");
+
+        final JsonElement element = this.fromApiJsonHelper.parse(json);
+        final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(element.getAsJsonObject());
+        final BigDecimal transactionAmount = this.fromApiJsonHelper.extractBigDecimalNamed("transactionAmount", element, locale);
+        baseDataValidator.reset().parameter("transactionAmount").value(transactionAmount).notNull().zeroOrPositiveAmount();
+        
+        final JsonArray clients = this.fromApiJsonHelper.extractJsonArrayNamed("clientMembers", element);
+        baseDataValidator.reset().parameter("clientMembers").value(clients).notNull();
+        
+        if (clients != null) {
+            for (JsonElement innerElement : clients) {
+                final boolean isClientSelected = this.fromApiJsonHelper.extractBooleanNamed("isClientSelected", innerElement);
+                if (isClientSelected) {
+                    final Long clientId = this.fromApiJsonHelper.extractLongNamed("clientId", innerElement);
+                    baseDataValidator.reset().parameter("clientId").value(clientId).notNull().longGreaterThanZero();
+
+                    final String clientName = this.fromApiJsonHelper.extractStringNamed("clientName", innerElement);
+                    baseDataValidator.reset().parameter("clientName").value(clientName).notNull().notBlank();
+
+                    final BigDecimal remainigInterestAmount = this.fromApiJsonHelper.extractBigDecimalNamed("remainingTransactionAmount",
+                            innerElement, locale);
+                    baseDataValidator.reset().parameter("remainingTransactionAmount").value(remainigInterestAmount).notNull();
+
+                    final BigDecimal indTransactionAmount = this.fromApiJsonHelper.extractBigDecimalNamed("transactionAmount",
+                            innerElement, locale);
+                    baseDataValidator.reset().parameter("transactionAmount").value(indTransactionAmount).notNull();
+                }
+            }
+        }
+
+        validatePaymentDetails(baseDataValidator, element);
+        throwExceptionIfValidationWarningsExist(dataValidationErrors);
+    }
+    
+    public void validateGLIMWaiveChargeIndividualTransaction(final String json) {
+
+        if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
+        
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("glimloan.transaction");
+        
+        final JsonElement element = this.fromApiJsonHelper.parse(json);
+        final JsonArray clients = this.fromApiJsonHelper.extractJsonArrayNamed("clientMembers", element);
+        baseDataValidator.reset().parameter("clientMembers").value(clients).notNull();
+        
+        if (clients != null) {
+            for (JsonElement innerElement : clients) {
+                final Long clientId = this.fromApiJsonHelper.extractLongNamed("clientId", innerElement);
+                baseDataValidator.reset().parameter("clientId").value(clientId).notNull().longGreaterThanZero();
+
+                final String clientName = this.fromApiJsonHelper.extractStringNamed("clientName", innerElement);
+                baseDataValidator.reset().parameter("clientName").value(clientName).notNull().notBlank();
+
+                final String remainigInterestAmount = this.fromApiJsonHelper.extractStringNamed("remainingTransactionAmount", innerElement);
+                baseDataValidator.reset().parameter("remainingTransactionAmount").value(remainigInterestAmount).notNull();
+
+                final String transactionAmount = this.fromApiJsonHelper.extractStringNamed("transactionAmount", innerElement);
+                baseDataValidator.reset().parameter("transactionAmount").value(transactionAmount).notNull();
+            }
+        }
+        
+        throwExceptionIfValidationWarningsExist(dataValidationErrors);
+        
+    }
+
 
 }

@@ -209,4 +209,63 @@ public class PrincipalInterestPenaltyFeesOrderLoanRepaymentScheduleTransactionPr
                 groupLoanIndividualMonitoringTransaction, tempPrincipalPortion.getAmount(), tempInterestPortion.getAmount(),
                 tempFeeChargesPortion.getAmount(), tempPenaltyChargesPortion.getAmount(), installmentAmount.getAmount());*/
     }
+    
+    @Override
+    protected Money handleTransactionThatIsOnTimePaymentOfInstallmentForGlim(final LoanRepaymentScheduleInstallment currentInstallment,
+            final LoanTransaction loanTransaction, final Money transactionAmountUnprocessed,
+            List<LoanTransactionToRepaymentScheduleMapping> transactionMappings, Money principalPortion, Money interestPortion,
+            Money feePortion, Money penaltyPortion) {
+
+        final LocalDate transactionDate = loanTransaction.getTransactionDate();
+        final MonetaryCurrency currency = transactionAmountUnprocessed.getCurrency();
+        Money transactionAmountRemaining = transactionAmountUnprocessed;
+      /*  Money principalPortion = Money.zero(transactionAmountRemaining.getCurrency());
+        Money interestPortion = Money.zero(transactionAmountRemaining.getCurrency());
+        Money feeChargesPortion = Money.zero(transactionAmountRemaining.getCurrency());
+        Money penaltyChargesPortion = Money.zero(transactionAmountRemaining.getCurrency());*/
+
+        if (loanTransaction.isChargesWaiver()) {
+            penaltyPortion = currentInstallment.waivePenaltyChargesComponent(transactionDate,
+                    penaltyPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(penaltyPortion);
+
+            feePortion = currentInstallment
+                    .waiveFeeChargesComponent(transactionDate, feePortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(feePortion);
+
+        } else if (loanTransaction.isInterestWaiver()) {
+            interestPortion = currentInstallment.waiveInterestComponent(transactionDate, interestPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(interestPortion);
+
+            loanTransaction.updateComponents(principalPortion, interestPortion, feePortion, penaltyPortion);
+        } else if (loanTransaction.isChargePayment()) {
+            if (loanTransaction.isPenaltyPayment()) {
+                penaltyPortion = currentInstallment.payPenaltyChargesComponent(transactionDate, penaltyPortion);
+                transactionAmountRemaining = transactionAmountRemaining.minus(penaltyPortion);
+            } else {
+                feePortion = currentInstallment.payFeeChargesComponent(transactionDate, feePortion);
+                transactionAmountRemaining = transactionAmountRemaining.minus(feePortion);
+            }
+            loanTransaction.updateComponents(principalPortion, interestPortion, feePortion, penaltyPortion);
+        } else {
+            penaltyPortion = currentInstallment.payPenaltyChargesComponent(transactionDate, transactionAmountRemaining);
+            transactionAmountRemaining = transactionAmountRemaining.minus(penaltyPortion);
+
+            feePortion = currentInstallment.payFeeChargesComponent(transactionDate, transactionAmountRemaining);
+            transactionAmountRemaining = transactionAmountRemaining.minus(feePortion);
+
+            interestPortion = currentInstallment.payInterestComponent(transactionDate, transactionAmountRemaining);
+            transactionAmountRemaining = transactionAmountRemaining.minus(interestPortion);
+
+            principalPortion = currentInstallment.payPrincipalComponent(transactionDate, transactionAmountRemaining);
+            transactionAmountRemaining = transactionAmountRemaining.minus(principalPortion);
+
+            loanTransaction.updateComponents(principalPortion, interestPortion, feePortion, penaltyPortion);
+        }
+        if (principalPortion.plus(interestPortion).plus(feePortion).plus(penaltyPortion).isGreaterThanZero()) {
+            transactionMappings.add(LoanTransactionToRepaymentScheduleMapping.createFrom(currentInstallment, principalPortion,
+                    interestPortion, feePortion, penaltyPortion));
+        }
+        return transactionAmountRemaining;
+    }
 }

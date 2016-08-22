@@ -56,14 +56,18 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
     @Transient
     private boolean emiRoundingGoalSeek;
 
+    @Column(name = "waived_charge_amount", scale = 6, precision = 19, nullable = true)
+    private BigDecimal waivedChargeAmount;
+
     public GroupLoanIndividualMonitoringCharge(final GroupLoanIndividualMonitoring glim, final Client client, final Charge charge,
-            final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek) {
+            final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek, final BigDecimal waivedChargeAmount) {
         this.groupLoanIndividualMonitoring = glim;
         this.client = client;
         this.charge = charge;
         this.feeAmount = feeAmount;
         this.revisedFeeAmount = revisedFeeAmount;
         this.emiRoundingGoalSeek = emiRoundingGoalSeek;
+        this.waivedChargeAmount = waivedChargeAmount;
     }
 
     public GroupLoanIndividualMonitoringCharge() {
@@ -71,8 +75,8 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
     }
 
     public static GroupLoanIndividualMonitoringCharge instance(final GroupLoanIndividualMonitoring glim, final Client client,
-            final Charge charge, final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek) {
-        return new GroupLoanIndividualMonitoringCharge(glim, client, charge, feeAmount, revisedFeeAmount, emiRoundingGoalSeek);
+            final Charge charge, final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek, final BigDecimal waivedChargeAmount) {
+        return new GroupLoanIndividualMonitoringCharge(glim, client, charge, feeAmount, revisedFeeAmount, emiRoundingGoalSeek, waivedChargeAmount);
     }
 
     public GroupLoanIndividualMonitoring getGlim() {
@@ -119,4 +123,21 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
         return this.emiRoundingGoalSeek;
     }
 
+	public GroupLoanIndividualMonitoring getGroupLoanIndividualMonitoring() {
+		return this.groupLoanIndividualMonitoring;
+	}
+
+	public void setGroupLoanIndividualMonitoring(
+			GroupLoanIndividualMonitoring groupLoanIndividualMonitoring) {
+		this.groupLoanIndividualMonitoring = groupLoanIndividualMonitoring;
+	}
+
+	public BigDecimal getWaivedChargeAmount() {
+		return this.waivedChargeAmount;
+	}
+
+	public void setWaivedChargeAmount(BigDecimal waivedChargeAmount) {
+		this.waivedChargeAmount = waivedChargeAmount;
+	}
+        
 }

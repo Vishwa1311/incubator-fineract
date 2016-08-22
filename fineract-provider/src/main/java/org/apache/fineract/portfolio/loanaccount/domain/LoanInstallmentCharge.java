@@ -299,4 +299,15 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
 	public LoanRepaymentScheduleInstallment getInstallment() {
 		return this.installment;
 	}
+
+    public Money waiveGlimLoanCharge(MonetaryCurrency loanCurrency, Money chargeAmountToBeWaived) {
+    	BigDecimal amount = chargeAmountToBeWaived==null?BigDecimal.ZERO:chargeAmountToBeWaived.getAmount();    	
+        this.amountWaived = this.amountWaived==null?amount:this.amountWaived.add(amount);
+        this.amountOutstanding = this.amountOutstanding.subtract(amount);
+        this.paid = false;
+        if(this.amountOutstanding.compareTo(BigDecimal.ZERO) == 0) {
+            this.waived = true;
+        }
+        return chargeAmountToBeWaived;
+    }
 }

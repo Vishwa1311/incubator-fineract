@@ -19,7 +19,9 @@
 package org.apache.fineract.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -29,6 +31,7 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
@@ -102,9 +105,27 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
 
     @Column(name = "waived_charge_amount", scale = 6, precision = 19, nullable = true)
     private BigDecimal waivedChargeAmount;
+    
+    @Column(name = "principal_writtenoff_amount", scale = 6, precision = 19, nullable = true)
+    private BigDecimal principalWrittenOffAmount;
+    
+    @Column(name = "interest_writtenoff_amount", scale = 6, precision = 19, nullable = true)
+    private BigDecimal interestWrittenOffAmount;
+    
+    @Column(name = "fee_charges_writtenoff_amount", scale = 6, precision = 19, nullable = true)
+    private BigDecimal chargeWrittenOffAmount;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "groupLoanIndividualMonitoring", orphanRemoval = true)
     private Set<GroupLoanIndividualMonitoringTransaction> groupLoanIndividualMonitoringTransactions = new HashSet<>();
+    
+    @Transient
+    private BigDecimal transactionAmount;
+    
+    @Transient
+    private Map<String, BigDecimal> processedTransactionMap = new HashMap<String, BigDecimal>();
+    
+    @Column(name = "is_active", nullable = true)
+    private Boolean isActive;
 
     public GroupLoanIndividualMonitoring() {
         
@@ -117,7 +138,8 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
 
     public GroupLoanIndividualMonitoring(final Loan loan, final Client client, final BigDecimal proposedAmount,
             final BigDecimal approvedAmount, final BigDecimal disbursedAmount, final CodeValue loanPurpose, final Boolean isClientSelected,
-            final Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharge, final BigDecimal percentage) {
+            final Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharge, final BigDecimal percentage, 
+            BigDecimal installmentAmount) {
         this.loan = loan;
         this.client = client;
         this.proposedAmount = proposedAmount;
@@ -128,7 +150,7 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
         this.chargeAmount = null;
         this.paidInterestAmount = null;
         this.totalPaybleAmount = null;
-        this.installmentAmount = null;
+        this.installmentAmount = installmentAmount;
         this.adjustedAmount = null;
         this.totalPaidAmount = null;
         this.interestAmount = null;
@@ -138,6 +160,10 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
         this.paidChargeAmount = null;
         this.waivedInterestAmount = null;
         this.waivedChargeAmount = null;
+        this.chargeWrittenOffAmount = null;
+        this.interestWrittenOffAmount = null;
+        this.principalWrittenOffAmount = null;
+        this.isActive = true;
     }
 
     public static GroupLoanIndividualMonitoring createDefaultInstance(final Loan loan, final Client client) {
@@ -145,10 +171,11 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
     }
 
     public static GroupLoanIndividualMonitoring createInstance(final Loan loan, final Client client, final BigDecimal proposedAmount,
-            final BigDecimal approvedAmount, final BigDecimal disbursedAmount, final CodeValue loanPurpose, final Boolean isClientSelected, Set<GroupLoanIndividualMonitoringCharge> clientCharges) {
+            final BigDecimal approvedAmount, final BigDecimal disbursedAmount, final CodeValue loanPurpose, final Boolean isClientSelected, 
+            Set<GroupLoanIndividualMonitoringCharge> clientCharges, BigDecimal installmentAmount) {
         BigDecimal percentage = null;
         return new GroupLoanIndividualMonitoring(loan, client, proposedAmount, approvedAmount, disbursedAmount, loanPurpose,
-                isClientSelected, clientCharges, percentage);
+                isClientSelected, clientCharges, percentage, installmentAmount);
     }
 
     public static GroupLoanIndividualMonitoring createInstance(final Loan loan, final Client client, final BigDecimal proposedAmount,
@@ -158,9 +185,14 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
             final Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharges,final BigDecimal percentage,final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
             final BigDecimal waivedChargeAmount) {
         final BigDecimal chargeAmount = null;
+        final BigDecimal principalWrittenOffAmount = null;
+        final BigDecimal interestWrittenOffAmount = null;
+        final BigDecimal chargeWrittenOffAmount = null;
+        final boolean isActive = true;
         return new GroupLoanIndividualMonitoring(loan, client, proposedAmount, approvedAmount, disbursedAmount, loanPurpose,
                 isClientSelected, chargeAmount, adjustedAmount, installmentAmount, totalPaybleAmount, paidInterestAmount, totalPaidAmount,
-                interestAmount, groupLoanIndividualMonitoringCharges, percentage, paidPrincipalAmount, paidChargeAmount, waivedInterestAmount, waivedChargeAmount);
+                interestAmount, groupLoanIndividualMonitoringCharges, percentage, paidPrincipalAmount, paidChargeAmount, waivedInterestAmount, 
+                waivedChargeAmount, principalWrittenOffAmount, interestWrittenOffAmount, chargeWrittenOffAmount, isActive);
     }
 
     public GroupLoanIndividualMonitoring(final Loan loan, final Client client, final BigDecimal proposedAmount,
@@ -169,7 +201,8 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
             final BigDecimal totalPaybleAmount, final BigDecimal paidInterestAmount, final BigDecimal paidAmount,
             final BigDecimal interestAmount, final Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharge,
             final BigDecimal percentage,final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
-            final BigDecimal waivedChargeAmount) {
+            final BigDecimal waivedChargeAmount, final BigDecimal principalWrittenOffAmount, final BigDecimal interestWrittenOffAmount,
+            final BigDecimal chargeWrittenOffAmount, final Boolean isActive) {
         this.loan = loan;
         this.client = client;
         this.proposedAmount = proposedAmount;
@@ -190,6 +223,10 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
         this.paidChargeAmount = paidChargeAmount;
         this.waivedInterestAmount = waivedInterestAmount;
         this.waivedChargeAmount = waivedChargeAmount;
+        this.chargeWrittenOffAmount = chargeWrittenOffAmount;
+        this.interestWrittenOffAmount = interestWrittenOffAmount;
+        this.principalWrittenOffAmount = principalWrittenOffAmount;
+        this.isActive = isActive;
     }
 
     public Loan getLoan() {
@@ -307,6 +344,10 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
     public Set<GroupLoanIndividualMonitoringCharge> getGroupLoanIndividualMonitoringCharges() {
         return this.groupLoanIndividualMonitoringCharge;
     }
+    
+    public Set<GroupLoanIndividualMonitoringTransaction> getGroupLoanIndividualMonitoringTransaction() {
+        return this.groupLoanIndividualMonitoringTransactions;
+    }
 
     public void updatePercentage(BigDecimal updatedPercentage) {
         this.percentage = updatedPercentage;
@@ -359,7 +400,72 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
         this.totalPaidAmount = BigDecimal.ZERO;
         this.waivedChargeAmount = BigDecimal.ZERO;
         this.waivedInterestAmount = BigDecimal.ZERO;
+        this.principalWrittenOffAmount = BigDecimal.ZERO;
+        this.interestWrittenOffAmount = BigDecimal.ZERO;
+        this.chargeWrittenOffAmount = BigDecimal.ZERO;
 
     }
+    
+    public void updateTransactionAmount(final BigDecimal transactionAmount) {
+        this.transactionAmount = transactionAmount;
+    }
 
+    public BigDecimal getTransactionAmount() {
+        return this.transactionAmount;
+    }
+
+    public void updateProcessedTransactionMap(Map<String, BigDecimal> processedTransactionMap) {
+        this.processedTransactionMap = processedTransactionMap;
+    }
+    
+    public Map<String, BigDecimal> getProcessedTransactionMap() {
+        return this.processedTransactionMap;
+    }
+
+    public boolean isWrittenOff() {
+        boolean isWrittenOff = false;
+        if (this.principalWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0 && this.interestWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0
+                && this.chargeWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0) {
+            isWrittenOff = true;
+        }
+        return isWrittenOff;
+    }
+
+    
+    public BigDecimal getPrincipalWrittenOffAmount() {
+        return principalWrittenOffAmount;
+    }
+
+    
+    public void setPrincipalWrittenOffAmount(BigDecimal principalWrittenOffAmount) {
+        this.principalWrittenOffAmount = principalWrittenOffAmount;
+    }
+
+    
+    public BigDecimal getInterestWrittenOffAmount() {
+        return interestWrittenOffAmount;
+    }
+
+    
+    public void setInterestWrittenOffAmount(BigDecimal interestWrittenOffAmount) {
+        this.interestWrittenOffAmount = interestWrittenOffAmount;
+    }
+
+    
+    public BigDecimal getChargeWrittenOffAmount() {
+        return chargeWrittenOffAmount;
+    }
+
+    
+    public void setChargeWrittenOffAmount(BigDecimal chargeWrittenOffAmount) {
+        this.chargeWrittenOffAmount = chargeWrittenOffAmount;
+    }
+
+    public Boolean getIsActive() {
+        return this.isActive;
+    }
+
+    public void setIsActive(Boolean isActive) {
+        this.isActive = isActive;
+    }
 }

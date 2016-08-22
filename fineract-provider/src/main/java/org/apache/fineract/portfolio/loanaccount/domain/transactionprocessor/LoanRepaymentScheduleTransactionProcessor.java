@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoring;
 import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
@@ -55,5 +56,8 @@ public interface LoanRepaymentScheduleTransactionProcessor {
             final Set<LoanCharge> charges);
 
     void handleGLIMRepayment(GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction, BigDecimal individualTransactionAmount);
+
+    void handleWriteOffForGlimLoan(LoanTransaction loanTransaction, MonetaryCurrency loanCurrency,
+            List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments, GroupLoanIndividualMonitoring glimMember);
 
 }

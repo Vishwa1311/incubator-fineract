@@ -146,6 +146,61 @@ public class FineractStyleLoanRepaymentScheduleTransactionProcessor extends Abst
         }
         return transactionAmountRemaining;
     }
+    
+    @Override
+    protected Money handleTransactionThatIsOnTimePaymentOfInstallmentForGlim(final LoanRepaymentScheduleInstallment currentInstallment,
+            final LoanTransaction loanTransaction, final Money transactionAmountUnprocessed,
+            List<LoanTransactionToRepaymentScheduleMapping> transactionMappings, Money principalPortion, Money interestPortion,
+            Money feePortion, Money penaltyPortion) {
+
+        final LocalDate transactionDate = loanTransaction.getTransactionDate();
+        final MonetaryCurrency currency = transactionAmountUnprocessed.getCurrency();
+        Money transactionAmountRemaining = transactionAmountUnprocessed;
+
+        if (loanTransaction.isChargesWaiver()) {
+            penaltyPortion = currentInstallment.waivePenaltyChargesComponent(transactionDate,
+                    penaltyPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(penaltyPortion);
+
+            feePortion = currentInstallment
+                    .waiveFeeChargesComponent(transactionDate, feePortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(feePortion);
+
+        } else if (loanTransaction.isInterestWaiver()) {
+            interestPortion = currentInstallment.waiveInterestComponent(transactionDate, interestPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(interestPortion);
+
+            loanTransaction.updateComponents(principalPortion, interestPortion, feePortion, penaltyPortion);
+        } else if (loanTransaction.isChargePayment()) {
+            if (loanTransaction.isPenaltyPayment()) {
+                penaltyPortion = currentInstallment.payPenaltyChargesComponent(transactionDate, penaltyPortion);
+                transactionAmountRemaining = transactionAmountRemaining.minus(penaltyPortion);
+            } else {
+                feePortion = currentInstallment.payFeeChargesComponent(transactionDate, feePortion);
+                transactionAmountRemaining = transactionAmountRemaining.minus(feePortion);
+            }
+            loanTransaction.updateComponents(principalPortion, interestPortion, feePortion, penaltyPortion);
+        } else {
+            penaltyPortion = currentInstallment.payPenaltyChargesComponent(transactionDate, penaltyPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(penaltyPortion);
+
+            feePortion = currentInstallment.payFeeChargesComponent(transactionDate, feePortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(feePortion);
+
+            interestPortion = currentInstallment.payInterestComponent(transactionDate, interestPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(interestPortion);
+
+            principalPortion = currentInstallment.payPrincipalComponent(transactionDate, principalPortion);
+            transactionAmountRemaining = transactionAmountRemaining.minus(principalPortion);
+
+            loanTransaction.updateComponents(principalPortion, interestPortion, feePortion, penaltyPortion);
+        }
+        if (principalPortion.plus(interestPortion).plus(feePortion).plus(penaltyPortion).isGreaterThanZero()) {
+            transactionMappings.add(LoanTransactionToRepaymentScheduleMapping.createFrom(currentInstallment, principalPortion,
+                    interestPortion, feePortion, penaltyPortion));
+        }
+        return transactionAmountRemaining;
+    }
 
     @Override
     protected void onLoanOverpayment(final LoanTransaction loanTransaction, final Money loanOverPaymentAmount) {

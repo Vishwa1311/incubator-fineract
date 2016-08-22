@@ -47,8 +47,12 @@ public class GroupLoanIndividualMonitoringData {
     private BigDecimal paidChargeAmount;
     private BigDecimal waivedInterestAmount;
     private BigDecimal waivedChargeAmount;
+    private BigDecimal principalWrittenOffAmount;
+    private BigDecimal interestWrittenOffAmount;
+    private BigDecimal chargeWrittenOffAmount;
     private BigDecimal transactionAmount;
     private BigDecimal remainingTransactionAmount;
+    private Boolean isActive;
 
     public GroupLoanIndividualMonitoringData(final Long id, final Long loanId, final BigDecimal totalLoanAmount, final Long clientId,
             final String clientName, final String clientExternalID, final BigDecimal proposedAmount, final BigDecimal approvedAmount,
@@ -56,7 +60,8 @@ public class GroupLoanIndividualMonitoringData {
             final BigDecimal chargeAmount, final BigDecimal adjustedAmount, final BigDecimal installmentAmount,
             final BigDecimal totalPaybleAmount, final BigDecimal paidInterestAmount, final BigDecimal paidAmount,
             final BigDecimal interestAmount, final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
-            final BigDecimal waivedChargeAmount, final BigDecimal remainingTransactionAmount, BigDecimal transactionAmount) {
+            final BigDecimal waivedChargeAmount, BigDecimal principalWrittenOffAmount, BigDecimal interestWrittenOffAmount, BigDecimal chargeWrittenOffAmount,
+            final BigDecimal remainingTransactionAmount, BigDecimal transactionAmount, Boolean isActive) {
         this.id = id;
         this.loanId = loanId;
         this.totalLoanAmount = totalLoanAmount;
@@ -79,12 +84,12 @@ public class GroupLoanIndividualMonitoringData {
         this.paidChargeAmount = paidChargeAmount;
         this.waivedInterestAmount = waivedInterestAmount;
         this.waivedChargeAmount = waivedChargeAmount;
+        this.principalWrittenOffAmount = principalWrittenOffAmount;
+        this.interestWrittenOffAmount = interestWrittenOffAmount;
+        this.chargeWrittenOffAmount = chargeWrittenOffAmount;
         this.remainingTransactionAmount = remainingTransactionAmount;
         this.transactionAmount = transactionAmount;
-        /*// calculate unpaid interest
-        if (this.paidInterestAmount != null && this.paidInterestAmount.compareTo(BigDecimal.ZERO) == 1) {
-            this.totalUnpaidInterest = this.interestAmount.subtract(this.paidInterestAmount);
-        }*/
+        this.isActive = isActive;
     }
 
     public static GroupLoanIndividualMonitoringData instance(final Long id, final Long loanId, final BigDecimal totalLoanAmount,
@@ -93,13 +98,14 @@ public class GroupLoanIndividualMonitoringData {
             final Boolean isClientSelected, final BigDecimal chargeAmount, final BigDecimal adjustedAmount,
             final BigDecimal installmentAmount, final BigDecimal totalPaybleAmount, final BigDecimal paidInterestAmount,
             final BigDecimal paidAmount, final BigDecimal interestAmount,final BigDecimal paidPrincipalAmount, final BigDecimal paidChargeAmount, final BigDecimal waivedInterestAmount,
-            final BigDecimal waivedChargeAmount) {
-        BigDecimal totalUnpaidInterest = null;
-        BigDecimal transactionAmount = null;
+            final BigDecimal waivedChargeAmount, BigDecimal principalWrittenOffAmount, BigDecimal interestWrittenOffAmount, BigDecimal chargeWrittenOffAmount, 
+            final BigDecimal remainingTransactionAmount, BigDecimal transactionAmount, Boolean isActive) {
+
         return new GroupLoanIndividualMonitoringData(id, loanId, totalLoanAmount, clientId, clientName, clientExternalID, proposedAmount,
                 approvedAmount, disbursedAmount, loanPurpose, isClientSelected, chargeAmount, adjustedAmount, installmentAmount,
                 totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount, paidPrincipalAmount, paidChargeAmount, waivedInterestAmount, 
-                waivedChargeAmount, totalUnpaidInterest, transactionAmount);
+                waivedChargeAmount, principalWrittenOffAmount, interestWrittenOffAmount, chargeWrittenOffAmount, remainingTransactionAmount, 
+                transactionAmount, isActive);
     }
 
     public BigDecimal getInstallmentAmount() {
@@ -124,14 +130,13 @@ public class GroupLoanIndividualMonitoringData {
 
     public static GroupLoanIndividualMonitoringData waiveInterestDetails(final Long id, final Long clientId, final String clientName,
             final BigDecimal paidInterestAmount, final BigDecimal interestAmount, BigDecimal remainingTransactionAmount, 
-            BigDecimal transactionAmount) {
+            BigDecimal transactionAmount, Boolean isClientSelected) {
         final Long loanId = null;
         final BigDecimal totalLoanAmount = null;
         BigDecimal proposedAmount = null;
         BigDecimal approvedAmount = null;
         BigDecimal disbursedAmount = null;
         CodeValueData loanPurpose = null;
-        Boolean isClientSelected = null;
         BigDecimal chargeAmount = null;
         BigDecimal adjustedAmount = null;
         BigDecimal installmentAmount = null;
@@ -141,11 +146,143 @@ public class GroupLoanIndividualMonitoringData {
         BigDecimal paidChargeAmount = null;
         BigDecimal waivedInterestAmount = null;
         BigDecimal waivedChargeAmount = null;
+        BigDecimal principalWrittenOffAmount = null;
+        BigDecimal interestWrittenOffAmount = null;
+        BigDecimal chargeWrittenOffAmount = null;
         String clientExternalID = null;
+        Boolean isActive = null;
         return new GroupLoanIndividualMonitoringData(id, loanId, totalLoanAmount, clientId, clientName, clientExternalID, proposedAmount,
                 approvedAmount, disbursedAmount, loanPurpose, isClientSelected, chargeAmount, adjustedAmount, installmentAmount,
                 totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount, paidPrincipalAmount, paidChargeAmount,
-                waivedInterestAmount, waivedChargeAmount, remainingTransactionAmount, transactionAmount);
+                waivedInterestAmount, waivedChargeAmount, principalWrittenOffAmount, interestWrittenOffAmount, chargeWrittenOffAmount,
+                remainingTransactionAmount, transactionAmount, isActive);
     }
     
+
+    public Long getId() {
+        return this.id;
+    }
+
+    public BigDecimal getDisbursedAmount() {
+        return this.disbursedAmount;
+    }
+
+    public void setDisbursedAmount(BigDecimal disbursedAmount) {
+        this.disbursedAmount = disbursedAmount;
+    }
+
+    public BigDecimal getPaidChargeAmount() {
+        return this.paidChargeAmount;
+    }
+
+    public void setPaidChargeAmount(BigDecimal paidChargeAmount) {
+        this.paidChargeAmount = paidChargeAmount;
+    }
+
+    public BigDecimal getWaivedChargeAmount() {
+        return this.waivedChargeAmount;
+    }
+
+    public void setWaivedChargeAmount(BigDecimal waivedChargeAmount) {
+        this.waivedChargeAmount = waivedChargeAmount;
+    }
+
+    public BigDecimal getTransactionAmount() {
+        return this.transactionAmount;
+    }
+
+    public void setTransactionAmount(BigDecimal transactionAmount) {
+        this.transactionAmount = transactionAmount;
+    }
+
+    public BigDecimal getRemainingTransactionAmount() {
+        return this.remainingTransactionAmount;
+    }
+
+    public void setRemainingTransactionAmount(BigDecimal remainingTransactionAmount) {
+        this.remainingTransactionAmount = remainingTransactionAmount;
+    }
+
+    public BigDecimal getTotalPaybleAmount() {
+        return this.totalPaybleAmount;
+    }
+
+    public void setTotalPaybleAmount(BigDecimal totalPaybleAmount) {
+        this.totalPaybleAmount = totalPaybleAmount;
+    }
+
+    public BigDecimal getPaidInterestAmount() {
+        return this.paidInterestAmount;
+    }
+
+    public void setPaidInterestAmount(BigDecimal paidInterestAmount) {
+        this.paidInterestAmount = paidInterestAmount;
+    }
+
+    public BigDecimal getWaivedInterestAmount() {
+        return this.waivedInterestAmount;
+    }
+
+    public void setWaivedInterestAmount(BigDecimal waivedInterestAmount) {
+        this.waivedInterestAmount = waivedInterestAmount;
+    }
+
+    public BigDecimal getPaidAmount() {
+        return this.paidAmount;
+    }
+
+    public void setInstallmentAmount(BigDecimal installmentAmount) {
+        this.installmentAmount = installmentAmount;
+    }
+
+    public Boolean getIsClientSelected() {
+        return this.isClientSelected;
+    }
+
+    public void setIsClientSelected(Boolean isClientSelected) {
+        this.isClientSelected = isClientSelected;
+    }
+
+    public BigDecimal getPaidPrincipalAmount() {
+        return this.paidPrincipalAmount;
+    }
+    
+    
+    public BigDecimal getPrincipalWrittenOffAmount() {
+        return principalWrittenOffAmount;
+    }
+
+    
+    public void setPrincipalWrittenOffAmount(BigDecimal principalWrittenOffAmount) {
+        this.principalWrittenOffAmount = principalWrittenOffAmount;
+    }
+
+    
+    public BigDecimal getInterestWrittenOffAmount() {
+        return interestWrittenOffAmount;
+    }
+
+    
+    public void setInterestWrittenOffAmount(BigDecimal interestWrittenOffAmount) {
+        this.interestWrittenOffAmount = interestWrittenOffAmount;
+    }
+
+    
+    public BigDecimal getChargeWrittenOffAmount() {
+        return chargeWrittenOffAmount;
+    }
+
+    
+    public void setChargeWrittenOffAmount(BigDecimal chargeWrittenOffAmount) {
+        this.chargeWrittenOffAmount = chargeWrittenOffAmount;
+    }
+
+
+	public Boolean getIsActive() {
+		return this.isActive;
+	}
+
+	public void setIsActive(Boolean isActive) {
+		this.isActive = isActive;
+	}
 }
