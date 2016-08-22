@@ -69,8 +69,12 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
             sql.append("glim.paid_principal_amount as paidPrincipalAmount, ");
             sql.append("glim.paid_charge_amount as paidChargeAmount, ");
             sql.append("glim.waived_interest_amount as waivedInterestAmount, ");
-            sql.append("glim.waived_charge_amount as waivedChargeAmount, ");            
-            sql.append("cv.id as loanPurposeId, cv.code_value as loanPurposeName, cv.code_description description, cv.order_position position, cv.is_active isActive  ");
+            sql.append("glim.waived_charge_amount as waivedChargeAmount, ");
+            sql.append("glim.principal_writtenoff_amount as principalWrittenOffAmount, ");
+            sql.append("glim.interest_writtenoff_amount as interestWrittenOffAmount, ");
+            sql.append("glim.fee_charges_writtenoff_amount as chargeWrittenOffAmount, ");
+            sql.append("cv.id as loanPurposeId, cv.code_value as loanPurposeName, cv.code_description description, cv.order_position position, cv.is_active as isLoanPurposeActive,  ");
+            sql.append("glim.is_active as isActive "); 
             sql.append(" from m_loan_glim glim ");
             sql.append(" left join m_client c on glim.client_id = c.id ");
             sql.append(" left join m_loan l on glim.loan_id = l.id ");
@@ -97,10 +101,10 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
             final BigDecimal disbursedAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "disbursedAmount");
             final String loanPurposeName = rs.getString("loanPurposeName");
             final int position = rs.getInt("position");
-            final Boolean isActive = rs.getBoolean("isActive");
+            final Boolean isLoanPurposeActive = rs.getBoolean("isLoanPurposeActive");
             final Boolean isClientSelected = rs.getBoolean("isClientSelected");
             final Integer codeScore = 0;
-            CodeValueData loanPurpose = CodeValueData.instance(loanPuroseId, loanPurposeName, position, description, isActive, codeScore);
+            CodeValueData loanPurpose = CodeValueData.instance(loanPuroseId, loanPurposeName, position, description, isLoanPurposeActive, codeScore);
 
             final BigDecimal chargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "chargeAmount");
             final BigDecimal adjustedAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "adjustedAmount");
@@ -115,11 +119,17 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
             final BigDecimal paidChargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "paidChargeAmount");
             final BigDecimal waivedInterestAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "waivedInterestAmount");
             final BigDecimal waivedChargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "waivedChargeAmount");
-
+            final BigDecimal principalWrittenOffAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "principalWrittenOffAmount");
+            final BigDecimal interestWrittenOffAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "interestWrittenOffAmount");
+            final BigDecimal chargeWrittenOffAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "chargeWrittenOffAmount");
+            final BigDecimal remainingTransactionAmount = null;
+            final BigDecimal transactionAmount = null;
+            final Boolean isActive = rs.getBoolean("isActive");
             return GroupLoanIndividualMonitoringData.instance(id, loanId, totalLoanAmount, clientId, clientName, clientExternalID,
                     proposedAmount, approvedAmount, disbursedAmount, loanPurpose, isClientSelected, chargeAmount, adjustedAmount,
                     installmentAmount, totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount, paidPrincipalAmount, paidChargeAmount,
-                    waivedInterestAmount, waivedChargeAmount);
+                    waivedInterestAmount, waivedChargeAmount, principalWrittenOffAmount, interestWrittenOffAmount,
+                    chargeWrittenOffAmount, remainingTransactionAmount, transactionAmount, isActive);
         }
     }
 
@@ -168,6 +178,77 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
 
         return this.jdbcTemplate.queryForObject(sql, rm, new Object[] { id });
     }
+    
+    private static final class GLIMWaiveChargeMapper implements RowMapper<GroupLoanIndividualMonitoringData> {
+
+        final String schema;
+
+        private GLIMWaiveChargeMapper() {
+            final StringBuilder sql = new StringBuilder(400);
+            sql.append("glim.id as id, ");
+            sql.append("glim.client_id as clientId, c.display_name as clientName, c.external_id as clientExternalID, ");
+            sql.append("glim.is_client_selected as isClientSelected, ");
+            sql.append("glim.charge_amount as chargeAmount, ");
+            sql.append("glim.paid_charge_amount as paidChargeAmount, ");
+            sql.append("glim.waived_charge_amount as waivedChargeAmount ");            
+            sql.append(" from m_loan_glim glim ");
+            sql.append(" left join m_client c on glim.client_id = c.id ");
+            this.schema = sql.toString();
+        }
+
+        public String schema() {
+            return this.schema;
+        }
+
+        @Override
+        public GroupLoanIndividualMonitoringData mapRow(ResultSet rs, int rowNum) throws SQLException {
+            final Long id = JdbcSupport.getLong(rs, "id");
+            final Long clientId = JdbcSupport.getLong(rs, "clientId");
+            final String clientName = rs.getString("clientName");
+            final String clientExternalID = rs.getString("clientExternalID");
+            final BigDecimal chargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "chargeAmount");
+            final BigDecimal paidChargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "paidChargeAmount");
+            final BigDecimal waivedChargeAmount = JdbcSupport.getBigDecimalDefaultToNullIfZero(rs, "waivedChargeAmount");
+            Long loanId = null;
+            BigDecimal totalLoanAmount = null;
+            BigDecimal proposedAmount = null;
+            BigDecimal approvedAmount = null;
+            BigDecimal disbursedAmount = null;
+            CodeValueData loanPurpose = null;
+            Boolean isClientSelected = null;
+            BigDecimal adjustedAmount = null;
+            BigDecimal installmentAmount = null;
+            BigDecimal totalPaybleAmount = null;            
+            BigDecimal paidInterestAmount = null;
+            BigDecimal paidAmount = null;
+            BigDecimal interestAmount = null;
+            BigDecimal paidPrincipalAmount = null;
+            BigDecimal waivedInterestAmount = null;
+            BigDecimal principalWrittenOffAmount = null;
+            BigDecimal interestWrittenOffAmount = null;
+            BigDecimal chargeWrittenOffAmount = null;
+            BigDecimal remainingTransactionAmount = null;
+            BigDecimal transactionAmount = null; 
+            Boolean isActive = null;
+            return GroupLoanIndividualMonitoringData.instance(id, loanId, totalLoanAmount, clientId, clientName, clientExternalID,
+                    proposedAmount, approvedAmount, disbursedAmount, loanPurpose, isClientSelected, chargeAmount, adjustedAmount,
+                    installmentAmount, totalPaybleAmount, paidInterestAmount, paidAmount, interestAmount, paidPrincipalAmount, paidChargeAmount,
+                    waivedInterestAmount, waivedChargeAmount, principalWrittenOffAmount, interestWrittenOffAmount, chargeWrittenOffAmount,
+                    remainingTransactionAmount, transactionAmount, isActive);
+        }
+    }
+
+
+	@Override
+	public Collection<GroupLoanIndividualMonitoringData> retrieveWaiveChargeDetails(
+			Long loanId) {
+		
+		GLIMWaiveChargeMapper rm = new GLIMWaiveChargeMapper();
+
+        String sql = "select " + rm.schema() + " where glim.loan_id = ? and glim.is_client_selected = 1";
+
+        return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
+	}
 
     @Override
     public Collection<GroupLoanIndividualMonitoringData> retrieveSelectedClientsByLoanId(Long loanId) {
@@ -184,7 +265,7 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
         
         GroupLoanIndividualMonitoringWaiveInterestMapper rm = new GroupLoanIndividualMonitoringWaiveInterestMapper();
         
-        String sql = "select " + rm.schema() + " where glim.loan_id = ? and glim.is_client_selected = 1";
+        String sql = "select " + rm.schema() + " where glim.loan_id = ?";
        
         return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
     }
@@ -199,6 +280,10 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
             sql.append("glim.id as id, ");
             sql.append("glim.client_id as clientId, c.display_name as clientName, ");
             sql.append("glim.interest_amount as interestAmount, ");
+            sql.append("glim.is_client_selected as isClientSelected, ");
+            sql.append("glim.principal_writtenoff_amount as principalWrittenoffAmount, ");
+            sql.append("glim.interest_writtenoff_amount as interestWrittenoffAmount, ");
+            sql.append("glim.fee_charges_writtenoff_amount as chargeWrittenoffAmount, ");
             sql.append("glim.paid_interest_amount as paidInterestAmount, glim.waived_interest_amount as waivedInterestAmount ");
             sql.append(" from m_loan_glim glim ");
             sql.append(" left join m_client c on glim.client_id = c.id ");
@@ -218,17 +303,23 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
             final BigDecimal interestAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "interestAmount");
             final BigDecimal paidInterestAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "paidInterestAmount");
             final BigDecimal waivedInterestAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "waivedInterestAmount");
+            final Boolean isClientSelected = rs.getBoolean("isClientSelected");
+            
 
+            final BigDecimal principalWrittenoffAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "principalWrittenoffAmount");
+            final BigDecimal interestWrittenoffAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "interestWrittenoffAmount");
+            final BigDecimal chargeWrittenoffAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "chargeWrittenoffAmount");
+            final BigDecimal writeOffAmount = principalWrittenoffAmount.add(interestWrittenoffAmount).add(chargeWrittenoffAmount);
             // calculate unpaid interest
-            BigDecimal remainingTransactionAmount = interestAmount;
-            BigDecimal transactionAmount = interestAmount;
-            if (paidInterestAmount.compareTo(BigDecimal.ZERO) == 1 || waivedInterestAmount.compareTo(BigDecimal.ZERO) == 1) {
-                remainingTransactionAmount = interestAmount.subtract(paidInterestAmount.add(waivedInterestAmount));
+            BigDecimal remainingTransactionAmount = BigDecimal.ZERO;
+            BigDecimal transactionAmount = BigDecimal.ZERO;
+            if(!((writeOffAmount.compareTo(BigDecimal.ZERO)>0) || waivedInterestAmount.compareTo(BigDecimal.ZERO)>0)){
+            	remainingTransactionAmount = interestAmount.subtract(paidInterestAmount);
                 transactionAmount = remainingTransactionAmount;
-            }
+            }           
 
             return GroupLoanIndividualMonitoringData.waiveInterestDetails(id, clientId, clientName, paidInterestAmount, interestAmount,
-                    remainingTransactionAmount, transactionAmount);
+                    remainingTransactionAmount, transactionAmount, isClientSelected);
         }
     }
 }

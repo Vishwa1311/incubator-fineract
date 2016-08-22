@@ -247,10 +247,12 @@ public class LoanChargeAssembler {
                         if (loanCharge != null) {
                             if (!isMultiDisbursal && loanCharge.isInstalmentFee()
                                     && loanCharge.getCharge().isPercentageOfDisbursementAmount()) {
-                                BigDecimal totalFee = BigDecimal.ZERO;
-                                totalFee = getTotalChargeAmountForGlim(clientMemberJsonArray, chargeId, amount, totalFee);
-                                loanCharge.update(amount, dueDate, loanCharge.getLoan().getPrincpal().getAmount(), numberOfRepayments,
-                                        totalFee);
+                            	if(clientMemberJsonArray!=null && clientMemberJsonArray.size()>0){
+                                    BigDecimal totalFee = BigDecimal.ZERO;
+                                    totalFee = getTotalChargeAmountForGlim(clientMemberJsonArray, chargeId, amount, totalFee);
+                                    loanCharge.update(amount, dueDate, loanCharge.getLoan().getPrincpal().getAmount(), numberOfRepayments,
+                                            totalFee);
+                            	}
                             } else {
                                 loanCharge.update(amount, dueDate, numberOfRepayments);
                             }

@@ -369,6 +369,11 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         final LoanTransactionSubType loanTransactionSubType = null;
         return new LoanTransaction(loan, office, LoanTransactionType.WRITEOFF, null, writeOffDate, externalId, createdDate, appUser, loanTransactionSubType);
     }
+    
+    public static LoanTransaction writeOffForGlimLoan(final Loan loan, final Office office, final LocalDate writeOffDate, final String externalId,
+            final LocalDateTime createdDate, final AppUser appUser, final LoanTransactionSubType loanTransactionSubType) {
+        return new LoanTransaction(loan, office, LoanTransactionType.WRITEOFF, null, writeOffDate, externalId, createdDate, appUser, loanTransactionSubType);
+    }
 
     private LoanTransaction(final Loan loan, final Office office, final LoanTransactionType type, final BigDecimal amount,
             final LocalDate date, final String externalId, final LocalDateTime createdDate, final AppUser appUser, final LoanTransactionSubType subTypeOf) {
@@ -463,6 +468,16 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         final MonetaryCurrency currency = principal.getCurrency();
         this.amount = getPrincipalPortion(currency).plus(getInterestPortion(currency)).plus(getFeeChargesPortion(currency))
                 .plus(getPenaltyChargesPortion(currency)).getAmount();
+    }
+    
+    public void updateComponentsAndTotalForGlim(final Money principal, final Money interest, final Money feeCharges, final Money penaltyCharges, 
+            BigDecimal loanPrincipalOutstandingBalance) {
+        updateComponents(principal, interest, feeCharges, penaltyCharges);
+
+        final MonetaryCurrency currency = principal.getCurrency();
+        this.amount = getPrincipalPortion(currency).plus(getInterestPortion(currency)).plus(getFeeChargesPortion(currency))
+                .plus(getPenaltyChargesPortion(currency)).getAmount();
+        this.outstandingLoanBalance = loanPrincipalOutstandingBalance;
     }
 
     public void updateOverPayments(final Money overPayment) {
@@ -852,5 +867,13 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     
     public Date getSubmittedOnDate() {
         return this.submittedOnDate;
+    }
+    
+    public BigDecimal getInterestPortion() {
+        return this.interestPortion;
+    }
+    
+    public BigDecimal getFeeChargesPortion() {
+        return this.feeChargesPortion;
     }
 }

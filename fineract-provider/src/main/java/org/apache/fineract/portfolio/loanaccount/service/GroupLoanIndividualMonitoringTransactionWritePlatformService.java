@@ -8,4 +8,8 @@ public interface GroupLoanIndividualMonitoringTransactionWritePlatformService {
     CommandProcessingResult repayGLIM(Long loanId, JsonCommand command);
 
     CommandProcessingResult waiveInterest(Long loanId, JsonCommand command);
+    
+    CommandProcessingResult waiveCharge(Long loanId, JsonCommand command);
+
+    CommandProcessingResult writeOff(Long loanId, JsonCommand command);
 }

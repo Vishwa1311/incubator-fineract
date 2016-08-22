@@ -101,6 +101,7 @@ import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTermVariationsData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
+import org.apache.fineract.portfolio.loanaccount.exception.ClientAlreadyWriteOffException;
 import org.apache.fineract.portfolio.loanaccount.exception.ExceedingTrancheCountException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanStateTransitionException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanTransactionTypeException;
@@ -118,6 +119,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanApplica
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleGenerator;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModel;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModelPeriod;
+import org.apache.fineract.portfolio.loanaccount.service.GroupLoanIndividualMonitoringTransactionAssembler;
 import org.apache.fineract.portfolio.loanproduct.LoanProductConstants;
 import org.apache.fineract.portfolio.loanproduct.domain.AmortizationMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestCalculationPeriodMethod;
@@ -953,7 +955,7 @@ public class Loan extends AbstractPersistable<Long> {
             final AppUser currentUser) {
 
         validateLoanIsNotClosed(loanCharge);
-
+        
         final Money amountWaived = loanCharge.waive(loanCurrency(), loanInstallmentNumber);
 
         changes.put("amount", amountWaived.getAmount());
@@ -1031,6 +1033,87 @@ public class Loan extends AbstractPersistable<Long> {
         updateLoanSummaryDerivedFields();
 
         doPostLoanTransactionChecks(waiveLoanChargeTransaction.getTransactionDate(), loanLifecycleStateMachine);
+
+        return waiveLoanChargeTransaction;
+    }
+    
+    
+    public LoanTransaction waiveGlimLoanCharge(final LoanCharge loanCharge, final LoanLifecycleStateMachine loanLifecycleStateMachine,
+            final Map<String, Object> changes, final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds,
+            final Integer loanInstallmentNumber, final ScheduleGeneratorDTO scheduleGeneratorDTO, final Money accruedCharge,
+            final AppUser currentUser, Money clientcharge) {
+
+        validateLoanIsNotClosed(loanCharge);
+        
+        Money amountWaived = loanCharge.waiveForGlim(loanCurrency(), clientcharge, loanInstallmentNumber);
+
+        changes.put("amount", amountWaived.getAmount());
+        
+        Money unrecognizedIncome = amountWaived.zero();
+        Money chargeComponent = amountWaived;
+        if (isPeriodicAccrualAccountingEnabledOnLoanProduct()) {
+            Money receivableCharge = Money.zero(getCurrency());
+            if (loanInstallmentNumber != null) {
+                receivableCharge = accruedCharge.minus(loanCharge.getInstallmentLoanCharge(loanInstallmentNumber).getAmountPaid(
+                        getCurrency()));
+            } else {
+                receivableCharge = accruedCharge.minus(loanCharge.getAmountPaid(getCurrency()));
+            }
+            if (receivableCharge.isLessThanZero()) {
+                receivableCharge = amountWaived.zero();
+            }
+            if (amountWaived.isGreaterThan(receivableCharge)) {
+                chargeComponent = receivableCharge;
+                unrecognizedIncome = amountWaived.minus(receivableCharge);
+            }
+        }
+        Money feeChargesWaived = chargeComponent;
+        Money penaltyChargesWaived = Money.zero(loanCurrency());
+        if (loanCharge.isPenaltyCharge()) {
+            penaltyChargesWaived = chargeComponent;
+            feeChargesWaived = Money.zero(loanCurrency());
+        }
+
+        LocalDate transactionDate = getDisbursementDate();
+        if (loanCharge.isSpecifiedDueDate()) {
+            transactionDate = loanCharge.getDueLocalDate();
+        }
+        scheduleGeneratorDTO.setRecalculateFrom(transactionDate);
+
+        updateSummaryWithTotalFeeChargesDueAtDisbursement(deriveSumTotalOfChargesDueAtDisbursement());
+
+        existingTransactionIds.addAll(findExistingTransactionIds());
+        existingReversedTransactionIds.addAll(findExistingReversedTransactionIds());
+
+        final LoanTransaction waiveLoanChargeTransaction = LoanTransaction.waiveLoanCharge(this, getOffice(), amountWaived,
+                transactionDate, feeChargesWaived, penaltyChargesWaived, unrecognizedIncome, DateUtils.getLocalDateTimeOfTenant(),
+                currentUser);
+
+        if (this.repaymentScheduleDetail().isInterestRecalculationEnabled()
+                && (loanCharge.getDueLocalDate() == null || LocalDate.now().isAfter(loanCharge.getDueLocalDate()))) {
+            regenerateRepaymentScheduleWithInterestRecalculation(scheduleGeneratorDTO, currentUser);
+        }
+        // Waive of charges whose due date falls after latest 'repayment'
+        // transaction dont require entire loan schedule to be reprocessed.
+        final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
+                .determineProcessor(this.transactionProcessingStrategy);
+        if (!loanCharge.isDueAtDisbursement() && loanCharge.isPaidOrPartiallyPaid(loanCurrency())) {
+            /****
+             * TODO Vishwas Currently we do not allow waiving fully paid loan
+             * charge and waiving partially paid loan charges only waives the
+             * remaining amount.
+             * 
+             * Consider removing this block of code or logically completing it
+             * for the future by getting the list of affected Transactions
+             ***/
+            final List<LoanTransaction> allNonContraTransactionsPostDisbursement = retreiveListOfTransactionsPostDisbursement();
+            loanRepaymentScheduleTransactionProcessor.handleTransaction(getDisbursementDate(), allNonContraTransactionsPostDisbursement,
+                    getCurrency(), this.repaymentScheduleInstallments, charges());
+        } else {
+            // reprocess loan schedule based on charge been waived.
+            final LoanRepaymentScheduleProcessingWrapper wrapper = new LoanRepaymentScheduleProcessingWrapper();
+            wrapper.reprocess(getCurrency(), getDisbursementDate(), this.repaymentScheduleInstallments, charges());
+        }
 
         return waiveLoanChargeTransaction;
     }
@@ -4797,7 +4880,7 @@ public class Loan extends AbstractPersistable<Long> {
                     amount = loanCharge.amountOrPercentage();
                 } else if (loanCharge.isInstalmentFee() && loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
                     BigDecimal numberOfRepayments = new BigDecimal(this.fetchNumberOfInstallmensAfterExceptions());
-                    amount = (loanCharge.amount().divide(numberOfRepayments, MoneyHelper.getRoundingMode()));
+                    amount = (loanCharge.amount().setScale(2, MoneyHelper.getRoundingMode()).divide(numberOfRepayments, MoneyHelper.getRoundingMode()));
                     BigDecimal totalAmountFromInstallment = amount.multiply(numberOfRepayments);
                     if((numberOfRepayments.intValue() == installment.getInstallmentNumber().intValue()) && (loanCharge.amount().compareTo(totalAmountFromInstallment) != 0)){                    	
                     	amount = amount.add(loanCharge.amount().subtract(totalAmountFromInstallment));
@@ -6158,5 +6241,166 @@ public class Loan extends AbstractPersistable<Long> {
     public Boolean isSubsidyApplicable() {
         if (isSubsidyApplicable == null) { return false; }
         return isSubsidyApplicable;
+    }
+
+    public ChangedTransactionDetail GlimLoanCloseAsWrittenOff(JsonCommand command, LocalDate writtenOffOnLocalDate,
+            LoanTransaction loanTransaction, LoanLifecycleStateMachine defaultLoanLifecycleStateMachine, Map<String, Object> changes,
+            List<Long> existingTransactionIds, List<Long> existingReversedTransactionIds, AppUser currentUser,
+            ScheduleGeneratorDTO scheduleGeneratorDTO) {
+
+        validateAccountStatus(LoanEvent.WRITE_OFF_OUTSTANDING);
+
+        ChangedTransactionDetail changedTransactionDetail = new ChangedTransactionDetail();
+
+        Map<Integer, Map<String, BigDecimal>> installmentWriteOffMap = new HashMap<Integer, Map<String, BigDecimal>>();
+        BigDecimal totalPrincipalToBeWriteOff = BigDecimal.ZERO;
+        BigDecimal totalInterestToBeWriteOff = BigDecimal.ZERO;
+        BigDecimal totalChargeToBeWriteOff = BigDecimal.ZERO;
+
+        List<GroupLoanIndividualMonitoring> glimMembers = this.glimList;
+        for (GroupLoanIndividualMonitoring glimMember : glimMembers) {
+
+            final LoanStatus statusEnum = loanLifecycleStateMachine.transition(LoanEvent.WRITE_OFF_OUTSTANDING,
+                    LoanStatus.fromInt(this.loanStatus));
+            if (!statusEnum.hasStateOf(LoanStatus.fromInt(this.loanStatus))) {
+
+                existingTransactionIds.addAll(findExistingTransactionIds());
+                existingReversedTransactionIds.addAll(findExistingReversedTransactionIds());
+
+                this.closedOnDate = writtenOffOnLocalDate.toDate();
+                this.writtenOffOnDate = writtenOffOnLocalDate.toDate();
+                this.closedBy = currentUser;
+                changes.put("closedOnDate", command.stringValueOfParameterNamed("transactionDate"));
+                changes.put("writtenOffOnDate", command.stringValueOfParameterNamed("transactionDate"));
+
+                if (writtenOffOnLocalDate.isBefore(getDisbursementDate())) {
+                    final String errorMessage = "The date on which a loan is written off cannot be before the loan disbursement date: "
+                            + getDisbursementDate().toString();
+                    throw new InvalidLoanStateTransitionException("writeoff", "cannot.be.before.submittal.date", errorMessage,
+                            writtenOffOnLocalDate, getDisbursementDate());
+                }
+
+                validateActivityNotBeforeClientOrGroupTransferDate(LoanEvent.WRITE_OFF_OUTSTANDING, writtenOffOnLocalDate);
+
+                if (writtenOffOnLocalDate.isAfter(DateUtils.getLocalDateOfTenant())) {
+                    final String errorMessage = "The date on which a loan is written off cannot be in the future.";
+                    throw new InvalidLoanStateTransitionException("writeoff", "cannot.be.a.future.date", errorMessage,
+                            writtenOffOnLocalDate);
+                }
+
+                LocalDate lastTransactionDate = getLastUserTransactionDate();
+                if (lastTransactionDate.isAfter(writtenOffOnLocalDate)) {
+                    final String errorMessage = "The date of the writeoff transaction must occur on or before previous transactions.";
+                    throw new InvalidLoanStateTransitionException("writeoff", "must.occur.on.or.after.other.transaction.dates",
+                            errorMessage, writtenOffOnLocalDate);
+                }
+
+                /*
+                 * loanRepaymentScheduleTransactionProcessor.
+                 * handleWriteOffForGlimLoan(loanTransaction, loanCurrency(),
+                 * this.repaymentScheduleInstallments, glimMember);
+                 */
+
+                Money transactionAmountPerClient = Money.of(getCurrency(), glimMember.getTransactionAmount());
+                Loan loan = loanTransaction.getLoan();
+
+                Map<String, BigDecimal> installmentPaidMap = new HashMap<String, BigDecimal>();
+                installmentPaidMap.put("unpaidCharge", BigDecimal.ZERO);
+                installmentPaidMap.put("unpaidInterest", BigDecimal.ZERO);
+                installmentPaidMap.put("unpaidPrincipal", BigDecimal.ZERO);
+                installmentPaidMap.put("installmentTransactionAmount", BigDecimal.ZERO);
+
+                // determine how much is written off in total and breakdown for
+                // principal, interest and charges
+                for (final LoanRepaymentScheduleInstallment currentInstallment : this.repaymentScheduleInstallments) {
+                    if (transactionAmountPerClient.isGreaterThanZero()) {
+                        Map<String, BigDecimal> paidInstallmentMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
+                                transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
+                                installmentPaidMap, loanTransaction);
+
+                        if (!(paidInstallmentMap.get("installmentTransactionAmount").compareTo(BigDecimal.ZERO) == 0 && glimMember
+                                .getTotalPaidAmount().compareTo(BigDecimal.ZERO) > 0)) {
+                            if (currentInstallment.isNotFullyPaidOff()) {
+
+                                Map<String, BigDecimal> splitMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
+                                        transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
+                                        installmentPaidMap, loanTransaction);
+                                Money feePortionForCurrentInstallment = Money.of(getCurrency(), splitMap.get("unpaidCharge"));
+                                Money interestPortionForCurrentInstallment = Money.of(getCurrency(), splitMap.get("unpaidInterest"));
+                                Money principalPortionForCurrentInstallment = Money.of(getCurrency(), splitMap.get("unpaidPrincipal"));
+                                Money totalAmountForCurrentInstallment = Money.of(getCurrency(),
+                                        splitMap.get("installmentTransactionAmount"));
+                                totalPrincipalToBeWriteOff = totalPrincipalToBeWriteOff.add(principalPortionForCurrentInstallment
+                                        .getAmount());
+                                totalInterestToBeWriteOff = totalInterestToBeWriteOff.add(interestPortionForCurrentInstallment.getAmount());
+                                totalChargeToBeWriteOff = totalChargeToBeWriteOff.add(feePortionForCurrentInstallment.getAmount());
+                                if (installmentWriteOffMap.containsKey(currentInstallment.getInstallmentNumber())) {
+                                    Map<String, BigDecimal> installmentBreakUpMap = installmentWriteOffMap.get(currentInstallment
+                                            .getInstallmentNumber());
+                                    installmentBreakUpMap.put("principal",
+                                            installmentBreakUpMap.get("principal").add(principalPortionForCurrentInstallment.getAmount()));
+                                    installmentBreakUpMap.put("interest",
+                                            installmentBreakUpMap.get("interest").add(interestPortionForCurrentInstallment.getAmount()));
+                                    installmentBreakUpMap.put("charge",
+                                            installmentBreakUpMap.get("charge").add(feePortionForCurrentInstallment.getAmount()));
+                                    installmentWriteOffMap.put(currentInstallment.getInstallmentNumber(), installmentBreakUpMap);
+                                } else {
+                                    Map<String, BigDecimal> installmentBreakUpMap = new HashMap<String, BigDecimal>();
+                                    installmentBreakUpMap.put("principal", principalPortionForCurrentInstallment.getAmount());
+                                    installmentBreakUpMap.put("interest", interestPortionForCurrentInstallment.getAmount());
+                                    installmentBreakUpMap.put("charge", feePortionForCurrentInstallment.getAmount());
+                                    installmentWriteOffMap.put(currentInstallment.getInstallmentNumber(), installmentBreakUpMap);
+                                }
+
+                                installmentPaidMap.put("unpaidCharge",
+                                        installmentPaidMap.get("unpaidCharge").add(feePortionForCurrentInstallment.getAmount()));
+                                installmentPaidMap.put("unpaidInterest",
+                                        installmentPaidMap.get("unpaidInterest").add(interestPortionForCurrentInstallment.getAmount()));
+                                installmentPaidMap.put("unpaidPrincipal",
+                                        installmentPaidMap.get("unpaidPrincipal").add(principalPortionForCurrentInstallment.getAmount()));
+                                installmentPaidMap.put(
+                                        "installmentTransactionAmount",
+                                        installmentPaidMap.get("installmentTransactionAmount").add(
+                                                totalAmountForCurrentInstallment.getAmount()));
+                                transactionAmountPerClient = transactionAmountPerClient.minus(totalAmountForCurrentInstallment);
+
+                            }
+                        }
+                    }
+                }
+
+                BigDecimal writeOfAmount = zeroIfNull(glimMember.getPrincipalWrittenOffAmount()).add(
+                        zeroIfNull(glimMember.getInterestWrittenOffAmount())).add(zeroIfNull(glimMember.getChargeWrittenOffAmount()));
+                if (writeOfAmount.compareTo(BigDecimal.ZERO) > 0 && glimMember.getTransactionAmount().compareTo(BigDecimal.ZERO) > 0) { throw new ClientAlreadyWriteOffException(); }
+
+            }
+        }
+        final LocalDate transactionDate = loanTransaction.getTransactionDate();
+        for (final LoanRepaymentScheduleInstallment currentInstallment : this.repaymentScheduleInstallments) {
+            Map<String, BigDecimal> installmentBreakUpMap = installmentWriteOffMap.get(currentInstallment.getInstallmentNumber());
+            if (installmentBreakUpMap != null) {
+                currentInstallment.writeOffOutstandingPrincipalForGlim(transactionDate, getCurrency(),
+                        Money.of(getCurrency(), zeroIfNull(installmentBreakUpMap.get("principal"))));
+                currentInstallment.writeOffOutstandingInterestForGlim(transactionDate, getCurrency(),
+                        Money.of(getCurrency(), zeroIfNull(installmentBreakUpMap.get("interest"))));
+                currentInstallment.writeOffOutstandingFeeChargeForGlim(transactionDate, getCurrency(),
+                        Money.of(getCurrency(), zeroIfNull(installmentBreakUpMap.get("charge"))));
+            }
+
+        }
+        loanTransaction.updateComponentsAndTotal(Money.of(getCurrency(), totalPrincipalToBeWriteOff),
+                Money.of(getCurrency(), totalInterestToBeWriteOff), Money.of(getCurrency(), totalChargeToBeWriteOff),
+                Money.zero(getCurrency()));
+
+        updateLoanSummaryDerivedFields();
+        BigDecimal loanPrincipalOutstandingBalance = this.getLoanSummary().getTotalPrincipalOutstanding();
+        loanTransaction.updateOutstandingLoanBalance(loanPrincipalOutstandingBalance);
+        changedTransactionDetail.getNewTransactionMappings().put(loanTransaction.getId(), loanTransaction);
+
+        return changedTransactionDetail;
+    }
+    
+    public static BigDecimal zeroIfNull(BigDecimal amount){
+        return (amount==null)?BigDecimal.ZERO:amount;
     }
 }

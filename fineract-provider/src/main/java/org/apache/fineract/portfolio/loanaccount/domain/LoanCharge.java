@@ -1251,4 +1251,19 @@ public class LoanCharge extends AbstractPersistable<Long> {
             this.amount = this.amountSansTax.add(this.taxAmount);
         }
     }
+
+    public Money waiveForGlim(MonetaryCurrency loanCurrency, Money chargeAmountToBeWaived, Integer loanInstallmentNumber) {
+        final LoanInstallmentCharge chargePerInstallment = getInstallmentLoanCharge(loanInstallmentNumber);
+        final Money amountWaived = chargePerInstallment.waiveGlimLoanCharge(loanCurrency, chargeAmountToBeWaived);
+        if (this.amountWaived == null) {
+            this.amountWaived = BigDecimal.ZERO;
+        }
+        this.amountWaived = this.amountWaived.add(amountWaived.getAmount());
+        this.amountOutstanding = this.amountOutstanding.subtract(amountWaived.getAmount());
+        if (determineIfFullyPaid()) {
+            this.paid = false;
+            this.waived = true;
+        }
+        return amountWaived;
+    }
 }

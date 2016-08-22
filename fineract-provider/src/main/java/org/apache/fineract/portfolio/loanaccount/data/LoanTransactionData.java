@@ -264,9 +264,34 @@ public class LoanTransactionData {
     
     public BigDecimal getInterestPortion() {
         return this.interestPortion;
-    }
+    }    
     
-    public void setWriteOffReasonOptions(Collection<CodeValueData> writeOffReasonOptions){
+    public LoanTransactionEnumData getType() {
+		return this.type;
+	}
+
+	public LocalDate getDate() {
+		return this.date;
+	}
+
+	public CurrencyData getCurrency() {
+		return this.currency;
+	}
+
+	public BigDecimal getPrincipalPortion() {
+		return this.principalPortion;
+	}
+
+	public BigDecimal getFeeChargesPortion() {
+		return this.feeChargesPortion;
+	}
+
+	public void setWriteOffReasonOptions(Collection<CodeValueData> writeOffReasonOptions){
     	this.writeOffReasonOptions =writeOffReasonOptions;
     }
+
+	public Long getId() {
+		return this.id;
+	}
+	
 }

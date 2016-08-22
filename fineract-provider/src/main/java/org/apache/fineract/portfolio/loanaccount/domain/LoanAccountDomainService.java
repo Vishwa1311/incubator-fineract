@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.loanaccount.data.HolidayDetailDTO;
@@ -66,5 +67,8 @@ public interface LoanAccountDomainService {
     LoanTransaction waiveInterest(Loan loan, CommandProcessingResultBuilder builderResult, LocalDate transactionDate,
             BigDecimal transactionAmount, String noteText, Map<String, Object> changes, List<Long> existingTransactionIds,
             List<Long> existingReversedTransactionIds);
+
+    LoanTransaction writeOffForGlimLoan(JsonCommand command, Loan loan, CommandProcessingResultBuilder builderResult, String noteText, Map<String, Object> changes,
+            List<Long> existingTransactionIds, List<Long> existingReversedTransactionIds);
 
 }

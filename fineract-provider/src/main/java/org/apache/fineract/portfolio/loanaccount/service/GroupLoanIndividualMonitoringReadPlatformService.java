@@ -38,4 +38,6 @@ public interface GroupLoanIndividualMonitoringReadPlatformService {
     Collection<GroupLoanIndividualMonitoringData> retrieveSelectedClientsByLoanId(Long loanId);
 
     Collection<GroupLoanIndividualMonitoringData> retrieveWaiveInterestTemplate(Long loanId);
+    
+    Collection<GroupLoanIndividualMonitoringData> retrieveWaiveChargeDetails(final Long loanId);
 }
