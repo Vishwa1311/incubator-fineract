@@ -287,7 +287,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
 
         if (this.fromApiJsonHelper.parameterExists("minCap", element)) {
             final BigDecimal minCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed("minCap", element.getAsJsonObject());
-            baseDataValidator.reset().parameter("minCap").value(minCap).notNull().positiveAmount();
+            baseDataValidator.reset().parameter("minCap").value(minCap).ignoreIfNull().positiveAmount();
         }      
 
 
@@ -298,7 +298,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
 
         if (this.fromApiJsonHelper.parameterExists("maxCap", element)) {
             final BigDecimal maxCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed("maxCap", element.getAsJsonObject());
-            baseDataValidator.reset().parameter("maxCap").value(maxCap).notNull().positiveAmount();
+            baseDataValidator.reset().parameter("maxCap").value(maxCap).ignoreIfNull().positiveAmount();
         }
 
         if (this.fromApiJsonHelper.parameterExists("chargeAppliesTo", element)) {
@@ -355,11 +355,11 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         }
         if (this.fromApiJsonHelper.parameterExists("minCap", element)) {
             final BigDecimal minCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed("minCap", element.getAsJsonObject());
-            baseDataValidator.reset().parameter("minCap").value(minCap).notNull().positiveAmount();
+            baseDataValidator.reset().parameter("minCap").value(minCap).ignoreIfNull().positiveAmount();
         }
         if (this.fromApiJsonHelper.parameterExists("maxCap", element)) {
             final BigDecimal maxCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed("maxCap", element.getAsJsonObject());
-            baseDataValidator.reset().parameter("maxCap").value(maxCap).notNull().positiveAmount();
+            baseDataValidator.reset().parameter("maxCap").value(maxCap).ignoreIfNull().positiveAmount();
         }
         if (this.fromApiJsonHelper.parameterExists("feeFrequency", element)) {
             final Integer feeFrequency = this.fromApiJsonHelper.extractIntegerNamed("feeFrequency", element, Locale.getDefault());

@@ -2679,7 +2679,7 @@ public class Loan extends AbstractPersistable<Long> {
 
         final InterestMethod interestMethod = this.loanRepaymentScheduleDetail.getInterestMethod();
         final LoanApplicationTerms loanApplicationTerms = constructLoanApplicationTerms(scheduleGeneratorDTO);
-        updateInstallmentAmountForGlim(loanApplicationTerms);
+        updateInstallmentAmountForGlim(loanApplicationTerms, charges());
         loanApplicationTerms.updateTotalInterestDueForGlim(this.glimList);
         final LoanScheduleGenerator loanScheduleGenerator = scheduleGeneratorDTO.getLoanScheduleFactory().create(interestMethod);
         final LoanScheduleModel loanSchedule = loanScheduleGenerator.generate(mc, loanApplicationTerms, charges(),
@@ -5457,7 +5457,7 @@ public class Loan extends AbstractPersistable<Long> {
         final MathContext mc = new MathContext(8, roundingMode);
 
         final LoanApplicationTerms loanApplicationTerms = constructLoanApplicationTerms(generatorDTO);
-        updateInstallmentAmountForGlim(loanApplicationTerms);
+        updateInstallmentAmountForGlim(loanApplicationTerms, charges());
         loanApplicationTerms.updateTotalInterestDueForGlim(this.glimList);
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
                 .determineProcessor(this.transactionProcessingStrategy);
@@ -6206,25 +6206,23 @@ public class Loan extends AbstractPersistable<Long> {
         return this.glimList;
     }
     
-    public void updateInstallmentAmountForGlim(LoanApplicationTerms loanApplicationTerms) {
-        BigDecimal installmentAmount = BigDecimal.ZERO;
-        for (GroupLoanIndividualMonitoring glim : glimList) {
+    public void updateInstallmentAmountForGlim(LoanApplicationTerms loanApplicationTerms, Set<LoanCharge> charges) {
+        BigDecimal totalInstallmentAmount = BigDecimal.ZERO;
+        BigDecimal installmentAmountWithoutFee = BigDecimal.ZERO;
+        Integer numberOfInstallments = loanApplicationTerms.getNumberOfRepayments();
+        MonetaryCurrency currency = loanApplicationTerms.getCurrency();
+        Money totalChargesAmount = Money.zero(currency);
+        for (GroupLoanIndividualMonitoring glim : this.glimList) {
             if (glim.isClientSelected()) {
-                BigDecimal totalFeeCharges = BigDecimal.ZERO;
-                for (GroupLoanIndividualMonitoringCharge groupLoanIndividualMonitoringCharge : glim
-                        .getGroupLoanIndividualMonitoringCharges()) {
-                    if (groupLoanIndividualMonitoringCharge.getRevisedFeeAmount() != null) {
-                        totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getRevisedFeeAmount());
-                    } else {
-                        totalFeeCharges = totalFeeCharges.add(groupLoanIndividualMonitoringCharge.getFeeAmount());
-                    }
-                }
-                installmentAmount = installmentAmount.add(calculateInstallmentAmount(glim.getInstallmentAmount(), totalFeeCharges,
-                        loanApplicationTerms.getNumberOfRepayments()));
+                totalInstallmentAmount = totalInstallmentAmount.add(glim.getInstallmentAmount());
             }
         }
-        if (installmentAmount.compareTo(BigDecimal.ZERO) == 1) {
-            loanApplicationTerms.setFixedEmiAmount(installmentAmount);
+        for(LoanCharge loanCharge : charges) {
+            totalChargesAmount = totalChargesAmount.plus(Money.of(currency, BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfInstallments)));
+        }
+        installmentAmountWithoutFee = totalInstallmentAmount.subtract(totalChargesAmount.getAmount());
+        if (installmentAmountWithoutFee.compareTo(BigDecimal.ZERO) == 1) {
+            loanApplicationTerms.setFixedEmiAmount(installmentAmountWithoutFee);
         }
     }
     

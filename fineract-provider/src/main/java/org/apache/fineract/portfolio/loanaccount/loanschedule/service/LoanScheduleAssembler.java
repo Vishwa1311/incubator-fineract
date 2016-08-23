@@ -643,7 +643,7 @@ public class LoanScheduleAssembler {
         final Set<LoanCharge> loanCharges = this.loanChargeAssembler.fromParsedJson(element, disbursementDetails);
         this.groupLoanIndividualMonitoringAssembler.adjustRoundOffValuesToApplicableCharges(loanCharges, loanApplicationTerms.getNumberOfRepayments(),
                 glimList);
-        this.groupLoanIndividualMonitoringAssembler.updateInstallmentAmountForGlim(glimList, loanApplicationTerms);
+        this.groupLoanIndividualMonitoringAssembler.updateInstallmentAmountForGlim(glimList, loanApplicationTerms, loanCharges);
         loanApplicationTerms.updateTotalInterestDueForGlim(glimList);
         final LoanScheduleGenerator loanScheduleGenerator = this.loanScheduleFactory.create(loanApplicationTerms.getInterestMethod());
 
