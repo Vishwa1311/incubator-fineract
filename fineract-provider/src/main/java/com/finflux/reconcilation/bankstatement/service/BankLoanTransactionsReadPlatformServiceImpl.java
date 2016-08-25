@@ -95,15 +95,22 @@ public class BankLoanTransactionsReadPlatformServiceImpl implements BankLoanTran
 
             final LoanTransactionsForBankStatementDetailsMapper rm = new LoanTransactionsForBankStatementDetailsMapper();
 
-            final String sql = "select " + rm.LoanTransactionsForBankStatementDetailsSchema() + " where tr.amount = ? and "
-                    + " g.external_id = ?  and tr.is_reversed = 0 and tr.is_reconciled = 0 and (tr.transaction_type_enum = ?)";
+           /* final String sql = "select " + rm.LoanTransactionsForBankStatementDetailsSchema() + " where tr.amount = ? and "
+                    + " g.external_id = ?  and tr.is_reversed = 0 and tr.is_reconciled = 0 and (tr.transaction_type_enum = ?)";*/
 
             if (transactionType != null
-                    && (transactionType.trim().replaceAll(" ", "")).equalsIgnoreCase(ReconciliationApiConstants.CLIENT_PAYMEMT.trim()
-                            .replaceAll(" ", ""))) { return this.jdbcTemplate.query(sql, rm, new Object[] { amount, groupExternalId,
-                    LoanTransactionType.REPAYMENT.getValue() }); }
+                    && (transactionType.trim().replaceAll(" ", "")).equalsIgnoreCase(ReconciliationApiConstants.DISBURSAL.trim()
+                            .replaceAll(" ", ""))) { 
+            	final String sql = "select " + rm.LoanTransactionsForBankStatementDetailsSchema() + " where tr.amount = ? and "
+                        + " g.external_id = ?  and tr.is_reversed = 0 and tr.is_reconciled = 0 and (tr.transaction_type_enum = ?)";
+            	return this.jdbcTemplate.query(sql, rm, new Object[] { amount, groupExternalId,
+                    LoanTransactionType.DISBURSEMENT.getValue() }); 
+            	
+            	}
+            final String sql = "select " + rm.LoanTransactionsForBankStatementDetailsSchema() + " where tr.amount = ? and "
+                    + " g.external_id = ?  and tr.is_reversed = 0 and tr.is_reconciled = 0 and (tr.transaction_type_enum = ? or tr.transaction_type_enum = ?)";
             return this.jdbcTemplate.query(sql, rm,
-                    new Object[] { amount, groupExternalId, LoanTransactionType.DISBURSEMENT.getValue() });
+                    new Object[] { amount, groupExternalId, LoanTransactionType.REPAYMENT.getValue(), LoanTransactionType.RECOVERY_REPAYMENT.getValue()});
 
         } catch (final EmptyResultDataAccessException e) {
             return null;
