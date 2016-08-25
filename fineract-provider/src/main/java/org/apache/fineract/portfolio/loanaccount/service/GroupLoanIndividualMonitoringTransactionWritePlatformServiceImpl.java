@@ -103,6 +103,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
     private final CodeValueRepositoryWrapper codeValueRepository;
     private final AccountTransfersWritePlatformService accountTransfersWritePlatformService;
     private final NoteRepository noteRepository;
+    private final GroupLoanIndividualMonitoringReadPlatformService groupLoanIndividualMonitoringReadPlatformService;
 
     @Autowired
     public GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl(final LoanWritePlatformService loanWritePlatformService,
@@ -119,7 +120,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
             final LoanRepaymentScheduleInstallmentRepository repaymentScheduleInstallmentRepository, final LoanChargeRepository loanChargeRepository, 
             final GroupLoanIndividualMonitoringChargeReadPlatformService glimChargeReadPlatformService, 
             final GroupLoanIndividualMonitoringChargeRepositoryWrapper glimChargeRepositoryWrapper, final CodeValueRepositoryWrapper codeValueRepository,
-            final AccountTransfersWritePlatformService accountTransfersWritePlatformService, final NoteRepository noteRepository) {
+            final AccountTransfersWritePlatformService accountTransfersWritePlatformService, final NoteRepository noteRepository,
+            final GroupLoanIndividualMonitoringReadPlatformService groupLoanIndividualMonitoringReadPlatformService) {
         this.loanWritePlatformService = loanWritePlatformService;
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper = groupLoanIndividualMonitoringTransactionRepositoryWrapper;
         this.loanAccountDomainService = loanAccountDomainService;
@@ -145,6 +147,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         this.codeValueRepository = codeValueRepository;
         this.accountTransfersWritePlatformService = accountTransfersWritePlatformService;
         this.noteRepository = noteRepository;
+        this.groupLoanIndividualMonitoringReadPlatformService = groupLoanIndividualMonitoringReadPlatformService;
     }
 
     @Transactional
@@ -171,6 +174,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
             changes.put("note", noteText);
         }
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
+        List<GroupLoanIndividualMonitoring> defaultGlimMembers = this.glimRepository.findByLoanIdAndIsClientSelected(loanId, true);
+        loan.updateDefautGlimMembers(defaultGlimMembers);
         List<GroupLoanIndividualMonitoring> glimMembers = this.glimAssembler.assembleGlimFromJson(command, loan);
         loan.updateGlim(glimMembers);
         final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
@@ -206,20 +211,19 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         this.loanEventApiJsonValidator.validateGLIMWaiveChargeTransaction(command.json());
         Integer loanInstallmentNumber = null;
         MonetaryCurrency currency = loan.getCurrency();
-        
+
         final JsonArray glimList = command.arrayOfParameterNamed("clientMembers");
-       
+
         if (glimList != null) {
             for (JsonElement glimJson : glimList) {
                 if (glimJson.getAsJsonObject().get("isClientSelected").getAsBoolean()) {
                     for (int i = 0; i < loanCharges.size(); i++) {
                         final Long glimId = glimJson.getAsJsonObject().get("id").getAsLong();
                         GroupLoanIndividualMonitoring glim = this.glimRepository.findOne(glimId);
-                        
-                        BigDecimal writeOfAmount = zeroIfNull(glim.getPrincipalWrittenOffAmount()).add(zeroIfNull(glim.getInterestWrittenOffAmount())).add(zeroIfNull(glim.getChargeWrittenOffAmount()));
-                		if(writeOfAmount.compareTo(BigDecimal.ZERO)>0 && glim.getTransactionAmount().compareTo(BigDecimal.ZERO)>0){
-                			throw new ClientAlreadyWriteOffException();
-                		}
+
+                        BigDecimal writeOfAmount = zeroIfNull(glim.getPrincipalWrittenOffAmount()).add(
+                                zeroIfNull(glim.getInterestWrittenOffAmount())).add(zeroIfNull(glim.getChargeWrittenOffAmount()));
+                        if (writeOfAmount.compareTo(BigDecimal.ZERO) > 0 && glim.getTransactionAmount().compareTo(BigDecimal.ZERO) > 0) { throw new ClientAlreadyWriteOffException(); }
 
                         LoanCharge loanCharge = loanCharges.get(i);
                         Long chargeId = loanCharge.getCharge().getId();
@@ -238,22 +242,31 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
                         final List<Long> existingTransactionIds = new ArrayList<>();
                         final List<Long> existingReversedTransactionIds = new ArrayList<>();
                         LocalDate recalculateFrom = null;
-                        ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan,
-                                recalculateFrom);
+                        ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
 
                         Money accruedCharge = Money.zero(loan.getCurrency());
                         List<LoanTransaction> waiveLoanTransactions = new ArrayList<>();
-                        for(GroupLoanIndividualMonitoringCharge glimCharge : glim.getGroupLoanIndividualMonitoringCharges()){
-                            if(glimCharge.getCharge().getId().equals(chargeId)) {
-                               BigDecimal totalCharge = glimCharge.getRevisedFeeAmount()==null?glimCharge.getFeeAmount():glimCharge.getRevisedFeeAmount();
-                               BigDecimal paidClientCharge = glim.getPaidChargeAmount()==null?BigDecimal.ZERO:Money.of(currency,GroupLoanIndividualMonitoringTransactionAssembler.getShare(zeroIfNull(glim.getPaidChargeAmount()) , totalCharge, glim.getChargeAmount(), currency)).getAmount();
-                               BigDecimal perInstallmentCharge = Money.of(currency, BigDecimal.valueOf(totalCharge.doubleValue()/numberOfInstallment.doubleValue())).getAmount();
-                               BigDecimal paidInstallmentForharge = Money.of(currency, BigDecimal.valueOf(paidClientCharge.doubleValue()/perInstallmentCharge.doubleValue())).getAmount();
-                               BigDecimal partialPaidCharge = BigDecimal.ZERO;
-                               Double  diff = paidClientCharge.doubleValue() - (perInstallmentCharge.doubleValue()*Double.valueOf(paidInstallmentForharge.intValue()+""));
-                               BigDecimal amount = perInstallmentCharge.subtract(BigDecimal.valueOf(diff));
-                               boolean isPartialPaid = diff > 0;
-                               
+                        for (GroupLoanIndividualMonitoringCharge glimCharge : glim.getGroupLoanIndividualMonitoringCharges()) {
+                            if (glimCharge.getCharge().getId().equals(chargeId)) {
+                                BigDecimal totalCharge = glimCharge.getRevisedFeeAmount() == null ? glimCharge.getFeeAmount() : glimCharge
+                                        .getRevisedFeeAmount();
+                                BigDecimal paidClientCharge = glim.getPaidChargeAmount() == null ? BigDecimal.ZERO : Money.of(
+                                        currency,
+                                        GroupLoanIndividualMonitoringTransactionAssembler.getShare(zeroIfNull(glim.getPaidChargeAmount()),
+                                                totalCharge, glim.getChargeAmount(), currency)).getAmount();
+                                BigDecimal perInstallmentCharge = Money.of(currency,
+                                        BigDecimal.valueOf(totalCharge.doubleValue() / numberOfInstallment.doubleValue())).getAmount();
+                                /*BigDecimal perInstallmentCharge = Money.of(currency, getDefaultChargeSharePerInstallment(loan, glimId, glim.getChargeAmount(), 
+                                        ));*/
+                                BigDecimal paidInstallmentForharge = Money.of(currency,
+                                        BigDecimal.valueOf(paidClientCharge.doubleValue() / perInstallmentCharge.doubleValue()))
+                                        .getAmount();
+                                BigDecimal partialPaidCharge = BigDecimal.ZERO;
+                                Double diff = paidClientCharge.doubleValue()
+                                        - (perInstallmentCharge.doubleValue() * Double.valueOf(paidInstallmentForharge.intValue() + ""));
+                                BigDecimal amount = perInstallmentCharge.subtract(BigDecimal.valueOf(diff));
+                                boolean isPartialPaid = diff > 0;
+
                                 for (int k = paidInstallmentForharge.intValue() + 1; k <= numberOfInstallment; k++) {
                                     if (k == numberOfInstallment) {
                                         BigDecimal adjustedAmount = totalCharge.subtract(BigDecimal.valueOf(perInstallmentCharge
@@ -277,7 +290,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
                                 }
                             }
                         }
-                        
+
                         Money totalAmountWaived = Money.zero(currency);
                         Money totalFeeChargesWaived = Money.zero(currency);
                         Money totalpenaltyChargesWaived = Money.zero(currency);
@@ -288,18 +301,18 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
                             totalpenaltyChargesWaived = totalpenaltyChargesWaived.plus(waiveLoanTransaction
                                     .getPenaltyChargesPortion(currency));
                         }
-                        
-                        final LoanTransaction waiveLoanChargeTransaction = LoanTransaction.waiveLoanCharge(loan, loan.getOffice(), totalAmountWaived,
-                                loan.getDisbursementDate(), totalFeeChargesWaived, totalpenaltyChargesWaived, unrecognizedIncome, DateUtils.getLocalDateTimeOfTenant(),
-                                currentUser);
-                        final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(waiveLoanChargeTransaction, loanCharge, waiveLoanChargeTransaction
-                                .getAmount(currency).getAmount(), loanInstallmentNumber);
+
+                        final LoanTransaction waiveLoanChargeTransaction = LoanTransaction.waiveLoanCharge(loan, loan.getOffice(),
+                                totalAmountWaived, loan.getDisbursementDate(), totalFeeChargesWaived, totalpenaltyChargesWaived,
+                                unrecognizedIncome, DateUtils.getLocalDateTimeOfTenant(), currentUser);
+                        final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(waiveLoanChargeTransaction, loanCharge,
+                                waiveLoanChargeTransaction.getAmount(currency).getAmount(), loanInstallmentNumber);
                         waiveLoanChargeTransaction.getLoanChargesPaid().add(loanChargePaidBy);
                         loan.getLoanTransactions().add(waiveLoanChargeTransaction);
-                        
+
                         loan.updateLoanSummarAndStatus();
                         this.loanTransactionRepository.save(waiveLoanChargeTransaction);
-                        
+
                         postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds);
 
                         this.businessEventNotifierService.notifyBusinessEventWasExecuted(BUSINESS_EVENTS.LOAN_WAIVE_CHARGE,
@@ -312,7 +325,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
                         Long glimChargeDataId = glimChargeData.getId();
                         GroupLoanIndividualMonitoringCharge glimCharge = this.glimChargeRepositoryWrapper
                                 .findOneWithNotFoundDetection(glimChargeDataId);
-                        glimCharge.setWaivedChargeAmount(totalFeeChargesWaived.getAmount().add(zeroIfNull(glimCharge.getWaivedChargeAmount())));
+                        glimCharge.setWaivedChargeAmount(totalFeeChargesWaived.getAmount().add(
+                                zeroIfNull(glimCharge.getWaivedChargeAmount())));
                         this.glimChargeRepositoryWrapper.save(glimCharge);
 
                     }
@@ -420,6 +434,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         changes.put("dateFormat", command.dateFormat());
         
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
+        List<GroupLoanIndividualMonitoring> defaultGlimMembers = this.glimRepository.findByLoanIdAndIsClientSelected(loanId, true);
+        loan.updateDefautGlimMembers(defaultGlimMembers);
         List<GroupLoanIndividualMonitoring> glimMembers = this.glimAssembler.assembleGlimFromJson(command, loan);
         loan.updateGlim(glimMembers);
         final String noteText = command.stringValueOfParameterNamed("note");
@@ -461,6 +477,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         final List<Long> existingReversedTransactionIds = new ArrayList<>();
         final String noteText = command.stringValueOfParameterNamed("note");
         final CommandProcessingResultBuilder builderResult = new CommandProcessingResultBuilder();
+        List<GroupLoanIndividualMonitoring> defaultGlimMembers = this.glimRepository.findByLoanIdAndIsClientSelected(loanId, true);
+        loan.updateDefautGlimMembers(defaultGlimMembers);
         List<GroupLoanIndividualMonitoring> glimMembers = this.glimAssembler.assembleGlimFromJson(command, loan);
         loan.updateGlim(glimMembers);
         LoanTransaction loanTransaction = this.loanAccountDomainService.writeOffForGlimLoan(command, loan, builderResult, noteText,

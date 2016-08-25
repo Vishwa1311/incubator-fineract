@@ -27,6 +27,6 @@ import org.springframework.data.repository.query.Param;
 public interface GroupLoanIndividualMonitoringRepository extends JpaRepository<GroupLoanIndividualMonitoring, Long>,
         JpaSpecificationExecutor<GroupLoanIndividualMonitoring> {
 
-    List<GroupLoanIndividualMonitoring> findByLoanId(@Param("loanId") Long loanId);
+    List<GroupLoanIndividualMonitoring> findByLoanIdAndIsClientSelected(@Param("loanId") Long loanId, @Param("isClientSelected") Boolean isClientSelected);
 
 }

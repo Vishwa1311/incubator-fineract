@@ -424,8 +424,8 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
 
     public boolean isWrittenOff() {
         boolean isWrittenOff = false;
-        if (this.principalWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0 && this.interestWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0
-                && this.chargeWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0) {
+        if (this.principalWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0 || this.interestWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0
+                || this.chargeWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0) {
             isWrittenOff = true;
         }
         return isWrittenOff;
