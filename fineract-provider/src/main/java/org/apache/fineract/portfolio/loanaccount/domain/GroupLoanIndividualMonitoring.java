@@ -36,6 +36,7 @@ import javax.persistence.Transient;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
 import org.apache.fineract.portfolio.client.domain.Client;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.springframework.data.jpa.domain.AbstractPersistable;
 
 @SuppressWarnings("serial")
@@ -424,8 +425,8 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
 
     public boolean isWrittenOff() {
         boolean isWrittenOff = false;
-        if (this.principalWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0 || this.interestWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0
-                || this.chargeWrittenOffAmount.compareTo(BigDecimal.ZERO) > 0) {
+        if (GlimUtility.isGreaterThanZero(this.principalWrittenOffAmount) || GlimUtility.isGreaterThanZero(this.interestWrittenOffAmount)
+                || GlimUtility.isGreaterThanZero(this.chargeWrittenOffAmount)) {
             isWrittenOff = true;
         }
         return isWrittenOff;

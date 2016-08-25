@@ -1,4 +1,5 @@
 /**
+
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -6215,18 +6216,20 @@ public class Loan extends AbstractPersistable<Long> {
         Integer numberOfInstallments = loanApplicationTerms.getNumberOfRepayments();
         MonetaryCurrency currency = loanApplicationTerms.getCurrency();
         Money totalChargesAmount = Money.zero(currency);
-        for (GroupLoanIndividualMonitoring glim : this.glimList) {
-            if (glim.isClientSelected()) {
-                totalInstallmentAmount = totalInstallmentAmount.add(glim.getInstallmentAmount());
+        if(this.glimList != null && !this.glimList.isEmpty()) {
+        	for (GroupLoanIndividualMonitoring glim : this.glimList) {
+                if (glim.isClientSelected()) {
+                    totalInstallmentAmount = totalInstallmentAmount.add(glim.getInstallmentAmount());
+                }
             }
-        }
-        for(LoanCharge loanCharge : charges) {
-            totalChargesAmount = totalChargesAmount.plus(Money.of(currency, BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfInstallments)));
-        }
-        installmentAmountWithoutFee = totalInstallmentAmount.subtract(totalChargesAmount.getAmount());
-        if (installmentAmountWithoutFee.compareTo(BigDecimal.ZERO) == 1) {
-            loanApplicationTerms.setFixedEmiAmount(installmentAmountWithoutFee);
-        }
+            for(LoanCharge loanCharge : charges) {
+                totalChargesAmount = totalChargesAmount.plus(Money.of(currency, BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfInstallments)));
+            }
+            installmentAmountWithoutFee = totalInstallmentAmount.subtract(totalChargesAmount.getAmount());
+            if (installmentAmountWithoutFee.compareTo(BigDecimal.ZERO) == 1) {
+                loanApplicationTerms.setFixedEmiAmount(installmentAmountWithoutFee);
+            }
+        } 
     }
     
     public BigDecimal calculateInstallmentAmount(BigDecimal installmentAmount, final BigDecimal totalFeeCharges, final Integer numberOfRepayments) {

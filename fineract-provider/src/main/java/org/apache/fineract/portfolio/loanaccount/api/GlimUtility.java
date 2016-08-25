@@ -1,0 +1,76 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.fineract.portfolio.loanaccount.api;
+
+import java.math.BigDecimal;
+
+import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
+import org.apache.fineract.organisation.monetary.domain.Money;
+
+public class GlimUtility {
+	
+	public static Boolean isGreaterThanZero(BigDecimal amount){
+		return amount==null?false:amount.compareTo(BigDecimal.ZERO)>0;
+	}
+	
+	public static Boolean isGreaterThanZero(Money amount){
+		return amount==null?false:amount.getAmount().compareTo(BigDecimal.ZERO)>0;
+	}
+	
+	public static BigDecimal zeroIfNull(BigDecimal amount){
+    	return (amount==null)?BigDecimal.ZERO:amount;
+    }
+	
+	public static Boolean isNull(BigDecimal amount){
+    	return (amount==null);
+    }
+	
+	public static Boolean isNullOrZero(BigDecimal amount){
+    	return (amount==null) || amount.compareTo(BigDecimal.ZERO)==0;
+    }
+	
+	public static Boolean isZero(BigDecimal amount){
+    	return (amount!=null) && amount.compareTo(BigDecimal.ZERO)==0;
+    }
+	
+	public static Boolean isEqual(BigDecimal amount1,BigDecimal amount2){
+    	return (amount1!=null) && (amount2!=null) && amount1.compareTo(amount2)==0;
+    }
+	
+	public static Boolean isGreater(BigDecimal first, BigDecimal second) {
+        return zeroIfNull(first).compareTo(zeroIfNull(second)) >= 0;
+    }
+	
+	public static BigDecimal add(BigDecimal... first) {
+		BigDecimal sum = BigDecimal.ZERO;
+        for (BigDecimal bigDecimal : first) {
+        	sum = sum.add(zeroIfNull(bigDecimal));
+		}
+        return sum;
+    }
+	
+	public static BigDecimal subtract(BigDecimal value,BigDecimal... subtractValues) {		
+        return zeroIfNull(value).subtract(add(subtractValues));
+    }
+	
+	public static BigDecimal getShare(BigDecimal givenValue, BigDecimal shareAmount, BigDecimal totalAmount, MonetaryCurrency currency) {
+        Money amount = Money.of(currency, BigDecimal.valueOf((givenValue.multiply(shareAmount).doubleValue() / totalAmount.doubleValue())));
+        return amount.getAmount();
+    }
+}
