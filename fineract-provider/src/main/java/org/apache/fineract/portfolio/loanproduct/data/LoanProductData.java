@@ -761,7 +761,7 @@ public class LoanProductData {
         this.minLoanTerm = productData.minLoanTerm;
         this.maxLoanTerm = productData.maxLoanTerm;
         this.loanTenureFrequencyType = productData.loanTenureFrequencyType;
-        this.considerFutureDisbursmentsInSchedule = productData.considerFutureDisbursmentsInSchedule;
+        this.considerFutureDisbursmentsInSchedule = productData.isConsiderFutureDisbursmentsInSchedule();
     }
 
     private Collection<ChargeData> nullIfEmpty(final Collection<ChargeData> charges) {
@@ -1032,7 +1032,10 @@ public class LoanProductData {
     public boolean canDefineInstallmentAmount() {
         return this.canDefineInstallmentAmount;
     }
-
+    
+    public boolean considerFutureDisbursmentsInSchedule() {
+        return this.isConsiderFutureDisbursmentsInSchedule();
+    }
     public LoanProductConfigurableAttributes getloanProductConfigurableAttributes() {
         return this.allowAttributeOverrides;
     }
@@ -1094,5 +1097,9 @@ public class LoanProductData {
 	public Integer getMaxLoanTerm() {
 		return this.maxLoanTerm;
 	}
+
+    public boolean isConsiderFutureDisbursmentsInSchedule() {
+        return considerFutureDisbursmentsInSchedule;
+    }
     
 }

@@ -818,77 +818,7 @@ public class ClientLoanIntegrationTest {
 
     }
     
-    @Test
-    public void test_DISBURSEMENT_WITH_TRANCHES_For_RepaymentSchedule_Not_Having_Future_Disbursal() {
-        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpec, this.responseSpec);
-        final Integer clientID = ClientHelper.createClient(this.requestSpec, this.responseSpec);
-        ClientHelper.verifyClientCreatedOnServer(this.requestSpec, this.responseSpec, clientID);
-        final boolean considerFutureDisbursmentsInSchedule = false;
-        final Integer loanProductID = createLoanProductwithFutureDisbursements(true, NONE, considerFutureDisbursmentsInSchedule);
-
-        List<HashMap> tranches = new ArrayList<>();
-        tranches.add(createTrancheDetail("1 January 2016", "25000"));
-        tranches.add(createTrancheDetail("23 April 2016", "20000"));
-        tranches.add(createTrancheDetail("23 October 2016", "20000"));
-        
-        final Integer loanID = applyForLoanApplicationWithTranchesWithFutureDisbursements(clientID, loanProductID, null, null, "65,000.00", tranches, considerFutureDisbursmentsInSchedule);
-        Assert.assertNotNull(loanID);
-
-        HashMap loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpec, this.responseSpec, loanID);
-        LoanStatusChecker.verifyLoanIsPending(loanStatusHashMap);
-
-        System.out.println("-----------------------------------APPROVE LOAN-----------------------------------------");
-        loanStatusHashMap = this.loanTransactionHelper.approveLoan("1 January 2016", loanID);
-        LoanStatusChecker.verifyLoanIsApproved(loanStatusHashMap);
-        LoanStatusChecker.verifyLoanIsWaitingForDisbursal(loanStatusHashMap);
-
-        // DISBURSE first Tranche
-        loanStatusHashMap = this.loanTransactionHelper.disburseLoan("1 January 2016", loanID,"25000");
-        System.out.println("DISBURSE " + loanStatusHashMap);
-        LoanStatusChecker.verifyLoanIsActive(loanStatusHashMap);
-        
-        ArrayList<HashMap> loanSchedule = this.loanTransactionHelper.getLoanRepaymentSchedule(this.requestSpec, this.responseSpec, loanID);
-        verifyLoanRepaymentScheduleFutureDisbursement(loanSchedule);    
-    }
-    
-    @Test
-    public void test_DISBURSEMENT_WITH_TRANCHES_For_RepaymentSchedule_Having_FutureDisbursal() {
-        this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpec, this.responseSpec);
-        final Integer clientID = ClientHelper.createClient(this.requestSpec, this.responseSpec);
-        ClientHelper.verifyClientCreatedOnServer(this.requestSpec, this.responseSpec, clientID);
-        final boolean considerFutureDisbursmentsInSchedule = true;
-        final Integer loanProductID = createLoanProductwithFutureDisbursements(true, NONE, considerFutureDisbursmentsInSchedule);
-
-        List<HashMap> tranches = new ArrayList<>();
-        tranches.add(createTrancheDetail("1 January 2016", "25000"));
-        tranches.add(createTrancheDetail("23 April 2016", "20000"));
-        tranches.add(createTrancheDetail("23 October 2016", "20000"));
-
-        final Integer loanID = applyForLoanApplicationWithTranchesWithFutureDisbursements(clientID, loanProductID, null, null, "65,000.00", tranches, considerFutureDisbursmentsInSchedule);
-        Assert.assertNotNull(loanID);
-
-        HashMap loanStatusHashMap = LoanStatusChecker.getStatusOfLoan(this.requestSpec, this.responseSpec, loanID);
-        LoanStatusChecker.verifyLoanIsPending(loanStatusHashMap);
-
-        System.out.println("-----------------------------------APPROVE LOAN-----------------------------------------");
-        loanStatusHashMap = this.loanTransactionHelper.approveLoan("1 January 2016", loanID);
-        LoanStatusChecker.verifyLoanIsApproved(loanStatusHashMap);
-        LoanStatusChecker.verifyLoanIsWaitingForDisbursal(loanStatusHashMap);
-
-        // DISBURSE first Tranche
-        loanStatusHashMap = this.loanTransactionHelper.disburseLoan("1 January 2016", loanID, "25000");
-        System.out.println("DISBURSE " + loanStatusHashMap);
-        LoanStatusChecker.verifyLoanIsActive(loanStatusHashMap);
-        
-        // DISBURSE Second Tranche
-        loanStatusHashMap = this.loanTransactionHelper.disburseLoan("23 April 2016", loanID, "20000");
-        System.out.println("DISBURSE " + loanStatusHashMap);
-        LoanStatusChecker.verifyLoanIsActive(loanStatusHashMap);
-
-        ArrayList<HashMap> loanSchedule = this.loanTransactionHelper.getLoanRepaymentSchedule(this.requestSpec, this.responseSpec, loanID);
-        verifyLoanRepaymentScheduleFutureDisbursementFalse(loanSchedule);
-    }
-    
+   
     @Test
     public void test_DISBURSEMENT_WITH_TRANCHES_WITH_FUTURE_DISBURSAL() {
         this.loanTransactionHelper = new LoanTransactionHelper(this.requestSpec, this.responseSpec);
@@ -1262,64 +1192,6 @@ public class ClientLoanIntegrationTest {
         return this.loanTransactionHelper.getLoanId(loanApplicationJSON);
     }
     
-    private void verifyLoanRepaymentScheduleFutureDisbursement(final ArrayList<HashMap> loanSchedule) {
-        System.out.println("--------------------VERIFYING THE PRINCIPAL DUES,INTEREST DUE AND DUE DATE--------------------------");
-
-        assertEquals("Checking for Due Date for 1st Month", new ArrayList<>(Arrays.asList(2016, 2, 1)), loanSchedule.get(1)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 1st Month", new Float("9500"), loanSchedule.get(1).get("principalOriginalDue"));
-        assertEquals("Checking for Interest Due for 1st Month", new Float("500"), loanSchedule.get(1).get("interestOriginalDue"));
-
-        assertEquals("Checking for Due Date for 2nd Month", new ArrayList<>(Arrays.asList(2016, 3, 1)), loanSchedule.get(2)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 2nd Month", new Float("9500"), loanSchedule.get(2).get("principalDue"));
-        assertEquals("Checking for Interest Due for 2nd Month", new Float("500"), loanSchedule.get(2).get("interestOriginalDue"));
-
-        assertEquals("Checking for Due Date for 3rd Month", new ArrayList<>(Arrays.asList(2016, 4, 1)), loanSchedule.get(3)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 3rd Month", new Float("6000"), loanSchedule.get(3).get("principalDue"));
-        assertEquals("Checking for Interest Due for 3rd Month", new Float("500"), loanSchedule.get(3).get("interestOriginalDue"));
-        
-        assertEquals("Checking for Due Date for 4th Month", new ArrayList<>(Arrays.asList(2016, 7, 29)), loanSchedule.get(4)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 4th Month", new Integer("0"), loanSchedule.get(4).get("principalDue"));
-        assertEquals("Checking for Interest Due for 4th Month", new Float("1951.61"), loanSchedule.get(4).get("interestOriginalDue"));
-    }
-    
-    private void verifyLoanRepaymentScheduleFutureDisbursementFalse(final ArrayList<HashMap> loanSchedule) {
-        System.out.println("--------------------VERIFYING THE PRINCIPAL DUES,INTEREST DUE AND DUE DATE--------------------------");
-
-        assertEquals("Checking for Due Date for 1st Month", new ArrayList<>(Arrays.asList(2016, 2, 1)), loanSchedule.get(1)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 1st Month", new Float("9500"), loanSchedule.get(1).get("principalOriginalDue"));
-        assertEquals("Checking for Interest Due for 1st Month", new Float("500"), loanSchedule.get(1).get("interestOriginalDue"));
-
-        assertEquals("Checking for Due Date for 2nd Month", new ArrayList<>(Arrays.asList(2016, 3, 1)), loanSchedule.get(2)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 2nd Month", new Float("9500"), loanSchedule.get(2).get("principalDue"));
-        assertEquals("Checking for Interest Due for 2nd Month", new Float("500"), loanSchedule.get(2).get("interestOriginalDue"));
-
-        assertEquals("Checking for Due Date for 3rd Month", new ArrayList<>(Arrays.asList(2016, 4, 1)), loanSchedule.get(3)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 3rd Month", new Float("6000"), loanSchedule.get(3).get("principalDue"));
-        assertEquals("Checking for Interest Due for 3rd Month", new Float("500"), loanSchedule.get(3).get("interestOriginalDue"));
-        
-        assertEquals("Checking for Due Date for 5th Month", new ArrayList<>(Arrays.asList(2016, 5, 1)), loanSchedule.get(5)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 5th Month", new Float("9393.33"), loanSchedule.get(5).get("principalDue"));
-        assertEquals("Checking for Interest Due for 5th Month", new Float("606.67"), loanSchedule.get(5).get("interestOriginalDue"));
-        
-        assertEquals("Checking for Due Date for 6th Month", new ArrayList<>(Arrays.asList(2016, 6, 1)), loanSchedule.get(6)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 6th Month", new Float("10606.67"), loanSchedule.get(6).get("principalDue"));
-        assertEquals("Checking for Interest Due for 6th Month", new Float("900"), loanSchedule.get(6).get("interestOriginalDue"));
-        
-        assertEquals("Checking for Due Date for 7th Month", new ArrayList<>(Arrays.asList(2016, 7, 1)), loanSchedule.get(7)
-                .get("dueDate"));
-        assertEquals("Checking for Principal Due for 7th Month", new Integer("0"), loanSchedule.get(7).get("principalDue"));
-        assertEquals("Checking for Interest Due for 7th Month", new Float("900"), loanSchedule.get(7).get("interestOriginalDue"));
-    }
-
     private void verifyLoanRepaymentSchedule(final ArrayList<HashMap> loanSchedule) {
         System.out.println("--------------------VERIFYING THE PRINCIPAL DUES,INTEREST DUE AND DUE DATE--------------------------");
 

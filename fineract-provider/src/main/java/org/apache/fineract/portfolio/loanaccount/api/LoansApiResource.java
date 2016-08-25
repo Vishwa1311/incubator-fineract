@@ -462,8 +462,7 @@ public class LoansApiResource {
                 mandatoryResponseParameters.add("repaymentSchedule");
                 final RepaymentScheduleRelatedLoanData repaymentScheduleRelatedData = loanBasicDetails.repaymentScheduleRelatedData();
                 repaymentSchedule = this.loanReadPlatformService.retrieveRepaymentSchedule(loanId, repaymentScheduleRelatedData,
-                        disbursementData, loanBasicDetails.isInterestRecalculationEnabled(), loanBasicDetails.getTotalPaidFeeCharges());
-
+                        disbursementData, loanBasicDetails.isInterestRecalculationEnabled(), loanBasicDetails.getTotalPaidFeeCharges(), loanBasicDetails.considerFutureDisbursmentsInSchedule());
                 if (associationParameters.contains("futureSchedule") && loanBasicDetails.isInterestRecalculationEnabled()) {
                     mandatoryResponseParameters.add("futureSchedule");
                     this.calculationPlatformService.updateFutureSchedule(repaymentSchedule, loanId);
@@ -472,7 +471,7 @@ public class LoansApiResource {
                 if (associationParameters.contains("originalSchedule") && loanBasicDetails.isInterestRecalculationEnabled()
                         && loanBasicDetails.isActive()) {
                     mandatoryResponseParameters.add("originalSchedule");
-                    LoanScheduleData loanScheduleData = this.loanScheduleHistoryReadPlatformService.retrieveRepaymentArchiveSchedule(
+                    LoanScheduleData loanScheduleData = this.loanScheduleHistoryReadPlatformService.retrieveRepaymentArchiveSchedule(   
                             loanId, repaymentScheduleRelatedData, disbursementData);
                     loanBasicDetails = LoanAccountData.withOriginalSchedule(loanBasicDetails, loanScheduleData);
                 }
