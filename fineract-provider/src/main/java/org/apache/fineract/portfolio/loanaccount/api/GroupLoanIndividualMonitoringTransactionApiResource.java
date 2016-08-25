@@ -29,6 +29,7 @@ import org.apache.fineract.portfolio.charge.service.GroupLoanIndividualMonitorin
 import org.apache.fineract.portfolio.loanaccount.data.GroupLoanIndividualMonitoringData;
 import org.apache.fineract.portfolio.loanaccount.data.GroupLoanIndividualMonitoringTransactionData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionData;
+import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.exception.ClientAlreadyWriteOffException;
@@ -49,32 +50,35 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
     private final ApiRequestParameterHelper apiRequestParameterHelper;
     private final DefaultToApiJsonSerializer<GroupLoanIndividualMonitoringTransactionData> toApiJsonSerializer;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
-    private final GroupLoanIndividualMonitoringReadPlatformService groupLoanIndividualMonitoringReadPlatformService;
+    private final GroupLoanIndividualMonitoringReadPlatformService glimReadPlatformService;
     private final LoanRepositoryWrapper loanRepositoryWrapper;
     private final LoanChargeReadPlatformService loanChargeReadPlatformService;
     private final GroupLoanIndividualMonitoringChargeReadPlatformService glimChargeReadPlatformService;
     private final LoanReadPlatformService loanReadPlatformService;
     private final GroupLoanIndividualMonitoringTransactionAssembler glimTransactionAssembler;
+    private final GroupLoanIndividualMonitoringRepository glimRepository;
 
     @Autowired
     public GroupLoanIndividualMonitoringTransactionApiResource(final PlatformSecurityContext context,
             final ApiRequestParameterHelper apiRequestParameterHelper,
             final DefaultToApiJsonSerializer<GroupLoanIndividualMonitoringTransactionData> toApiJsonSerializer,
             final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService,
-            final GroupLoanIndividualMonitoringReadPlatformService groupLoanIndividualMonitoringReadPlatformService,
+            final GroupLoanIndividualMonitoringReadPlatformService glimReadPlatformService,
             final LoanRepositoryWrapper loanRepositoryWrapper, final LoanChargeReadPlatformService loanChargeReadPlatformService,
             final GroupLoanIndividualMonitoringChargeReadPlatformService glimChargeReadPlatformService, final LoanReadPlatformService loanReadPlatformService,
-            final GroupLoanIndividualMonitoringTransactionAssembler glimTransactionAssembler) {
+            final GroupLoanIndividualMonitoringTransactionAssembler glimTransactionAssembler,
+            final GroupLoanIndividualMonitoringRepository glimRepository) {
         this.context = context;
         this.apiRequestParameterHelper = apiRequestParameterHelper;
         this.toApiJsonSerializer = toApiJsonSerializer;
         this.commandsSourceWritePlatformService = commandsSourceWritePlatformService;
-        this.groupLoanIndividualMonitoringReadPlatformService = groupLoanIndividualMonitoringReadPlatformService;
+        this.glimReadPlatformService = glimReadPlatformService;
         this.loanRepositoryWrapper =loanRepositoryWrapper;
         this.loanChargeReadPlatformService = loanChargeReadPlatformService;
         this.glimChargeReadPlatformService = glimChargeReadPlatformService;
         this.loanReadPlatformService =loanReadPlatformService;
         this.glimTransactionAssembler = glimTransactionAssembler;
+        this.glimRepository = glimRepository;
     }
 
     @GET
@@ -89,20 +93,21 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
         LoanTransactionData loanTransactionData = null;
         if (is(commandParam, "repayment")) {
             loanTransactionData = this.loanReadPlatformService.retrieveLoanTransactionTemplate(loanId);
-            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.groupLoanIndividualMonitoringReadPlatformService
+            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
                     .retrieveAllByLoanId(loanId);
             Loan loan = this.loanRepositoryWrapper.findOneWithNotFoundDetection(loanId);
+            loan.updateDefautGlimMembers(this.glimRepository.findByLoanIdAndIsClientSelected(loanId, true));
             groupLoanIndividualMonitoringData = this.glimTransactionAssembler.handleGLIMRepaymentTemplate(
                     groupLoanIndividualMonitoringData, loanTransactionData, loan, transactionDate);
             for (GroupLoanIndividualMonitoringData glimData : groupLoanIndividualMonitoringData) {
                 transactionAmount = transactionAmount.add(glimData.getInstallmentAmount());
             }
         } else if (is(commandParam, "waiveinterest")) {
-            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.groupLoanIndividualMonitoringReadPlatformService
+            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
                     .retrieveWaiveInterestTemplate(loanId);
 
         } else if (is(commandParam, "waivecharge")) {
-            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.groupLoanIndividualMonitoringReadPlatformService
+            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
                     .retrieveWaiveChargeDetails(loanId);
             BigDecimal unpaidCharge = BigDecimal.ZERO;
             for (GroupLoanIndividualMonitoringData glimDetail : groupLoanIndividualMonitoringData) {            	
@@ -120,7 +125,7 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
             }
             transactionAmount = unpaidCharge;
         } else if (is(commandParam, "writeoff")) {
-            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.groupLoanIndividualMonitoringReadPlatformService
+            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
                     .retrieveAllByLoanId(loanId);
             for (GroupLoanIndividualMonitoringData glimDetail : groupLoanIndividualMonitoringData) {
                 BigDecimal totalAmountWrittenOff = zeroIfNull(glimDetail.getPrincipalWrittenOffAmount()).add(
@@ -134,7 +139,7 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
                 transactionAmount = transactionAmount.add(glimTransactionAmount);
             }
         } else if (is(commandParam, "prepay")) {
-            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.groupLoanIndividualMonitoringReadPlatformService
+            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
                     .retrieveAllByLoanId(loanId);
             for (GroupLoanIndividualMonitoringData glimDetail : groupLoanIndividualMonitoringData) {
                 BigDecimal totalAmountWrittenOff = zeroIfNull(glimDetail.getPrincipalWrittenOffAmount()).add(

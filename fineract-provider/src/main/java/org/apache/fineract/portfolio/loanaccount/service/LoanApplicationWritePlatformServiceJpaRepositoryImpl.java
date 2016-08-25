@@ -771,7 +771,7 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
             List<GroupLoanIndividualMonitoring> glimList  = this.groupLoanIndividualMonitoringAssembler.createOrUpdateIndividualClientsAmountSplit(existingLoanApplication, command.parsedJson(), interestRate,
                             numberOfRepayments);
 
-            List<GroupLoanIndividualMonitoring> existingGlimList = this.groupLoanIndividualMonitoringRepository.findByLoanId(loanId);
+            List<GroupLoanIndividualMonitoring> existingGlimList = this.groupLoanIndividualMonitoringRepository.findByLoanIdAndIsClientSelected(loanId, true);
             if (!existingGlimList.isEmpty()) {
                 this.groupLoanIndividualMonitoringRepository.delete(existingGlimList);
             }
@@ -1144,7 +1144,7 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
 
             if (changes.containsKey(LoanApiConstants.approvedLoanAmountParameterName)
                     || changes.containsKey(LoanApiConstants.disbursementPrincipalParameterName)) {
-                List<GroupLoanIndividualMonitoring> glimList  = this.groupLoanIndividualMonitoringRepository.findByLoanId(loanId);
+                List<GroupLoanIndividualMonitoring> glimList  = this.groupLoanIndividualMonitoringRepository.findByLoanIdAndIsClientSelected(loanId, true);
                 HashMap<Long, BigDecimal> chargesMap = new HashMap<>();
                 for (GroupLoanIndividualMonitoring glim : glimList) {
                     final BigDecimal proposedAmount = glim.getProposedAmount();

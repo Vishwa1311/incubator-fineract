@@ -314,6 +314,7 @@ public class LoanAssembler {
                 submittedOnDate, externalId, allowTransactionsOnHoliday, holidays, workingDays, allowTransactionsOnNonWorkingDay);
         
         loanApplication.updateGlim(glimList);
+        loanApplication.updateDefautGlimMembers(glimList);
         return loanApplication;
     }
 

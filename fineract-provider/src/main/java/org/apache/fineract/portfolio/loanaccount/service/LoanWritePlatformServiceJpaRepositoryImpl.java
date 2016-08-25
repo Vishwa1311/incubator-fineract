@@ -726,7 +726,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final LocalDate recalculateFrom = null;
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
         
-        List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringRepository.findByLoanId(loanId);
+        List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringRepository.findByLoanIdAndIsClientSelected(loanId, true);
         HashMap<Long, BigDecimal> chargesMap = new HashMap<>();
         for (GroupLoanIndividualMonitoring glim : glimList) {
             final BigDecimal approvedAmount = glim.getApprovedAmount();
