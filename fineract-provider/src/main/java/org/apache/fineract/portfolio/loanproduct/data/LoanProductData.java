@@ -183,6 +183,8 @@ public class LoanProductData {
     private final Integer maxLoanTerm;
     private final EnumOptionData loanTenureFrequencyType;
     private final boolean considerFutureDisbursmentsInSchedule;
+    
+    private Collection<ProductLoanChargeData> productLoanCharges;
 
     /**
      * Used when returning lookup information about loan product for dropdowns.
@@ -762,6 +764,7 @@ public class LoanProductData {
         this.maxLoanTerm = productData.maxLoanTerm;
         this.loanTenureFrequencyType = productData.loanTenureFrequencyType;
         this.considerFutureDisbursmentsInSchedule = productData.isConsiderFutureDisbursmentsInSchedule();
+        this.productLoanCharges = productData.productLoanCharges;
     }
 
     private Collection<ChargeData> nullIfEmpty(final Collection<ChargeData> charges) {
@@ -1086,20 +1089,26 @@ public class LoanProductData {
     }
     
 
-	public boolean isSyncExpectedWithDisbursementDate() {
-		return this.syncExpectedWithDisbursementDate;
-	}
+    public boolean isSyncExpectedWithDisbursementDate() {
+        return this.syncExpectedWithDisbursementDate;
+    }
 
-	public Integer getMinLoanTerm() {
-		return this.minLoanTerm;
-	}
+    public Integer getMinLoanTerm() {
+        return this.minLoanTerm;
+    }
 
-	public Integer getMaxLoanTerm() {
-		return this.maxLoanTerm;
-	}
+    public Integer getMaxLoanTerm() {
+        return this.maxLoanTerm;
+    }
 
     public boolean isConsiderFutureDisbursmentsInSchedule() {
         return considerFutureDisbursmentsInSchedule;
+    }
+
+    @SuppressWarnings("unused")
+    public void updateProductLoanCharges(final Collection<ProductLoanChargeData> productLoanCharges) {
+        this.productLoanCharges = new ArrayList<ProductLoanChargeData>();
+        this.productLoanCharges.addAll(productLoanCharges);
     }
     
 }

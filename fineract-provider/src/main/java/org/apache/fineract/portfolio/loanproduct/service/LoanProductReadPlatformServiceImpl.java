@@ -35,12 +35,12 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
-import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.common.service.CommonEnumerations;
 import org.apache.fineract.portfolio.loanproduct.data.LoanProductBorrowerCycleVariationData;
 import org.apache.fineract.portfolio.loanproduct.data.LoanProductData;
 import org.apache.fineract.portfolio.loanproduct.data.LoanProductGuaranteeData;
 import org.apache.fineract.portfolio.loanproduct.data.LoanProductInterestRecalculationData;
+import org.apache.fineract.portfolio.loanproduct.data.ProductLoanChargeData;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductConfigurableAttributes;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductParamType;
 import org.apache.fineract.portfolio.loanproduct.exception.LoanProductNotFoundException;
@@ -71,18 +71,25 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
 
     @Override
     public LoanProductData retrieveLoanProduct(final Long loanProductId) {
-
         try {
-            final Collection<ChargeData> charges = this.chargeReadPlatformService.retrieveLoanProductCharges(loanProductId);
+            final Collection<ChargeData> charges = null;
+            //this.chargeReadPlatformService.retrieveLoanProductCharges(loanProductId);
             final Collection<LoanProductBorrowerCycleVariationData> borrowerCycleVariationDatas = retrieveLoanProductBorrowerCycleVariations(loanProductId);
             final LoanProductMapper rm = new LoanProductMapper(charges, borrowerCycleVariationDatas);
             final String sql = "select " + rm.loanProductSchema() + " where lp.id = ?";
-
-            return this.jdbcTemplate.queryForObject(sql, rm, new Object[] { loanProductId });
-
+            final LoanProductData loanProductData = this.jdbcTemplate.queryForObject(sql, rm, new Object[] { loanProductId });
+            final Collection<ProductLoanChargeData> productLoanCharges = retrieveProductLoanCharges(loanProductId);
+            loanProductData.updateProductLoanCharges(productLoanCharges);
+            return loanProductData;
         } catch (final EmptyResultDataAccessException e) {
             throw new LoanProductNotFoundException(loanProductId);
         }
+    }
+
+    private Collection<ProductLoanChargeData> retrieveProductLoanCharges(final Long loanProductId) {
+        final ProductLoanChargeMapper rm = new ProductLoanChargeMapper(this.chargeReadPlatformService);
+        final String sql = "SELECT " + rm.schema() + " WHERE plc.product_loan_id=? ";
+        return this.jdbcTemplate.query(sql, rm, new Object[] { loanProductId });
     }
 
     @Override
@@ -415,14 +422,14 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
             final boolean accountMovesOutOfNPAOnlyOnArrearsCompletion = rs.getBoolean("accountMovesOutOfNPAOnlyOnArrearsCompletion");
             final Boolean closeLoanOnOverpayment = rs.getBoolean("closeLoanOnOverpayment");
             final boolean syncExpectedWithDisbursementDate = rs.getBoolean("syncExpectedWithDisbursementDate");
-            
+
             final Integer minLoanTerm = JdbcSupport.getInteger(rs, "minLoanTerm");
             final Integer maxLoanTerm = JdbcSupport.getInteger(rs, "maxLoanTerm");
             EnumOptionData loanTenureFrequencyType = null;
             final Integer loanTenureFrequencyTypeEnum = JdbcSupport.getInteger(rs, "loanTenureFrequencyType");
             final boolean considerFutureDisbursmentsInSchedule = rs.getBoolean("considerfuturedisbursmentsinschedule");
-            if(loanTenureFrequencyTypeEnum != null){
-            loanTenureFrequencyType = LoanEnumerations.loanTenureFrequencyType(loanTenureFrequencyTypeEnum.intValue());
+            if (loanTenureFrequencyTypeEnum != null) {
+                loanTenureFrequencyType = LoanEnumerations.loanTenureFrequencyType(loanTenureFrequencyTypeEnum.intValue());
             }
             return new LoanProductData(id, name, shortName, description, currency, principal, minPrincipal, maxPrincipal, tolerance,
                     numberOfRepayments, minNumberOfRepayments, maxNumberOfRepayments, repaymentEvery, interestRatePerPeriod,
@@ -439,7 +446,7 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
                     installmentAmountInMultiplesOf, allowAttributeOverrides, isLinkedToFloatingInterestRates, floatingRateId,
                     floatingRateName, interestRateDifferential, minDifferentialLendingRate, defaultDifferentialLendingRate,
                     maxDifferentialLendingRate, isFloatingInterestRateCalculationAllowed, isVariableIntallmentsAllowed, minimumGap,
-                    maximumGap, closeLoanOnOverpayment,  syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment,
+                    maximumGap, closeLoanOnOverpayment, syncExpectedWithDisbursementDate, minimumPeriodsBetweenDisbursalAndFirstRepayment,
                     minLoanTerm, maxLoanTerm, loanTenureFrequencyType, considerFutureDisbursmentsInSchedule);
         }
     }
@@ -501,6 +508,30 @@ public class LoanProductReadPlatformServiceImpl implements LoanProductReadPlatfo
             final LoanProductBorrowerCycleVariationData borrowerCycleVariationData = new LoanProductBorrowerCycleVariationData(id,
                     cycleNumber, paramTypeData, conditionTypeData, defaultValue, minValue, maxValue);
             return borrowerCycleVariationData;
+        }
+
+    }
+
+    private static final class ProductLoanChargeMapper implements RowMapper<ProductLoanChargeData> {
+
+        final ChargeReadPlatformService chargeReadPlatformService;
+
+        private ProductLoanChargeMapper(final ChargeReadPlatformService chargeReadPlatformService) {
+            this.chargeReadPlatformService = chargeReadPlatformService;
+        }
+
+        public String schema() {
+            return "plc.id AS id, plc.product_loan_id AS productLoanId, plc.charge_id AS chargeId, plc.is_mandatory AS isMandatory FROM m_product_loan_charge plc";
+        }
+
+        @Override
+        public ProductLoanChargeData mapRow(final ResultSet rs, @SuppressWarnings("unused") final int rowNum) throws SQLException {
+            final Long id = rs.getLong("id");
+            final Long productLoanId = rs.getLong("productLoanId");
+            final Long chargeId = rs.getLong("chargeId");
+            final ChargeData chargeData = this.chargeReadPlatformService.retrieveCharge(chargeId);
+            final Boolean isMandatory = rs.getBoolean("isMandatory");
+            return ProductLoanChargeData.instance(id, productLoanId, chargeData, isMandatory);
         }
 
     }
