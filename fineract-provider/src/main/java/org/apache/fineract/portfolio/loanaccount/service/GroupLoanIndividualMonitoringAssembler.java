@@ -502,18 +502,21 @@ public class GroupLoanIndividualMonitoringAssembler {
         Integer numberOfInstallments = loanApplicationTerms.getNumberOfRepayments();
         MonetaryCurrency currency = loanApplicationTerms.getCurrency();
         Money totalChargesAmount = Money.zero(currency);
-        for (GroupLoanIndividualMonitoring glim : glimList) {
-            if (glim.isClientSelected()) {
-                totalInstallmentAmount = totalInstallmentAmount.add(glim.getInstallmentAmount());
+        if(glimList != null && !glimList.isEmpty()) {
+        	for (GroupLoanIndividualMonitoring glim : glimList) {
+                if (glim.isClientSelected()) {
+                    totalInstallmentAmount = totalInstallmentAmount.add(glim.getInstallmentAmount());
+                }
+            }
+            for(LoanCharge loanCharge : charges) {
+                totalChargesAmount = totalChargesAmount.plus(Money.of(currency, BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfInstallments)));
+            }
+            installmentAmountWithoutFee = totalInstallmentAmount.subtract(totalChargesAmount.getAmount());
+            if (installmentAmountWithoutFee.compareTo(BigDecimal.ZERO) == 1) {
+                loanApplicationTerms.setFixedEmiAmount(installmentAmountWithoutFee);
             }
         }
-        for(LoanCharge loanCharge : charges) {
-            totalChargesAmount = totalChargesAmount.plus(Money.of(currency, BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfInstallments)));
-        }
-        installmentAmountWithoutFee = totalInstallmentAmount.subtract(totalChargesAmount.getAmount());
-        if (installmentAmountWithoutFee.compareTo(BigDecimal.ZERO) == 1) {
-            loanApplicationTerms.setFixedEmiAmount(installmentAmountWithoutFee);
-        }
+        
     }
     
     // minimum And Maximum Capping on loan charge
