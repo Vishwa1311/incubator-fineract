@@ -20,6 +20,10 @@ public class GroupLoanIndividualMonitoringTransactionRepositoryWrapper {
     public void saveAsList(final Collection<GroupLoanIndividualMonitoringTransaction> groupLoanIndividualMonitoringTransaction) {
         this.groupLoanIndividualMonitoringTransactionRepository.save(groupLoanIndividualMonitoringTransaction);
     }
+    
+    public void save(final GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction) {
+        this.groupLoanIndividualMonitoringTransactionRepository.save(groupLoanIndividualMonitoringTransaction);
+    }
 
     public GroupLoanIndividualMonitoringTransaction findOneWithNotFoundDetection(final Long id) {
         final GroupLoanIndividualMonitoringTransaction entity = this.groupLoanIndividualMonitoringTransactionRepository.findOne(id);

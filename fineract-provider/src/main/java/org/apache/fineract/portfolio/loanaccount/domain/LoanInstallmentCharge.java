@@ -28,6 +28,7 @@ import javax.persistence.Table;
 
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.springframework.data.jpa.domain.AbstractPersistable;
 
 @Entity
@@ -312,9 +313,12 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
     }
     
     public Money writeOffGlimLoanCharge(Money writeOffAmount) {
-        BigDecimal amount = writeOffAmount == null ? BigDecimal.ZERO : writeOffAmount.getAmount();
-        this.amountWrittenOff = this.amountWrittenOff == null ? amount : this.amountWrittenOff.add(amount);
-        this.amountOutstanding = this.amountOutstanding.subtract(amount);
+        BigDecimal amount = GlimUtility.zeroIfNull(writeOffAmount);
+        this.amountWrittenOff = this.amountWrittenOff == null ? amount : GlimUtility.add(this.amountWrittenOff ,amount);
+        this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding, amount);
+        if(this.amountOutstanding.negate() != null){
+        	this.amountOutstanding = BigDecimal.ZERO;
+        }
         return writeOffAmount;
     }
 }

@@ -370,9 +370,15 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         return new LoanTransaction(loan, office, LoanTransactionType.WRITEOFF, null, writeOffDate, externalId, createdDate, appUser, loanTransactionSubType);
     }
     
-    public static LoanTransaction writeOffForGlimLoan(final Loan loan, final Office office, final LocalDate writeOffDate, final String externalId,
+    public static LoanTransaction writeOffForGlimLoan(final Loan loan, final Office office, final LocalDate waiveDate, final String externalId,
             final LocalDateTime createdDate, final AppUser appUser, final LoanTransactionSubType loanTransactionSubType) {
-        return new LoanTransaction(loan, office, LoanTransactionType.WRITEOFF, null, writeOffDate, externalId, createdDate, appUser, loanTransactionSubType);
+        return new LoanTransaction(loan, office, LoanTransactionType.WRITEOFF, null, waiveDate, externalId, createdDate, appUser, loanTransactionSubType);
+    }
+    
+    public static LoanTransaction waiveGlimCharge(final Loan loan, final Office office, final LocalDate writeOffDate, final String externalId,
+            final LocalDateTime createdDate, final AppUser appUser) {
+        final LoanTransactionSubType loanTransactionSubType = null;
+        return new LoanTransaction(loan, office, LoanTransactionType.WAIVE_CHARGES, null, writeOffDate, externalId, createdDate, appUser, loanTransactionSubType);
     }
 
     private LoanTransaction(final Loan loan, final Office office, final LoanTransactionType type, final BigDecimal amount,

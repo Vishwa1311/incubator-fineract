@@ -92,6 +92,12 @@ public class GroupLoanIndividualMonitoringTransaction extends AbstractPersistabl
         return new GroupLoanIndividualMonitoringTransaction(groupLoanIndividualMonitoring, loanTransaction, typeOf, BigDecimal.ZERO,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, transactionAmount);
     }
+    
+    public static GroupLoanIndividualMonitoringTransaction waiveCharges(final GroupLoanIndividualMonitoring groupLoanIndividualMonitoring,
+            final LoanTransaction loanTransaction, final BigDecimal transactionAmount, final Integer typeOf) {
+        return new GroupLoanIndividualMonitoringTransaction(groupLoanIndividualMonitoring, loanTransaction, typeOf, BigDecimal.ZERO,
+                BigDecimal.ZERO, transactionAmount, BigDecimal.ZERO, transactionAmount);
+    }
 
     public static GroupLoanIndividualMonitoringTransaction instance(
             final GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction, final BigDecimal principalPortion,

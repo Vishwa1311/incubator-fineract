@@ -37,6 +37,10 @@ public class GlimUtility {
     	return (amount==null)?BigDecimal.ZERO:amount;
     }
 	
+	public static BigDecimal zeroIfNull(Money amount){
+    	return (amount==null)?BigDecimal.ZERO:amount.getAmount();
+    }
+	
 	public static Boolean isNull(BigDecimal amount){
     	return (amount==null);
     }

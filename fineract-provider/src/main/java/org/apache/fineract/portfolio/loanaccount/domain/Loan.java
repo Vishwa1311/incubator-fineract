@@ -95,6 +95,7 @@ import org.apache.fineract.portfolio.floatingrates.data.FloatingRateDTO;
 import org.apache.fineract.portfolio.floatingrates.data.FloatingRatePeriodData;
 import org.apache.fineract.portfolio.fund.domain.Fund;
 import org.apache.fineract.portfolio.group.domain.Group;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.command.LoanChargeCommand;
 import org.apache.fineract.portfolio.loanaccount.data.DisbursementData;
@@ -6316,8 +6317,8 @@ public class Loan extends AbstractPersistable<Long> {
                                 transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
                                 installmentPaidMap, loanTransaction);
 
-                        if (!(paidInstallmentMap.get("installmentTransactionAmount").compareTo(BigDecimal.ZERO) == 0 && glimMember
-                                .getTotalPaidAmount().compareTo(BigDecimal.ZERO) > 0)) {
+                        if (!( GlimUtility.isZero(paidInstallmentMap.get("installmentTransactionAmount")) && GlimUtility.isGreaterThanZero(glimMember
+                                .getTotalPaidAmount()))) {
                             if (currentInstallment.isNotFullyPaidOff()) {
 
                                 Map<String, BigDecimal> splitMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
@@ -6370,9 +6371,9 @@ public class Loan extends AbstractPersistable<Long> {
                     }
                 }
 
-                BigDecimal writeOfAmount = zeroIfNull(glimMember.getPrincipalWrittenOffAmount()).add(
-                        zeroIfNull(glimMember.getInterestWrittenOffAmount())).add(zeroIfNull(glimMember.getChargeWrittenOffAmount()));
-                if (writeOfAmount.compareTo(BigDecimal.ZERO) > 0 && glimMember.getTransactionAmount().compareTo(BigDecimal.ZERO) > 0) { throw new ClientAlreadyWriteOffException(); }
+                BigDecimal writeOfAmount =  GlimUtility.add(glimMember.getPrincipalWrittenOffAmount(),glimMember.getInterestWrittenOffAmount(),
+                		glimMember.getChargeWrittenOffAmount());
+                if (GlimUtility.isGreaterThanZero(writeOfAmount) && GlimUtility.isGreaterThanZero(glimMember.getTransactionAmount())) { throw new ClientAlreadyWriteOffException(); }
 
             }
         }
@@ -6381,11 +6382,11 @@ public class Loan extends AbstractPersistable<Long> {
             Map<String, BigDecimal> installmentBreakUpMap = installmentWriteOffMap.get(currentInstallment.getInstallmentNumber());
             if (installmentBreakUpMap != null) {
                 currentInstallment.writeOffOutstandingPrincipalForGlim(transactionDate, getCurrency(),
-                        Money.of(getCurrency(), zeroIfNull(installmentBreakUpMap.get("principal"))));
+                        Money.of(getCurrency(), GlimUtility.zeroIfNull(installmentBreakUpMap.get("principal"))));
                 currentInstallment.writeOffOutstandingInterestForGlim(transactionDate, getCurrency(),
-                        Money.of(getCurrency(), zeroIfNull(installmentBreakUpMap.get("interest"))));
+                        Money.of(getCurrency(), GlimUtility.zeroIfNull(installmentBreakUpMap.get("interest"))));
                 currentInstallment.writeOffOutstandingFeeChargeForGlim(transactionDate, getCurrency(),
-                        Money.of(getCurrency(), zeroIfNull(installmentBreakUpMap.get("charge"))));
+                        Money.of(getCurrency(), GlimUtility.zeroIfNull(installmentBreakUpMap.get("charge"))));
             }
 
         }
@@ -6404,11 +6405,11 @@ public class Loan extends AbstractPersistable<Long> {
     private Map<Long, BigDecimal> writeOffLoanChargeForGlim(LoanRepaymentScheduleInstallment currentInstallment, BigDecimal amount,
             GroupLoanIndividualMonitoring glimMember, Map<Long, BigDecimal> feeChargesWriteOffPerInstallments) {
 
-        if (amount.compareTo(BigDecimal.ZERO) == 1) {
+        if (GlimUtility.isGreaterThanZero(amount)) {
             Set<GroupLoanIndividualMonitoringCharge> glimCharges = glimMember.getGroupLoanIndividualMonitoringCharges();
             for (GroupLoanIndividualMonitoringCharge glimCharge : glimCharges) {
                 Long chargeId = glimCharge.getCharge().getId();
-                BigDecimal chargeAmount = glimCharge.getRevisedFeeAmount() == null ? glimCharge.getFeeAmount() : glimCharge
+                BigDecimal chargeAmount = GlimUtility.isNull(glimCharge.getRevisedFeeAmount())? glimCharge.getFeeAmount() : glimCharge
                         .getRevisedFeeAmount();
                 BigDecimal totalLoanChargeAmount = getTotalLoanChargesAmount(charges());
                 for (LoanCharge loanCharge : charges()) {
@@ -6420,19 +6421,18 @@ public class Loan extends AbstractPersistable<Long> {
                          * .getInstallmentLoanCharge(currentInstallment
                          * .getInstallmentNumber());
                          */
-                        BigDecimal writeOffAmount = GroupLoanIndividualMonitoringTransactionAssembler.getShare(amount, chargeAmount,
+                        BigDecimal writeOffAmount = GlimUtility.getShare(amount, chargeAmount,
                                 glimMember.getChargeAmount(), getCurrency());
 
                         if (currentInstallment.getInstallmentNumber().intValue() == this.fetchNumberOfInstallmensAfterExceptions()) {
-                            writeOffAmount = chargeAmount.subtract(feeChargesWriteOffPerInstallments.get(chargeId));
+                            writeOffAmount = GlimUtility.subtract(chargeAmount, feeChargesWriteOffPerInstallments.get(chargeId));
                             loanCharge.updateWriteOffAmount(getCurrency(), Money.of(getCurrency(), writeOffAmount),
                                     currentInstallment.getInstallmentNumber(), totalLoanChargeAmount, writeOffAmount);
                         } else {
                             loanCharge.updateWriteOffAmount(getCurrency(), Money.of(getCurrency(), writeOffAmount),
                                     currentInstallment.getInstallmentNumber(), totalLoanChargeAmount, chargeAmount);
                             if (feeChargesWriteOffPerInstallments.containsKey(chargeId)) {
-                                feeChargesWriteOffPerInstallments.put(chargeId,
-                                        feeChargesWriteOffPerInstallments.get(chargeId).add(writeOffAmount));
+                                feeChargesWriteOffPerInstallments.put(chargeId,GlimUtility.add(writeOffAmount,feeChargesWriteOffPerInstallments.get(chargeId)));
                             } else {
                                 feeChargesWriteOffPerInstallments.put(chargeId, writeOffAmount);
                             }
@@ -6444,28 +6444,71 @@ public class Loan extends AbstractPersistable<Long> {
 
         return feeChargesWriteOffPerInstallments;
     }
+    
+    public Map<Long, BigDecimal> waiveLoanChargeForGlim(LoanRepaymentScheduleInstallment currentInstallment, BigDecimal amount,
+            GroupLoanIndividualMonitoring glimMember, Map<Long, BigDecimal> feeChargesWriteOffPerInstallments,
+            List<Long> existingTransactionIds, List<Long> existingReversedTransactionIds, Money accruedCharge, AppUser currentUser,
+            ScheduleGeneratorDTO scheduleGeneratorDTO, Map<String, Object> changes) {
+
+        if (GlimUtility.isGreaterThanZero(amount)) {
+            Set<GroupLoanIndividualMonitoringCharge> glimCharges = glimMember.getGroupLoanIndividualMonitoringCharges();
+            for (GroupLoanIndividualMonitoringCharge glimCharge : glimCharges) {
+                Long chargeId = glimCharge.getCharge().getId();
+                BigDecimal chargeAmount = GlimUtility.isNull(glimCharge.getRevisedFeeAmount())? glimCharge.getFeeAmount() : glimCharge
+                        .getRevisedFeeAmount();
+                for (LoanCharge loanCharge : charges()) {
+                    if (loanCharge.getCharge().getId().equals(chargeId)) {
+                        BigDecimal chargeAmountToBeWaived = GlimUtility.getShare(amount,
+                                chargeAmount, glimMember.getChargeAmount(), getCurrency());
+
+                        if (currentInstallment.getInstallmentNumber().intValue() == this.fetchNumberOfInstallmensAfterExceptions()) {
+                            chargeAmountToBeWaived = GlimUtility.subtract(chargeAmount, feeChargesWriteOffPerInstallments.get(chargeId));
+                            waiveGlimLoanCharge(loanCharge, null, changes, existingTransactionIds, existingReversedTransactionIds,
+                                    currentInstallment.getInstallmentNumber(), scheduleGeneratorDTO, accruedCharge, currentUser,
+                                    Money.of(getCurrency(), chargeAmountToBeWaived));
+                        } else {
+                            waiveGlimLoanCharge(loanCharge, null, changes, existingTransactionIds, existingReversedTransactionIds,
+                                    currentInstallment.getInstallmentNumber(), scheduleGeneratorDTO, accruedCharge, currentUser,
+                                    Money.of(getCurrency(), chargeAmountToBeWaived));
+                        }
+                        if (feeChargesWriteOffPerInstallments.containsKey(chargeId)) {
+                            feeChargesWriteOffPerInstallments.put(chargeId,
+                                    GlimUtility.add(chargeAmountToBeWaived,feeChargesWriteOffPerInstallments.get(chargeId)));
+                        } else {
+                            feeChargesWriteOffPerInstallments.put(chargeId, chargeAmountToBeWaived);
+                        }
+                        
+                        glimCharge.setWaivedChargeAmount(feeChargesWriteOffPerInstallments.get(chargeId));
+                    }
+                }
+            }
+        }
+
+        return feeChargesWriteOffPerInstallments;
+    }
+    
 
     private BigDecimal getTotalLoanChargesAmount(Set<LoanCharge> charges) {
         BigDecimal totalLoanChargeAmount = BigDecimal.ZERO;
        for(LoanCharge loanCharge : charges){
-           totalLoanChargeAmount = totalLoanChargeAmount.add(loanCharge.amount());
+           totalLoanChargeAmount = GlimUtility.add(totalLoanChargeAmount,loanCharge.amount());
        }
         return totalLoanChargeAmount;
     }
 
-    private BigDecimal getTotalChargesAmount(Set<GroupLoanIndividualMonitoringCharge> glimCharges) {
+    /*private BigDecimal getTotalChargesAmount(Set<GroupLoanIndividualMonitoringCharge> glimCharges) {
         BigDecimal totalChargesAmount = BigDecimal.ZERO;
         for(GroupLoanIndividualMonitoringCharge glimCharge : glimCharges) {
-            BigDecimal chargeAmount = glimCharge.getRevisedFeeAmount() == null ? glimCharge.getFeeAmount() : glimCharge
+            BigDecimal chargeAmount = GlimUtility.isNull(glimCharge.getRevisedFeeAmount())? glimCharge.getFeeAmount() : glimCharge
                     .getRevisedFeeAmount();
             totalChargesAmount = totalChargesAmount.add(chargeAmount);
         }
         return totalChargesAmount;
-    }
+    }*/
 
-    public static BigDecimal zeroIfNull(BigDecimal amount){
+   /* public static BigDecimal zeroIfNull(BigDecimal amount){
         return (amount==null)?BigDecimal.ZERO:amount;
-    }
+    }*/
     
     public void updateDefautGlimMembers(List<GroupLoanIndividualMonitoring> defaultGlimMembers) {
         this.defaultGlimMembers.addAll(defaultGlimMembers);

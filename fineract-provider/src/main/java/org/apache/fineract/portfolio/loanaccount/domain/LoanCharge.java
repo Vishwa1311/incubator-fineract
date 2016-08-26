@@ -54,6 +54,7 @@ import org.apache.fineract.portfolio.charge.domain.ChargePaymentMode;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
 import org.apache.fineract.portfolio.charge.exception.LoanChargeWithoutMandatoryFieldException;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.apache.fineract.portfolio.loanaccount.command.LoanChargeCommand;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidDetail;
 import org.apache.fineract.portfolio.tax.domain.TaxComponent;
@@ -1103,8 +1104,8 @@ public class LoanCharge extends AbstractPersistable<Long> {
             this.amountWaived = BigDecimal.ZERO;
             for (final LoanInstallmentCharge chargePerInstallment : this.loanInstallmentCharge) {
                 final Money amountWaived = chargePerInstallment.updateWaivedAndAmountPaidThroughChargePaymentAmount(currency);
-                this.amountWaived = this.amountWaived.add(amountWaived.getAmount());
-                this.amountOutstanding = this.amountOutstanding.subtract(amountWaived.getAmount());
+                this.amountWaived = GlimUtility.add(this.amountWaived ,amountWaived.getAmount());
+                this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding ,amountWaived.getAmount());
                 if (determineIfFullyPaid() && Money.of(currency, this.amountWaived).isGreaterThanZero()) {
                     this.paid = false;
                     this.waived = true;
@@ -1259,8 +1260,8 @@ public class LoanCharge extends AbstractPersistable<Long> {
         if (this.amountWaived == null) {
             this.amountWaived = BigDecimal.ZERO;
         }
-        this.amountWaived = this.amountWaived.add(amountWaived.getAmount());
-        this.amountOutstanding = this.amountOutstanding.subtract(amountWaived.getAmount());
+        this.amountWaived = GlimUtility.add(this.amountWaived, amountWaived.getAmount());
+        this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding ,amountWaived.getAmount());
         if (determineIfFullyPaid()) {
             this.paid = false;
             this.waived = true;
@@ -1276,8 +1277,11 @@ public class LoanCharge extends AbstractPersistable<Long> {
             this.amountWrittenOff = BigDecimal.ZERO;
         }
         
-        this.amountWrittenOff = this.amountWrittenOff.add(writeOffAmount.getAmount());
-        this.amountOutstanding = this.amountOutstanding.subtract(writeOffAmount.getAmount());
+        this.amountWrittenOff = GlimUtility.add(this.amountWrittenOff,writeOffAmount.getAmount());
+        this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding ,writeOffAmount.getAmount());
+        if(this.amountOutstanding.negate() != null){
+        	this.amountOutstanding = BigDecimal.ZERO;
+        }
         return writeOffAmount.getAmount();
     }
 }

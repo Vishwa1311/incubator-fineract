@@ -504,7 +504,7 @@ public class Charge extends AbstractPersistable<Long> {
         }
         
         final String emiRoundingGoalSeekParamName = "emiRoundingGoalSeek";
-        if (command.isChangeInBooleanParameterNamed(activeParamName, this.emiRoundingGoalSeek)) {
+        if (command.isChangeInBooleanParameterNamed(emiRoundingGoalSeekParamName, this.emiRoundingGoalSeek)) {
             final boolean newValue = command.booleanPrimitiveValueOfParameterNamed(emiRoundingGoalSeekParamName);
             actualChanges.put(emiRoundingGoalSeekParamName, newValue);
             this.emiRoundingGoalSeek = newValue;
