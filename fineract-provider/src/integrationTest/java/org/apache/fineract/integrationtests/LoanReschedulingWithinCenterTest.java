@@ -178,7 +178,7 @@ public class LoanReschedulingWithinCenterTest {
         DateFormat dateFormat = new SimpleDateFormat("dd MMMM yyyy");
         dateFormat.setTimeZone(Utils.getTimeZoneOfTenant());
         Calendar today = Calendar.getInstance(Utils.getTimeZoneOfTenant());
-        today.add(Calendar.DAY_OF_MONTH, -10);
+        today.add(Calendar.DAY_OF_MONTH, -14);
         // CREATE A LOAN PRODUCT
         final String disbursalDate = dateFormat.format(today.getTime());
         final String recalculationRestFrequencyDate = "01 January 2012";
@@ -211,10 +211,10 @@ public class LoanReschedulingWithinCenterTest {
 
         System.out.println("---------------------------------CHANGING CENTER MEETING DATE ------------------------------------------");
         Calendar todaysdate = Calendar.getInstance(Utils.getTimeZoneOfTenant());
-        todaysdate.add(Calendar.DAY_OF_MONTH, 1);
+        todaysdate.add(Calendar.DAY_OF_MONTH, 14);
 
         String oldMeetingDate = dateFormat.format(todaysdate.getTime());
-        todaysdate.add(Calendar.DAY_OF_MONTH, 14);
+        todaysdate.add(Calendar.DAY_OF_MONTH, 1);
         final String centerMeetingNewStartDate = dateFormat.format(todaysdate.getTime());
 
         CalendarHelper.updateMeetingCalendarForCenter(this.requestSpec, this.responseSpec, centerId, calendarId.toString(), oldMeetingDate,
@@ -232,7 +232,6 @@ public class LoanReschedulingWithinCenterTest {
         System.out.println("----------------- CHANGING CENTER MEETING DATE FROM PRESENT DATE TO PREVIOUS DATE ------------------");
         Calendar todaysdate1 = Calendar.getInstance(Utils.getTimeZoneOfTenant());
 
-        // todaysdate1.set(Calendar.MONTH, 01);
         todaysdate1.add(Calendar.DAY_OF_MONTH, 28);
 
         String oldMeetingDate1 = dateFormat.format(todaysdate1.getTime());
