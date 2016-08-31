@@ -152,6 +152,9 @@ public class Loan extends AbstractPersistable<Long> {
     /** Disable optimistic locking till batch jobs failures can be fixed **/
     @Version
     int version;
+    
+    @Column(name ="repayment_history_version")
+    private Integer repaymentHistoryVersion;
 
     @Column(name = "account_no", length = 20, unique = true, nullable = false)
     private String accountNumber;
@@ -4119,6 +4122,15 @@ public class Loan extends AbstractPersistable<Long> {
         }
         return office;
     }
+    
+    public Integer getRepaymentHistoryVersion() {
+       if(this.repaymentHistoryVersion == null){return 0; }
+        return this.repaymentHistoryVersion;
+    }
+       
+    public void setRepaymentHistoryVersion(Integer repaymenthistoryversion) {
+         this.repaymentHistoryVersion = repaymenthistoryversion;
+    }
 
     private Boolean isCashBasedAccountingEnabledOnLoanProduct() {
         return this.loanProduct.isCashBasedAccountingEnabled();
@@ -4505,7 +4517,7 @@ public class Loan extends AbstractPersistable<Long> {
     public void setLoanStatus(final Integer loanStatus) {
         this.loanStatus = loanStatus;
     }
-
+    
     public void validateExpectedDisbursementForHolidayAndNonWorkingDay(final WorkingDays workingDays,
             final boolean allowTransactionsOnHoliday, final List<Holiday> holidays, final boolean allowTransactionsOnNonWorkingDay) {
         // validate if disbursement date is a holiday or a non-working day
