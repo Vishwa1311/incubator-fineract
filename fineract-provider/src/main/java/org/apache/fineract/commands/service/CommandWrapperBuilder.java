@@ -44,8 +44,8 @@ public class CommandWrapperBuilder {
     private Long templateId;
 
     public CommandWrapper build() {
-        return new CommandWrapper(this.officeId, this.groupId, this.clientId, this.loanId, this.savingsId, this.actionName,
-                this.entityName, this.entityId, this.subentityId, this.href, this.json, this.transactionId, this.productId, this.templateId);
+        return new CommandWrapper(this.officeId, this.groupId, this.clientId, this.loanId, this.savingsId, this.actionName, this.entityName,
+                this.entityId, this.subentityId, this.href, this.json, this.transactionId, this.productId, this.templateId);
     }
 
     public CommandWrapperBuilder withLoanId(final Long withLoanId) {
@@ -1838,7 +1838,8 @@ public class CommandWrapperBuilder {
         return this;
     }
 
-    public CommandWrapperBuilder saveOrUpdateAttendance(final Long entityId, final String supportedEntityType, final Long supportedEntityId) {
+    public CommandWrapperBuilder saveOrUpdateAttendance(final Long entityId, final String supportedEntityType,
+            final Long supportedEntityId) {
         this.actionName = "SAVEORUPDATEATTENDANCE";
         this.entityName = "MEETING";
         this.entityId = entityId;
@@ -2790,7 +2791,7 @@ public class CommandWrapperBuilder {
         this.href = "/centers/" + centerId + "?command=associateCenters";
         return this;
     }
-    
+
     public CommandWrapperBuilder updateFutureMeetingCalendar(final String entityType, final Long entityId, final Long calendarId) {
         this.actionName = "UPDATEFUTUREMEETINGS";
         this.entityName = "CALENDAR";
@@ -2801,10 +2802,13 @@ public class CommandWrapperBuilder {
     }
 
     /**
-     * Create Address 
-     * @param entityTypeId : This parameter is setting to entityId
+     * Create Address
+     * 
+     * @param entityTypeId
+     *            : This parameter is setting to entityId
      * @param entityType
-     * @param entityId : This parameter is setting to subentityId
+     * @param entityId
+     *            : This parameter is setting to subentityId
      * @return
      */
     public CommandWrapperBuilder createAddress(final Long entityTypeId, final String entityType, final Long entityId) {
@@ -2818,9 +2822,12 @@ public class CommandWrapperBuilder {
 
     /**
      * Update Address
+     * 
      * @param entityType
-     * @param entityId : This parameter is setting to subentityId
-     * @param addressId : This parameter is setting to entityId
+     * @param entityId
+     *            : This parameter is setting to subentityId
+     * @param addressId
+     *            : This parameter is setting to entityId
      * @return
      */
     public CommandWrapperBuilder updateAddress(final String entityType, final Long entityId, final Long addressId) {
@@ -2834,9 +2841,12 @@ public class CommandWrapperBuilder {
 
     /**
      * Delete Address
+     * 
      * @param entityType
-     * @param entityId : This parameter is setting to subentityId
-     * @param addressId : This parameter is setting to entityId
+     * @param entityId
+     *            : This parameter is setting to subentityId
+     * @param addressId
+     *            : This parameter is setting to entityId
      * @return
      */
     public CommandWrapperBuilder daleteAddress(final String entityType, final Long entityId, final Long addressId) {
@@ -2847,7 +2857,7 @@ public class CommandWrapperBuilder {
         this.href = entityType + "/" + entityId + "/addresses/" + addressId;
         return this;
     }
-    
+
     public CommandWrapperBuilder createLoanApplicationReference() {
         this.actionName = "CREATE";
         this.entityName = "LOANAPPLICATIONREFERENCE";
@@ -2910,7 +2920,7 @@ public class CommandWrapperBuilder {
         this.href = "/loanapplicationreferences/" + loanApplicationReferenceId;
         return this;
     }
-    
+
     public CommandWrapperBuilder createFamilyDetails(final Long clientId) {
         this.actionName = "CREATE";
         this.entityName = "FAMILYDETAIL";
@@ -2961,6 +2971,15 @@ public class CommandWrapperBuilder {
         this.clientId = clientId;
         this.href = "clients/" + clientId + "/existingLoans/" + existingLoanId;
         return this;
+    }
+
+    public CommandWrapperBuilder createTaluka(String entityType, Long entityId) {
+        this.actionName = "CREATE";
+        this.entityName = "TALUKA";
+        this.entityId = entityId;
+        this.href = entityType + "/" + entityId + "/talukas";
+        return this;
+
     }
 
 }
