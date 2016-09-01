@@ -302,11 +302,11 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
 	}
 
     public Money waiveGlimLoanCharge(MonetaryCurrency loanCurrency, Money chargeAmountToBeWaived) {
-    	BigDecimal amount = chargeAmountToBeWaived==null?BigDecimal.ZERO:chargeAmountToBeWaived.getAmount();    	
-        this.amountWaived = this.amountWaived==null?amount:this.amountWaived.add(amount);
-        this.amountOutstanding = this.amountOutstanding.subtract(amount);
+    	BigDecimal amount = GlimUtility.zeroIfNull(chargeAmountToBeWaived);    	
+        this.amountWaived = GlimUtility.isNull(this.amountWaived)?amount: GlimUtility.add(this.amountWaived ,amount);
+        this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding ,amount);
         this.paid = false; 
-        if(this.amountOutstanding.compareTo(BigDecimal.ZERO) == 0) {
+        if(GlimUtility.isZero(this.amountOutstanding)) {
             this.waived = true;
         }
         return chargeAmountToBeWaived;
@@ -314,11 +314,8 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
     
     public Money writeOffGlimLoanCharge(Money writeOffAmount) {
         BigDecimal amount = GlimUtility.zeroIfNull(writeOffAmount);
-        this.amountWrittenOff = this.amountWrittenOff == null ? amount : GlimUtility.add(this.amountWrittenOff ,amount);
+        this.amountWrittenOff = GlimUtility.isNull(this.amountWrittenOff)? amount : GlimUtility.add(this.amountWrittenOff ,amount);
         this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding, amount);
-        if(this.amountOutstanding.negate() != null){
-        	this.amountOutstanding = BigDecimal.ZERO;
-        }
         return writeOffAmount;
     }
 }

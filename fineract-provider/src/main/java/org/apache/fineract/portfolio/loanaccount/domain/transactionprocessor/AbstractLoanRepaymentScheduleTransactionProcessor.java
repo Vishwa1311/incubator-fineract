@@ -221,7 +221,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
      * latest transaction) against the loan schedule.
      */
     @Override
-    public void handleTransaction(final LoanTransaction loanTransaction, final MonetaryCurrency currency,
+	public void handleTransaction(final LoanTransaction loanTransaction, final MonetaryCurrency currency,
             final List<LoanRepaymentScheduleInstallment> installments, final Set<LoanCharge> charges) {
 
         final Money amountToProcess = null;

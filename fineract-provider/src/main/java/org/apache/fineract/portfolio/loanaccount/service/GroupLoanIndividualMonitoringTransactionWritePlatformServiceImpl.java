@@ -457,7 +457,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         loan.updateGlim(glimMembers);
         LoanTransaction loanTransaction = this.loanAccountDomainService.writeOffForGlimLoan(command, loan, builderResult, noteText,
                 changes, existingTransactionIds, existingReversedTransactionIds);
-        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.groupLoanIndividualMonitoringTransactionAssembler.writeOffForClients(command, loanTransaction);
+        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.groupLoanIndividualMonitoringTransactionAssembler.writeOffForClients(command, loanTransaction, glimMembers);
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper.saveAsList(glimTransactions);
         this.groupLoanIndividualMonitoringTransactionAssembler.updateLoanWriteOffStatusForGLIM(loan);
 

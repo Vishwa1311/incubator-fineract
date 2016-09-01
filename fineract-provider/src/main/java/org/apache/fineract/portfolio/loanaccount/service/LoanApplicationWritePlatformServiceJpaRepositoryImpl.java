@@ -62,6 +62,7 @@ import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.ChargeNotSupportedException;
+import org.apache.fineract.portfolio.charge.exception.GlimLoanCannotHaveMoreThanOneGoalRoundSeekCharge;
 import org.apache.fineract.portfolio.client.domain.AccountNumberGenerator;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
@@ -400,15 +401,22 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
         if (command.hasParameter(chargesParameterName)) {
             JsonArray charges = command.arrayOfParameterNamed(LoanApiConstants.chargesParameterName);
             if (AccountType.fromName(loanTypeStr).isGLIMAccount()) {
+            	int numberOfEmiRoundingGoalSeek = 0;
                 for (JsonElement glimCharge : charges) {
                     JsonObject jsonObject = glimCharge.getAsJsonObject();
                     Long chargeId = jsonObject.get("chargeId").getAsLong();
                     Charge charge = this.chargeRepositoryWrapper.findOneWithNotFoundDetection(chargeId);
+                    if(charge.isEmiRoundingGoalSeek()){
+                    	numberOfEmiRoundingGoalSeek ++;
+                    }
                     if (!charge.isGlimCharge()) {
                         final String entityName = " GLIM Loan";
                         final String userErrorMessage = "Charge can not be applied to GLIM Loan";
                         throw new ChargeNotSupportedException(entityName, charge.getId(), userErrorMessage);
                     }
+                }
+                if(numberOfEmiRoundingGoalSeek>1){
+                	throw new GlimLoanCannotHaveMoreThanOneGoalRoundSeekCharge();
                 }
             } else {
                 for (JsonElement element : charges) {

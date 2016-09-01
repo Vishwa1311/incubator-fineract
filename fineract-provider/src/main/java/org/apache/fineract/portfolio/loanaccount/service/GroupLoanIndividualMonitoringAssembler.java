@@ -40,6 +40,7 @@ import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
 import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoring;
 import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoringRepositoryWrapper;
@@ -496,27 +497,30 @@ public class GroupLoanIndividualMonitoringAssembler {
         }
     }*/
     
-    public void updateInstallmentAmountForGlim(List<GroupLoanIndividualMonitoring> glimList, LoanApplicationTerms loanApplicationTerms, Set<LoanCharge> charges) {
+    public void updateInstallmentAmountForGlim(List<GroupLoanIndividualMonitoring> glimList, LoanApplicationTerms loanApplicationTerms,
+            Set<LoanCharge> charges) {
         BigDecimal totalInstallmentAmount = BigDecimal.ZERO;
         BigDecimal installmentAmountWithoutFee = BigDecimal.ZERO;
         Integer numberOfInstallments = loanApplicationTerms.getNumberOfRepayments();
         MonetaryCurrency currency = loanApplicationTerms.getCurrency();
-        Money totalChargesAmount = Money.zero(currency);
-        if(glimList != null && !glimList.isEmpty()) {
-        	for (GroupLoanIndividualMonitoring glim : glimList) {
+        BigDecimal feeAmount = BigDecimal.ZERO;
+        if (glimList != null && !glimList.isEmpty()) {
+            for (GroupLoanIndividualMonitoring glim : glimList) {
                 if (glim.isClientSelected()) {
                     totalInstallmentAmount = totalInstallmentAmount.add(glim.getInstallmentAmount());
+                    Set<GroupLoanIndividualMonitoringCharge> glimmCharges = glim.getGroupLoanIndividualMonitoringCharges();
+                    for (GroupLoanIndividualMonitoringCharge glimCharge : glimmCharges) {
+                       BigDecimal chargeAmount = GlimUtility.isNull(glimCharge.getRevisedFeeAmount())?glimCharge.getFeeAmount():glimCharge.getRevisedFeeAmount();
+                        feeAmount = GlimUtility.add(feeAmount, GlimUtility.divide(chargeAmount, numberOfInstallments, currency));
+                    } 
                 }
             }
-            for(LoanCharge loanCharge : charges) {
-                totalChargesAmount = totalChargesAmount.plus(Money.of(currency, BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfInstallments)));
-            }
-            installmentAmountWithoutFee = totalInstallmentAmount.subtract(totalChargesAmount.getAmount());
+            installmentAmountWithoutFee = totalInstallmentAmount.subtract(feeAmount);
             if (installmentAmountWithoutFee.compareTo(BigDecimal.ZERO) == 1) {
                 loanApplicationTerms.setFixedEmiAmount(installmentAmountWithoutFee);
             }
         }
-        
+
     }
     
     // minimum And Maximum Capping on loan charge

@@ -27,6 +27,7 @@ import java.util.Set;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
@@ -92,7 +93,7 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
     @Column(name = "percentage", scale = 6, precision = 19, nullable = true)
     private BigDecimal percentage;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "groupLoanIndividualMonitoring", orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "groupLoanIndividualMonitoring", orphanRemoval = true, fetch = FetchType.EAGER)
     private Set<GroupLoanIndividualMonitoringCharge> groupLoanIndividualMonitoringCharge = new HashSet<>();
     
     @Column(name = "paid_principal_amount", scale = 6, precision = 19, nullable = true)

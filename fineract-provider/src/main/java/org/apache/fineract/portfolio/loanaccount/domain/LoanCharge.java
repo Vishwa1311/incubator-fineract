@@ -1257,9 +1257,6 @@ public class LoanCharge extends AbstractPersistable<Long> {
     public Money waiveForGlim(MonetaryCurrency loanCurrency, Money chargeAmountToBeWaived, Integer loanInstallmentNumber) {
         final LoanInstallmentCharge chargePerInstallment = getInstallmentLoanCharge(loanInstallmentNumber);
         final Money amountWaived = chargePerInstallment.waiveGlimLoanCharge(loanCurrency, chargeAmountToBeWaived);
-        if (this.amountWaived == null) {
-            this.amountWaived = BigDecimal.ZERO;
-        }
         this.amountWaived = GlimUtility.add(this.amountWaived, amountWaived.getAmount());
         this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding ,amountWaived.getAmount());
         if (determineIfFullyPaid()) {
@@ -1269,19 +1266,11 @@ public class LoanCharge extends AbstractPersistable<Long> {
         return amountWaived;
     }
 
-    public BigDecimal updateWriteOffAmount(MonetaryCurrency loanCurrency, Money writeOffAmount, Integer loanInstallmentNumber, BigDecimal totalLoanChargeAmount,
-            BigDecimal chargeAmountPerGlim) {
+    public BigDecimal updateWriteOffAmount(MonetaryCurrency loanCurrency, Money writeOffAmount, Integer loanInstallmentNumber) {
         final LoanInstallmentCharge chargePerInstallment = getInstallmentLoanCharge(loanInstallmentNumber);
         final Money amountWrittenOff = chargePerInstallment.writeOffGlimLoanCharge(writeOffAmount);
-        if (this.amountWrittenOff == null) {
-            this.amountWrittenOff = BigDecimal.ZERO;
-        }
-        
-        this.amountWrittenOff = GlimUtility.add(this.amountWrittenOff,writeOffAmount.getAmount());
-        this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding ,writeOffAmount.getAmount());
-        if(this.amountOutstanding.negate() != null){
-        	this.amountOutstanding = BigDecimal.ZERO;
-        }
-        return writeOffAmount.getAmount();
+        this.amountWrittenOff = GlimUtility.add(this.amountWrittenOff,amountWrittenOff.getAmount());
+        this.amountOutstanding = GlimUtility.subtract(this.amountOutstanding ,amountWrittenOff.getAmount());
+        return amountWrittenOff.getAmount();
     }
 }

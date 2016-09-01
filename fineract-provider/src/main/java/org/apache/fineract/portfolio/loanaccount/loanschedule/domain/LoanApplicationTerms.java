@@ -20,8 +20,11 @@ package org.apache.fineract.portfolio.loanaccount.loanschedule.domain;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
@@ -197,6 +200,8 @@ public final class LoanApplicationTerms {
     private final HolidayDetailDTO holidayDetailDTO;
     
     private Money totalInterestForGlim;
+    
+    private Set<GroupLoanIndividualMonitoring> glimMembers = new HashSet<GroupLoanIndividualMonitoring>();
 
     public static LoanApplicationTerms assembleFrom(final ApplicationCurrency currency, final Integer loanTermFrequency,
             final PeriodFrequencyType loanTermPeriodFrequencyType, final Integer numberOfRepayments, final Integer repaymentEvery,
@@ -1597,6 +1602,7 @@ public final class LoanApplicationTerms {
 
     public void updateTotalInterestDueForGlim(final List<GroupLoanIndividualMonitoring> glimList) {
         Money totalInterestDueForGlim = Money.zero(getCurrency());
+        updateGlimMembers(glimList);
         for (GroupLoanIndividualMonitoring glim : glimList) {
             if (glim.isClientSelected()) {
                 totalInterestDueForGlim = totalInterestDueForGlim.plus(glim.getInterestAmount());
@@ -1607,5 +1613,13 @@ public final class LoanApplicationTerms {
     
     public Money getTotalInterestForGlim() {
         return this.totalInterestForGlim;
+    }
+    
+    public void updateGlimMembers(final List<GroupLoanIndividualMonitoring> glimList) {
+        this.glimMembers.addAll(glimList);
+    }
+    
+    public Set<GroupLoanIndividualMonitoring> getGroupLoanIndividualMonitoring() {
+        return this.glimMembers;
     }
 }

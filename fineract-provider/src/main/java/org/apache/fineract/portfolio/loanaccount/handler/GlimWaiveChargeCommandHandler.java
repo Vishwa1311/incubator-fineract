@@ -29,17 +29,17 @@ import org.springframework.stereotype.Service;
 @Service
 @CommandType(entity = "GLIMTRANSACTION", action = "WAIVECHARGE")
 public class GlimWaiveChargeCommandHandler implements NewCommandSourceHandler {
-	
-	private final GroupLoanIndividualMonitoringTransactionWritePlatformService glimTransactionWritePlatformService;
-	
-	@Autowired
+
+    private final GroupLoanIndividualMonitoringTransactionWritePlatformService glimTransactionWritePlatformService;
+
+    @Autowired
     public GlimWaiveChargeCommandHandler(
             final GroupLoanIndividualMonitoringTransactionWritePlatformService glimTransactionWritePlatformService) {
         this.glimTransactionWritePlatformService = glimTransactionWritePlatformService;
     }
-	
-	@Override
-	public CommandProcessingResult processCommand(JsonCommand command) {
-		return this.glimTransactionWritePlatformService.waiveCharge(command.getLoanId(), command);
-	}
+
+    @Override
+    public CommandProcessingResult processCommand(JsonCommand command) {
+        return this.glimTransactionWritePlatformService.waiveCharge(command.getLoanId(), command);
+    }
 }

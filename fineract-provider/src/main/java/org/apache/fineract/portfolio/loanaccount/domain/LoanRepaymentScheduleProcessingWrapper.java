@@ -24,6 +24,8 @@ import java.util.Set;
 
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.joda.time.LocalDate;
 
 /**
@@ -91,8 +93,33 @@ public class LoanRepaymentScheduleProcessingWrapper {
                             amount = amount.add(period.getPrincipal(monetaryCurrency).getAmount());
                         }
                         if (loanCharge.getChargeCalculation().isPercentageOfDisbursementAmount()) {
-                            BigDecimal loanChargeAmount = BigDecimal.valueOf(loanCharge.amount().doubleValue() / numberOfRepayments);
-                            cumulative = cumulative.plus(loanChargeAmount);
+                            BigDecimal installmentChargePerClient = BigDecimal.ZERO;
+                            for (GroupLoanIndividualMonitoring glim : loanCharge.getLoan().getDefautGlimMembers()) {
+                                Set<GroupLoanIndividualMonitoringCharge> charges = glim.getGroupLoanIndividualMonitoringCharges();
+                                for (GroupLoanIndividualMonitoringCharge glimCharge : charges) {
+                                    if (loanCharge.getCharge().getId() == glimCharge.getCharge().getId()) {
+                                        BigDecimal chargeAmount = glimCharge.getRevisedFeeAmount() == null ? glimCharge.getFeeAmount()
+                                                : glimCharge.getRevisedFeeAmount();
+                                        BigDecimal perInstallmentCharge = GlimUtility.divide(chargeAmount, numberOfRepayments, loanCharge
+                                                .getLoan().getCurrency());
+                                        if (period.getInstallmentNumber() == numberOfRepayments) {
+                                            installmentChargePerClient = GlimUtility.add(
+                                                    installmentChargePerClient,
+                                                    GlimUtility.subtract(chargeAmount,
+                                                            GlimUtility.multiply(perInstallmentCharge, numberOfRepayments - 1)));
+                                        } else {
+                                            installmentChargePerClient = GlimUtility.add(installmentChargePerClient, perInstallmentCharge);
+                                        }
+
+                                    }
+                                }
+                            }
+                            /*
+                             * BigDecimal loanChargeAmount =
+                             * BigDecimal.valueOf(loanCharge
+                             * .amount().doubleValue() / numberOfRepayments);
+                             */
+                            cumulative = cumulative.plus(installmentChargePerClient);
                         } else {
                             BigDecimal loanChargeAmt = amount.multiply(loanCharge.getPercentage()).divide(BigDecimal.valueOf(100));
                             cumulative = cumulative.plus(loanChargeAmt);
@@ -122,13 +149,13 @@ public class LoanRepaymentScheduleProcessingWrapper {
             }
         }
         
-        if (numberOfRepayments != null && isLastRepaymentPeriod(numberOfRepayments, period.getInstallmentNumber())
+/*        if (numberOfRepayments != null && isLastRepaymentPeriod(numberOfRepayments, period.getInstallmentNumber())
                 && totalLoanCharges.compareTo(Money.zero(cumulative.getCurrency())) == 1) {
             Money totalGlimCharges = cumulative.multipliedBy(BigDecimal.valueOf(numberOfRepayments.doubleValue()));
             if (totalGlimCharges.compareTo(totalLoanCharges) != BigDecimal.ZERO.intValue()) {
                 cumulative = cumulative.minus((totalGlimCharges.minus(totalLoanCharges)));
             }
-        }
+        }*/
 
         return cumulative;
     }

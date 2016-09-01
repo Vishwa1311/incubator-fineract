@@ -60,21 +60,36 @@ public class GlimUtility {
 	public static Boolean isGreater(BigDecimal first, BigDecimal second) {
         return zeroIfNull(first).compareTo(zeroIfNull(second)) >= 0;
     }
-	
-	public static BigDecimal add(BigDecimal... first) {
-		BigDecimal sum = BigDecimal.ZERO;
+
+    public static BigDecimal add(BigDecimal... first) {
+        BigDecimal sum = BigDecimal.ZERO;
         for (BigDecimal bigDecimal : first) {
-        	sum = sum.add(zeroIfNull(bigDecimal));
-		}
+            sum = sum.add(zeroIfNull(bigDecimal));
+        }
         return sum;
     }
-	
-	public static BigDecimal subtract(BigDecimal value,BigDecimal... subtractValues) {		
+
+    public static BigDecimal subtract(BigDecimal value, BigDecimal... subtractValues) {
         return zeroIfNull(value).subtract(add(subtractValues));
     }
-	
-	public static BigDecimal getShare(BigDecimal givenValue, BigDecimal shareAmount, BigDecimal totalAmount, MonetaryCurrency currency) {
+
+    public static BigDecimal getShare(BigDecimal givenValue, BigDecimal shareAmount, BigDecimal totalAmount, MonetaryCurrency currency) {
         Money amount = Money.of(currency, BigDecimal.valueOf((givenValue.multiply(shareAmount).doubleValue() / totalAmount.doubleValue())));
         return amount.getAmount();
+    }
+
+    public static BigDecimal multiply(BigDecimal amount, int val) {
+        return amount.multiply(BigDecimal.valueOf(Double.valueOf(val)));
+    }
+
+    public static BigDecimal divide(BigDecimal amount, int val, MonetaryCurrency currency) {
+        return Money.of(currency, BigDecimal.valueOf(amount.doubleValue() / Double.valueOf(val))).getAmount();
+    }
+
+    public static BigDecimal getInstallmentAmount(BigDecimal amount, int numberOfRepayment, MonetaryCurrency currency,
+            int currentInstallment) {
+        BigDecimal deafultInstallmentAmount = divide(amount, numberOfRepayment, currency);
+        if (numberOfRepayment != currentInstallment) { return deafultInstallmentAmount; }
+        return amount.subtract(multiply(deafultInstallmentAmount, numberOfRepayment - 1));
     }
 }
