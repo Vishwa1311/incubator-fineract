@@ -480,7 +480,7 @@ public final class LoanApplicationCommandFromApiJsonHelper {
         if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }
     }
 
-    public void validateForModify(final String json, final LoanProduct loanProduct, final Loan existingLoanApplication) {
+    public void validateForModify(final String json, final LoanProduct loanProduct, final Loan existingLoanApplication, final Boolean isLoanProductChargesCompulsory) {
         if (StringUtils.isBlank(json)) { throw new InvalidJsonException(); }
 
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
@@ -491,6 +491,11 @@ public final class LoanApplicationCommandFromApiJsonHelper {
         final JsonElement element = this.fromApiJsonHelper.parse(json);
         boolean atLeastOneParameterPassedForUpdate = false;
 
+        if(isLoanProductChargesCompulsory){
+            final JsonArray charges = this.fromApiJsonHelper.extractJsonArrayNamed("charges", element);
+            baseDataValidator.reset().parameter("charges").value(charges).jsonArrayNotEmpty();
+        }
+        
         final String clientIdParameterName = "clientId";
         if (this.fromApiJsonHelper.parameterExists(clientIdParameterName, element)) {
             atLeastOneParameterPassedForUpdate = true;

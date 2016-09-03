@@ -18,12 +18,23 @@
  */
 package org.apache.fineract.portfolio.loanproduct.service;
 
+import java.util.List;
+import java.util.Map;
+
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+
+import com.google.gson.JsonElement;
 
 public interface LoanProductWritePlatformService {
 
     CommandProcessingResult createLoanProduct(JsonCommand command);
 
     CommandProcessingResult updateLoanProduct(Long loanProductId, JsonCommand command);
+    
+    List<Map<String, Object>> getLoanProductCompulsoryCharges(final Long productId);
+
+    void validateLoanProductChargeCompulsoryOrNot(final List<Map<String, Object>> chargeIdList, final Long chargeId);
+
+    void validateLoanProductCompulsoryCharges(final List<Map<String, Object>> chargeIdList, final JsonElement parsedJson);
 }

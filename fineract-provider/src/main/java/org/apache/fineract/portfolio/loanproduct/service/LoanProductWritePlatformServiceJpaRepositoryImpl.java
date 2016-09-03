@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.loanproduct.service;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +27,10 @@ import org.apache.fineract.accounting.producttoaccountmapping.service.ProductToG
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityAccessType;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityType;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
@@ -40,6 +44,7 @@ import org.apache.fineract.portfolio.fund.domain.FundRepository;
 import org.apache.fineract.portfolio.fund.exception.FundNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionProcessingStrategyRepository;
+import org.apache.fineract.portfolio.loanaccount.exception.LoanApplicationDateException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionProcessingStrategyNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.AprCalculator;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
@@ -56,10 +61,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 @Service
@@ -77,6 +84,8 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
     private final FineractEntityAccessUtil fineractEntityAccessUtil;
     private final FloatingRateRepositoryWrapper floatingRateRepository;
     private final LoanRepository loanRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final FromJsonHelper fromJsonHelper;
 
     @Autowired
     public LoanProductWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
@@ -87,7 +96,8 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
             final ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService,
             final FineractEntityAccessUtil fineractEntityAccessUtil,
             final FloatingRateRepositoryWrapper floatingRateRepository,
-            final LoanRepository loanRepository) {
+            final LoanRepository loanRepository,final RoutingDataSource dataSource,
+            final FromJsonHelper fromJsonHelper) {
         this.context = context;
         this.fromApiJsonDeserializer = fromApiJsonDeserializer;
         this.loanProductRepository = loanProductRepository;
@@ -99,6 +109,8 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
         this.fineractEntityAccessUtil = fineractEntityAccessUtil;
         this.floatingRateRepository = floatingRateRepository;
         this.loanRepository = loanRepository;
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.fromJsonHelper = fromJsonHelper;
     }
 
     @Transactional
@@ -328,5 +340,49 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
 
     private void logAsErrorUnexpectedDataIntegrityException(final DataIntegrityViolationException dve) {
         logger.error(dve.getMessage(), dve);
+    }
+
+    @Override
+    public List<Map<String, Object>> getLoanProductCompulsoryCharges(final Long productId) {
+        final List<Map<String, Object>> chargeIdList = new LinkedList<>();
+        final String sql = "SELECT plc.charge_id FROM m_product_loan_charge plc JOIN m_charge mc ON mc.id = plc.charge_id WHERE plc.product_loan_id = '"
+                + productId + "' AND plc.is_mandatory = '1'";
+        chargeIdList.addAll(this.jdbcTemplate.queryForList(sql));
+        return chargeIdList;
+    }
+
+    @Override
+    public void validateLoanProductChargeCompulsoryOrNot(final List<Map<String, Object>> chargeIdList, final Long chargeId) {
+        for (final Map<String, Object> map : chargeIdList) {
+            if (map.get("charge_id").toString().equalsIgnoreCase(chargeId.toString())) {
+                final String defaultUserMessage = "Charge is mandatory for selected loan product.";
+                throw new GeneralPlatformDomainRuleException("error.msg.loan.charge.is.mandatory.for.selected.loan.product",
+                        defaultUserMessage, chargeId.toString(), chargeId.toString());
+            }
+        }
+    }
+
+    @Override
+    public void validateLoanProductCompulsoryCharges(final List<Map<String, Object>> chargeIdList, final JsonElement element) {
+        if (chargeIdList != null && chargeIdList.size() > 0) {
+            final JsonArray chargesArray = this.fromJsonHelper.extractJsonArrayNamed("charges", element);
+            if (chargesArray != null && chargesArray.size() > 0) {
+                for (int i = 0; i < chargesArray.size(); i++) {
+                    final JsonObject obj = chargesArray.get(i).getAsJsonObject();
+                    final String chargeId = this.fromJsonHelper.extractStringNamed("chargeId", obj);
+                    for (Map<String, Object> map : chargeIdList) {
+                        if (map.get("charge_id").toString().equalsIgnoreCase(chargeId)) {
+                            chargeIdList.remove(map);
+                            break;
+                        }
+                    }
+                }
+            }
+            if (chargeIdList.size() > 0) {
+                final String defaultUserMessage = "Please add all the loan product mandatory charges.";
+                throw new LoanApplicationDateException("add.all.loan.product.mandatory.charges", defaultUserMessage,
+                        chargeIdList.toString(), chargeIdList.toString());
+            }
+        }
     }
 }
