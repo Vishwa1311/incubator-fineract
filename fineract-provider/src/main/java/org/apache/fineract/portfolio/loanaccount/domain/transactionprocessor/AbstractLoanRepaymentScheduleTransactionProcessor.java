@@ -433,6 +433,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
             }
             if (unpaidCharge == null) break; // All are trache charges
             final Money amountPaidTowardsCharge = unpaidCharge.updatePaidAmountBy(amountRemaining, installmentNumber, feeAmount);
+            
             if (!amountPaidTowardsCharge.isZero()) {
                 Set<LoanChargePaidBy> chargesPaidBies = loanTransaction.getLoanChargesPaid();
                 if (loanTransaction.isChargePayment()) {

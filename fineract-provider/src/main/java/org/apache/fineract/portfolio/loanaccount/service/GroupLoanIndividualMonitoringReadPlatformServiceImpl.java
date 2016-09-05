@@ -27,6 +27,7 @@ import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.service.RoutingDataSource;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.apache.fineract.portfolio.loanaccount.data.GroupLoanIndividualMonitoringData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -245,7 +246,10 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
 		
 		GLIMWaiveChargeMapper rm = new GLIMWaiveChargeMapper();
 
-        String sql = "select " + rm.schema() + " where glim.loan_id = ? and glim.is_client_selected = 1";
+        String sql = "select " + rm.schema() +
+        " where glim.loan_id = ? and glim.is_client_selected = 1 "+
+        " and (glim.waived_charge_amount = 0 or glim.waived_charge_amount is NULL)"+
+        " and  (glim.fee_charges_writtenoff_amount = 0 or glim.fee_charges_writtenoff_amount is NULL )  and glim.is_active = 1 ";
 
         return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
 	}
@@ -265,7 +269,8 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
         
         GroupLoanIndividualMonitoringWaiveInterestMapper rm = new GroupLoanIndividualMonitoringWaiveInterestMapper();
         
-        String sql = "select " + rm.schema() + " where glim.loan_id = ?";
+        String sql = "select " + rm.schema() + " where glim.loan_id = ? AND glim.is_active = 1 AND glim.is_client_selected = 1"+
+        " and (glim.waived_interest_amount is NULL OR glim.waived_interest_amount = 0 )";        
        
         return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
     }
@@ -311,15 +316,23 @@ public class GroupLoanIndividualMonitoringReadPlatformServiceImpl implements Gro
             final BigDecimal chargeWrittenoffAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "chargeWrittenoffAmount");
             final BigDecimal writeOffAmount = principalWrittenoffAmount.add(interestWrittenoffAmount).add(chargeWrittenoffAmount);
             // calculate unpaid interest
-            BigDecimal remainingTransactionAmount = BigDecimal.ZERO;
-            BigDecimal transactionAmount = BigDecimal.ZERO;
-            if(!((writeOffAmount.compareTo(BigDecimal.ZERO)>0) || waivedInterestAmount.compareTo(BigDecimal.ZERO)>0)){
-            	remainingTransactionAmount = interestAmount.subtract(paidInterestAmount);
-                transactionAmount = remainingTransactionAmount;
-            }           
-
+            BigDecimal remainingTransactionAmount = GlimUtility.subtract(interestAmount, paidInterestAmount);
+            BigDecimal transactionAmount = remainingTransactionAmount;
+            
             return GroupLoanIndividualMonitoringData.waiveInterestDetails(id, clientId, clientName, paidInterestAmount, interestAmount,
                     remainingTransactionAmount, transactionAmount, isClientSelected);
         }
     }
+
+	@Override
+	public Collection<GroupLoanIndividualMonitoringData> retrieveAllActiveGlimByLoanId(
+			Long loanId) {
+		
+		GroupLoanIndividualMonitoringMapper rm = new GroupLoanIndividualMonitoringMapper();
+
+        String sql = "select " + rm.schema() + " where glim.loan_id = ? "+
+        		" AND glim.is_active = 1 AND glim.is_client_selected = 1 ";
+
+        return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
+	}
 }

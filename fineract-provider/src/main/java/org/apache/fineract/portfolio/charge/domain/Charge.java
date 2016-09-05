@@ -119,6 +119,9 @@ public class Charge extends AbstractPersistable<Long> {
     
     @Column(name = "is_glim_charge", nullable = false)
     private boolean isGlimCharge = false;
+    
+    @Column(name = "glim_charge_calculation_enum")
+    private Integer glimChargeCalculation;
 
     public static Charge fromJson(final JsonCommand command, final GLAccount account, final TaxGroup taxGroup) {
 
@@ -143,9 +146,14 @@ public class Charge extends AbstractPersistable<Long> {
         final Integer feeFrequency = command.integerValueOfParameterNamed("feeFrequency");
         final Boolean emiRoundingGoalSeek = command.booleanPrimitiveValueOfParameterNamed("emiRoundingGoalSeek");
         final Boolean isGlimCharge = command.booleanPrimitiveValueOfParameterNamed("isGlimCharge");
+        GlimChargeCalculationType glimChargeCalculation = GlimChargeCalculationType.INVALID;
+        if(command.hasParameter(ChargesApiConstants.glimChargeCalculation)){
+        	glimChargeCalculation = GlimChargeCalculationType.fromInt(command.integerValueOfParameterNamed("glimChargeCalculationType"));
+        }
+        
 
         return new Charge(name, amount, currencyCode, chargeAppliesTo, chargeTimeType, chargeCalculationType, penalty, active, paymentMode,
-                feeOnMonthDay, feeInterval, minCap, maxCap, feeFrequency, account, taxGroup, emiRoundingGoalSeek, isGlimCharge);
+                feeOnMonthDay, feeInterval, minCap, maxCap, feeFrequency, account, taxGroup, emiRoundingGoalSeek, isGlimCharge, glimChargeCalculation);
     }
 
     protected Charge() {
@@ -156,7 +164,7 @@ public class Charge extends AbstractPersistable<Long> {
             final ChargeTimeType chargeTime, final ChargeCalculationType chargeCalculationType, final boolean penalty,
             final boolean active, final ChargePaymentMode paymentMode, final MonthDay feeOnMonthDay, final Integer feeInterval,
             final BigDecimal minCap, final BigDecimal maxCap, final Integer feeFrequency, final GLAccount account, final TaxGroup taxGroup, 
-            final boolean emiRoundingGoalSeek, final boolean isGlimCharge) {
+            final boolean emiRoundingGoalSeek, final boolean isGlimCharge, final GlimChargeCalculationType glimChargeCalculation) {
         this.name = name;
         this.amount = amount;
         this.currencyCode = currencyCode;
@@ -170,6 +178,7 @@ public class Charge extends AbstractPersistable<Long> {
         this.chargePaymentMode = paymentMode == null ? null : paymentMode.getValue();
         this.emiRoundingGoalSeek = emiRoundingGoalSeek;
         this.isGlimCharge = isGlimCharge;
+        this.glimChargeCalculation = glimChargeCalculation.getValue();
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("charges");
@@ -509,6 +518,13 @@ public class Charge extends AbstractPersistable<Long> {
             actualChanges.put(emiRoundingGoalSeekParamName, newValue);
             this.emiRoundingGoalSeek = newValue;
         }
+        
+        if (command.isChangeInIntegerParameterNamed(ChargesApiConstants.glimChargeCalculation, this.glimChargeCalculation)) {
+            final Integer newValue = command.integerValueOfParameterNamed(ChargesApiConstants.glimChargeCalculation);
+            actualChanges.put(ChargesApiConstants.glimChargeCalculation, newValue);
+            this.glimChargeCalculation = newValue;
+        }
+        
         // allow min and max cap to be only added to PERCENT_OF_AMOUNT for now
         if (isPercentageOfApprovedAmount() || isPercentageOfDisbursementAmount()) {
             final String minCapParamName = "minCap";
@@ -578,9 +594,10 @@ public class Charge extends AbstractPersistable<Long> {
         }
 
         final CurrencyData currency = new CurrencyData(this.currencyCode, null, 0, 0, null, null);
+        final EnumOptionData glimChargeCalculation = ChargeEnumerations.glimChargeCalculationType(this.glimChargeCalculation);
         return ChargeData.instance(getId(), this.name, this.amount, currency, chargeTimeType, chargeAppliesTo, chargeCalculationType,
                 chargePaymentmode, getFeeOnMonthDay(), this.feeInterval, this.penalty, this.active, this.minCap, this.maxCap,
-                feeFrequencyType, accountData, taxGroupData, this.emiRoundingGoalSeek, this.isGlimCharge);
+                feeFrequencyType, accountData, taxGroupData, this.emiRoundingGoalSeek, this.isGlimCharge, glimChargeCalculation);
     }
 
     public Integer getChargePaymentMode() {
@@ -667,5 +684,13 @@ public class Charge extends AbstractPersistable<Long> {
     public boolean isGlimCharge() {
         return this.isGlimCharge;
     }
+
+	public Integer getGlimChargeCalculation() {
+		return this.glimChargeCalculation;
+	}
+
+	public void setGlimChargeCalculation(Integer glimChargeCalculation) {
+		this.glimChargeCalculation = glimChargeCalculation;
+	}    
     
 }

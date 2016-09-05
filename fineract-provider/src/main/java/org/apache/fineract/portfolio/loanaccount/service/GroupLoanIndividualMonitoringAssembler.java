@@ -37,6 +37,7 @@ import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.charge.domain.GlimChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
@@ -170,6 +171,14 @@ public class GroupLoanIndividualMonitoringAssembler {
 
     public void recalculateTotalFeeCharges(Loan loan, HashMap<Long, BigDecimal> chargesMap, BigDecimal amount,
             Set<GroupLoanIndividualMonitoringCharge> glimCharges) {
+    	Integer gimChargeCalculation = 0;
+    	for (GroupLoanIndividualMonitoringCharge glimCharge : glimCharges) {
+    		if(glimCharge.getCharge().isEmiRoundingGoalSeek()){
+    			gimChargeCalculation = glimCharge.getCharge().getGlimChargeCalculation();
+            	break;
+            }
+        }
+    	
         for (GroupLoanIndividualMonitoringCharge glimCharge : glimCharges) {
             BigDecimal feeCharge = percentageOf(amount, glimCharge.getCharge().getAmount());
             BigDecimal totalChargeAmount = feeCharge;
@@ -177,7 +186,7 @@ public class GroupLoanIndividualMonitoringAssembler {
             final BigDecimal maxCap = applyTaxComponentsOnCapping(glimCharge.getCharge().getMaxCap(), glimCharge.getCharge());
             totalChargeAmount = applyTaxComponentsOnCharges(glimCharge.getCharge(), feeCharge, totalChargeAmount);
             if(!glimCharge.getCharge().isEmiRoundingGoalSeek()){
-            	totalChargeAmount = checkForMaxFee(totalChargeAmount,maxCap);
+            	totalChargeAmount = checkForMaxFee(totalChargeAmount,maxCap, gimChargeCalculation);
             }
             totalChargeAmount = minimumAndMaximumCap(totalChargeAmount, minCap, maxCap, loan);
             glimCharge.setFeeAmount(totalChargeAmount);
@@ -291,7 +300,8 @@ public class GroupLoanIndividualMonitoringAssembler {
         
     }
 
-    public BigDecimal createGlimAndGlimCharges(Loan newLoanApplication, final JsonElement element, BigDecimal interestRate,
+    @SuppressWarnings("unused")
+	public BigDecimal createGlimAndGlimCharges(Loan newLoanApplication, final JsonElement element, BigDecimal interestRate,
             Integer numberOfRepayment, List<GroupLoanIndividualMonitoring> glimList, BigDecimal proposedAmount, JsonArray clientMembers) {
         for (JsonElement clientMember : clientMembers) {
             JsonObject member = clientMember.getAsJsonObject();
@@ -346,6 +356,16 @@ public class GroupLoanIndividualMonitoringAssembler {
             Set<GroupLoanIndividualMonitoringCharge> clientCharges) {
         if (this.fromApiJsonHelper.parameterExists("charges", element)) {
             JsonArray charges = this.fromApiJsonHelper.extractJsonArrayNamed("charges", element);
+            Integer gimChargeCalculation = 0;
+            for (JsonElement jsonElement : charges) {
+            	final JsonObject jsonCharge = jsonElement.getAsJsonObject();
+                final Long chargeId = jsonCharge.get("chargeId").getAsLong();
+                Charge charge = this.chargeRepository.findOneWithNotFoundDetection(chargeId);
+                if (charge.isEmiRoundingGoalSeek()) {
+                	gimChargeCalculation = charge.getGlimChargeCalculation();
+                	break;
+                }
+            }
             for (JsonElement jsonElement : charges) {
                 final JsonObject jsonCharge = jsonElement.getAsJsonObject();
                 final Long chargeId = jsonCharge.get("chargeId").getAsLong();
@@ -357,7 +377,7 @@ public class GroupLoanIndividualMonitoringAssembler {
                 final BigDecimal maxCap = applyTaxComponentsOnCapping(charge.getMaxCap(), charge);
                 totalChargeAmount = applyTaxComponentsOnCharges(charge, feeCharge, totalChargeAmount);
                 if (!charge.isEmiRoundingGoalSeek()) {
-                    totalChargeAmount = checkForMaxFee(totalChargeAmount, maxCap);
+                    totalChargeAmount = checkForMaxFee(totalChargeAmount, maxCap, gimChargeCalculation);
                 }
                 totalChargeAmount = minimumAndMaximumCap(totalChargeAmount, minCap, maxCap, newLoanApplication);
                 GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = null;
@@ -370,16 +390,23 @@ public class GroupLoanIndividualMonitoringAssembler {
         }
     }
     
-    public BigDecimal checkForMaxFee(BigDecimal amount, BigDecimal maxCapIncludingVat) {
-
+    public BigDecimal checkForMaxFee(BigDecimal amount, BigDecimal maxCapIncludingVat, Integer glimChargeCalculation) {
+    	
+    	BigDecimal roundVal = BigDecimal.valueOf(Math.round(amount.doubleValue()));
         BigDecimal totalCharge = BigDecimal.ZERO;
-        if (maxCapIncludingVat != null) {
-            BigDecimal maxFee = BigDecimal.valueOf(Math.floor(getMin(amount, maxCapIncludingVat).doubleValue()));
-            BigDecimal roundVal = BigDecimal.valueOf(Math.round(amount.doubleValue()));
-            BigDecimal minVal = getMin(roundVal, maxCapIncludingVat);
-            totalCharge = getMin(minVal, maxFee);
-        } else {
-            totalCharge = amount;
+        if(maxCapIncludingVat != null){
+        	if(glimChargeCalculation == GlimChargeCalculationType.ROUND.getValue()){
+            	totalCharge = roundVal;
+            }else if(glimChargeCalculation == GlimChargeCalculationType.ROUND_WITHOUT_MAX_CHARGE.getValue()){
+            	BigDecimal minVal = getMin(roundVal, BigDecimal.valueOf(Math.round(maxCapIncludingVat.doubleValue())));
+                totalCharge = getMin(minVal, roundVal);
+            }else{            	
+                BigDecimal maxFee = BigDecimal.valueOf(Math.floor(getMin(amount, maxCapIncludingVat).doubleValue()));
+                BigDecimal minVal = getMin(roundVal, BigDecimal.valueOf(Math.round(maxCapIncludingVat.doubleValue())));
+                totalCharge = getMin(minVal, maxFee);
+            }
+        }else{
+        	totalCharge = roundVal;
         }
         return totalCharge;
     }

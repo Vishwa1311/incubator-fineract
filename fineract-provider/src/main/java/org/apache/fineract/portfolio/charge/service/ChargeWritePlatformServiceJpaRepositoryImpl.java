@@ -187,6 +187,12 @@ public class ChargeWritePlatformServiceJpaRepositoryImpl implements ChargeWriteP
 						.booleanPrimitiveValueOfParameterNamed(ChargesApiConstants.emiRoundingGoalSeekParamName);
 				chargeForUpdate.setEmiRoundingGoalSeek(emiRoundingGoalSeek);
 			}
+			
+			if (changes
+					.containsKey(ChargesApiConstants.glimChargeCalculation)) {
+				Integer glimChargeCalculation = command.integerValueOfParameterNamed(ChargesApiConstants.glimChargeCalculation);
+				chargeForUpdate.setGlimChargeCalculation(glimChargeCalculation);;
+			}
 
             if (!changes.isEmpty()) {
                 this.chargeRepository.save(chargeForUpdate);

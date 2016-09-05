@@ -94,7 +94,7 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
         if (is(commandParam, "repayment")) {
             loanTransactionData = this.loanReadPlatformService.retrieveLoanTransactionTemplate(loanId);
             groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
-                    .retrieveAllByLoanId(loanId);
+                    .retrieveAllActiveGlimByLoanId(loanId);
             Loan loan = this.loanRepositoryWrapper.findOneWithNotFoundDetection(loanId);
             loan.updateDefautGlimMembers(this.glimRepository.findByLoanIdAndIsClientSelected(loanId, true));
             groupLoanIndividualMonitoringData = this.glimTransactionAssembler.handleGLIMRepaymentTemplate(
@@ -109,50 +109,24 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
         } else if (is(commandParam, "waivecharge")) {
             groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
                     .retrieveWaiveChargeDetails(loanId);
-            BigDecimal unpaidCharge = BigDecimal.ZERO;
-            for (GroupLoanIndividualMonitoringData glimDetail : groupLoanIndividualMonitoringData) {            	
-                if (glimDetail.getWaivedChargeAmount() == null || glimDetail.getWaivedChargeAmount().compareTo(BigDecimal.ZERO)==0) {                    
-                    BigDecimal writeOfAmount = zeroIfNull(glimDetail.getPrincipalWrittenOffAmount()).add(zeroIfNull(glimDetail.getInterestWrittenOffAmount())).add(zeroIfNull(glimDetail.getChargeWrittenOffAmount()));
-                        BigDecimal unpaidCurrentChargeAmount = (writeOfAmount.compareTo(BigDecimal.ZERO)>0)?BigDecimal.ZERO:glimDetail.getChargeAmount().subtract(
-                            zeroIfNull(glimDetail.getPaidChargeAmount()));
-                    glimDetail.setRemainingTransactionAmount(unpaidCurrentChargeAmount);
-                    glimDetail.setTransactionAmount(unpaidCurrentChargeAmount);
-                    unpaidCharge = unpaidCharge.add(unpaidCurrentChargeAmount);
-                    glimDetail.setIsClientSelected(true);
-                } else {
-                    glimDetail.setIsClientSelected(false);
-                }
-            }
-            transactionAmount = unpaidCharge;
-        } else if (is(commandParam, "writeoff")) {
-            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
-                    .retrieveAllByLoanId(loanId);
             for (GroupLoanIndividualMonitoringData glimDetail : groupLoanIndividualMonitoringData) {
-                BigDecimal totalAmountWrittenOff = zeroIfNull(glimDetail.getPrincipalWrittenOffAmount()).add(
-                        zeroIfNull(glimDetail.getInterestWrittenOffAmount())).add(zeroIfNull(glimDetail.getChargeWrittenOffAmount()));
-                BigDecimal glimTransactionAmount = totalAmountWrittenOff.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ZERO : glimDetail
-                        .getTotalPaybleAmount().subtract(zeroIfNull(glimDetail.getPaidAmount()))
-                        .subtract(zeroIfNull(glimDetail.getWaivedChargeAmount()))
-                        .subtract(zeroIfNull(glimDetail.getWaivedInterestAmount())).subtract(totalAmountWrittenOff);
+            	BigDecimal chargeAmount = GlimUtility.subtract(glimDetail.getChargeAmount(), glimDetail.getPaidChargeAmount());
+            	glimDetail.setRemainingTransactionAmount(chargeAmount);
+                glimDetail.setTransactionAmount(chargeAmount);
+                transactionAmount = GlimUtility.add(transactionAmount,chargeAmount);
+                glimDetail.setIsClientSelected(true);
+            }
+        } else if (is(commandParam, "writeoff") || is(commandParam, "prepay")) {
+            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
+                    .retrieveAllActiveGlimByLoanId(loanId);
+            for (GroupLoanIndividualMonitoringData glimDetail : groupLoanIndividualMonitoringData) {
+                BigDecimal glimTransactionAmount = GlimUtility.subtract(glimDetail.getTotalPaybleAmount(), GlimUtility.add(glimDetail.getPaidAmount(),
+                		glimDetail.getWaivedChargeAmount(), glimDetail.getWaivedInterestAmount()));
                 glimDetail.setRemainingTransactionAmount(glimTransactionAmount);
                 glimDetail.setTransactionAmount(glimTransactionAmount);
                 transactionAmount = transactionAmount.add(glimTransactionAmount);
             }
-        } else if (is(commandParam, "prepay")) {
-            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
-                    .retrieveAllByLoanId(loanId);
-            for (GroupLoanIndividualMonitoringData glimDetail : groupLoanIndividualMonitoringData) {
-                BigDecimal totalAmountWrittenOff = zeroIfNull(glimDetail.getPrincipalWrittenOffAmount()).add(
-                        zeroIfNull(glimDetail.getInterestWrittenOffAmount())).add(zeroIfNull(glimDetail.getChargeWrittenOffAmount()));
-                BigDecimal glimTransactionAmount = totalAmountWrittenOff.compareTo(BigDecimal.ZERO) > 0 ? BigDecimal.ZERO : glimDetail
-                        .getTotalPaybleAmount().subtract(zeroIfNull(glimDetail.getPaidAmount()))
-                        .subtract(zeroIfNull(glimDetail.getWaivedChargeAmount()))
-                        .subtract(zeroIfNull(glimDetail.getWaivedInterestAmount()));
-                glimDetail.setRemainingTransactionAmount(glimTransactionAmount);
-                glimDetail.setTransactionAmount(glimTransactionAmount);
-                transactionAmount = transactionAmount.add(glimTransactionAmount);
-            }
-        } else {
+        }else {
             throw new UnrecognizedQueryParamException("command", commandParam);
         }
         final GroupLoanIndividualMonitoringTransactionData groupLoanIndividualMonitoringTransactionData = new GroupLoanIndividualMonitoringTransactionData(

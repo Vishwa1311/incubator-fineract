@@ -405,6 +405,8 @@ public class GroupLoanIndividualMonitoring extends AbstractPersistable<Long> {
         this.principalWrittenOffAmount = BigDecimal.ZERO;
         this.interestWrittenOffAmount = BigDecimal.ZERO;
         this.chargeWrittenOffAmount = BigDecimal.ZERO;
+        this.isActive = true;
+        this.disbursedAmount = this.approvedAmount;
 
     }
     

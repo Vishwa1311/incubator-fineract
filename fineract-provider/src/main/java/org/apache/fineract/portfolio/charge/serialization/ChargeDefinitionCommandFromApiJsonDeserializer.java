@@ -40,6 +40,7 @@ import org.apache.fineract.portfolio.charge.domain.ChargeAppliesTo;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargePaymentMode;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.charge.domain.GlimChargeCalculationType;
 import org.joda.time.MonthDay;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -57,7 +58,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             "currencyOptions", "chargeAppliesTo", "chargeTimeType", "chargeCalculationType", "chargeCalculationTypeOptions", "penalty",
             "active", "chargePaymentMode", "feeOnMonthDay", "feeInterval", "monthDayFormat", "minCap", "maxCap", "feeFrequency",
             ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName, ChargesApiConstants.emiRoundingGoalSeekParamName,
-            ChargesApiConstants.isGlimChargeParamName));
+            ChargesApiConstants.isGlimChargeParamName, ChargesApiConstants.glimChargeCalculation));
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -139,6 +140,12 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
 
             if (chargeTimeType != null && chargeCalculationType != null) {
                 performChargeTimeNCalculationTypeValidation(baseDataValidator, chargeTimeType, chargeCalculationType, isGlimCharge);
+            }
+            
+            if (this.fromApiJsonHelper.parameterExists(ChargesApiConstants.glimChargeCalculation, element)) {
+                final Integer glimChargeCalculation = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ChargesApiConstants.glimChargeCalculation, element);
+                baseDataValidator.reset().parameter(ChargesApiConstants.glimChargeCalculation).value(glimChargeCalculation).notNull()
+                        .isOneOfTheseValues(GlimChargeCalculationType.validValues());
             }
             
         } else if (appliesTo.isSavingsCharge()) {
@@ -375,6 +382,12 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.parameterExists(ChargesApiConstants.taxGroupIdParamName, element)) {
             final Long taxGroupId = this.fromApiJsonHelper.extractLongNamed(ChargesApiConstants.taxGroupIdParamName, element);
             baseDataValidator.reset().parameter(ChargesApiConstants.taxGroupIdParamName).value(taxGroupId).notNull().longGreaterThanZero();
+        }
+        
+        if (this.fromApiJsonHelper.parameterExists(ChargesApiConstants.glimChargeCalculation, element)) {
+            final Integer glimChargeCalculation = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ChargesApiConstants.glimChargeCalculation, element);
+            baseDataValidator.reset().parameter(ChargesApiConstants.glimChargeCalculation).value(glimChargeCalculation).notNull()
+                    .isOneOfTheseValues(GlimChargeCalculationType.validValues());
         }
 
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
