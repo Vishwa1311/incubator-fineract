@@ -455,7 +455,7 @@ public class LoanCharge extends AbstractPersistable<Long> {
         }
     }
     
-    private BigDecimal getTotalChargeForGlimLoan(BigDecimal chargeAmount, HashMap<Long, BigDecimal> clientMembers,
+    /*private BigDecimal getTotalChargeForGlimLoan(BigDecimal chargeAmount, HashMap<Long, BigDecimal> clientMembers,
             List<GroupLoanIndividualMonitoringCharge> glimCharges) {
         Set<Long> entrySet = clientMembers.keySet();
         BigDecimal totalCharge = BigDecimal.ZERO;
@@ -474,7 +474,7 @@ public class LoanCharge extends AbstractPersistable<Long> {
             maps.put(clientId, chargeWithVat);
         }
         return totalCharge;
-    }
+    }*/
 
 
     public void markAsFullyPaid() {
@@ -536,7 +536,7 @@ public class LoanCharge extends AbstractPersistable<Long> {
     }
 
     private BigDecimal calculateAmountOutstanding(final MonetaryCurrency currency) {
-        return getAmount(currency).minus(getAmountWaived(currency)).minus(getAmountPaid(currency)).getAmount();
+        return getAmount(currency).minus(getAmountWaived(currency)).minus(getAmountPaid(currency)).minus(getAmountWrittenOff(currency)).getAmount();
     }
 
     public void update(final Loan loan) {

@@ -79,7 +79,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
     private final LoanEventApiJsonValidator loanEventApiJsonValidator;
     private final LoanAssembler loanAssembler;
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
-    private final GroupLoanIndividualMonitoringTransactionAssembler groupLoanIndividualMonitoringTransactionAssembler;
+    private final GroupLoanIndividualMonitoringTransactionAssembler glimTransactionAssembler;
     private final GroupLoanIndividualMonitoringAssembler glimAssembler;
     private final GroupLoanIndividualMonitoringRepository glimRepository;
     private final BusinessEventNotifierService businessEventNotifierService;
@@ -102,7 +102,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
             groupLoanIndividualMonitoringTransactionRepositoryWrapper, final LoanAccountDomainService loanAccountDomainService, 
             final LoanRepositoryWrapper loanRepositoryWrapper,final LoanEventApiJsonValidator loanEventApiJsonValidator, final LoanAssembler loanAssembler,
             final PaymentDetailWritePlatformService paymentDetailWritePlatformService,
-            final GroupLoanIndividualMonitoringTransactionAssembler groupLoanIndividualMonitoringTransactionAssembler,
+            final GroupLoanIndividualMonitoringTransactionAssembler glimTransactionAssembler,
             final GroupLoanIndividualMonitoringAssembler glimAssembler, final GroupLoanIndividualMonitoringRepository glimRepository,
             final BusinessEventNotifierService businessEventNotifierService, final LoanUtilService loanUtilService,
             final LoanChargeReadPlatformService loanChargeReadPlatformService, final LoanTransactionRepository loanTransactionRepository,
@@ -119,7 +119,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         this.loanEventApiJsonValidator = loanEventApiJsonValidator;
         this.loanAssembler = loanAssembler;
         this.paymentDetailWritePlatformService = paymentDetailWritePlatformService;
-        this.groupLoanIndividualMonitoringTransactionAssembler = groupLoanIndividualMonitoringTransactionAssembler;
+        this.glimTransactionAssembler = glimTransactionAssembler;
         this.glimAssembler = glimAssembler;
         this.glimRepository = glimRepository;
         this.businessEventNotifierService = businessEventNotifierService;
@@ -144,6 +144,8 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         // this.loanWritePlatformService.makeLoanRepayment(loanId, command,
         // false);
         this.loanEventApiJsonValidator.validateNewRepaymentTransaction(command.json());
+        
+        this.glimTransactionAssembler.validateGlimTransactionAmount(command);
 
         final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
         final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
@@ -175,11 +177,11 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
                 transactionDate, transactionAmount, paymentDetail, noteText, txnExternalId, isRecoveryRepayment, isAccountTransfer,
                 holidayDetailDto, isHolidayValidationDone);
         // FinanceLib.pmt(r, n, p, f, t);
-        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.groupLoanIndividualMonitoringTransactionAssembler
+        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.glimTransactionAssembler
                 .assembleGLIMTransactions(command, loanTransaction);      
         this.glimAssembler.updateGLIMAfterRepayment(glimTransactions);
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper.saveAsList(glimTransactions);
-        this.groupLoanIndividualMonitoringTransactionAssembler.updateLoanWriteOffStatusForGLIM(loan);
+        this.glimTransactionAssembler.updateLoanWriteOffStatusForGLIM(loan);
         
         return commandProcessingResultBuilder.withCommandId(command.commandId()) //
                 .withTransactionId(loanTransaction.getId().toString()) //
@@ -416,7 +418,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         final CommandProcessingResultBuilder builderResult = new CommandProcessingResultBuilder();
         LoanTransaction loanTransaction = this.loanAccountDomainService.waiveInterest(loan, builderResult, transactionDate,
                 transactionAmount, noteText, changes, existingTransactionIds, existingReversedTransactionIds);
-        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.groupLoanIndividualMonitoringTransactionAssembler.waiveInterestForClients(command, loanTransaction);
+        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.glimTransactionAssembler.waiveInterestForClients(command, loanTransaction);
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper.saveAsList(glimTransactions);
         
         return builderResult.withCommandId(command.commandId()) //
@@ -457,9 +459,9 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
         loan.updateGlim(glimMembers);
         LoanTransaction loanTransaction = this.loanAccountDomainService.writeOffForGlimLoan(command, loan, builderResult, noteText,
                 changes, existingTransactionIds, existingReversedTransactionIds);
-        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.groupLoanIndividualMonitoringTransactionAssembler.writeOffForClients(command, loanTransaction, glimMembers);
+        Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions = this.glimTransactionAssembler.writeOffForClients(command, loanTransaction, glimMembers);
         this.groupLoanIndividualMonitoringTransactionRepositoryWrapper.saveAsList(glimTransactions);
-        this.groupLoanIndividualMonitoringTransactionAssembler.updateLoanWriteOffStatusForGLIM(loan);
+        this.glimTransactionAssembler.updateLoanWriteOffStatusForGLIM(loan);
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
