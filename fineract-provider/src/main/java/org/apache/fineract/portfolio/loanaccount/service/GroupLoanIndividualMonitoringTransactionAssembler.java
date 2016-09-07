@@ -264,9 +264,9 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
             Integer installmentNumber, Map<String, BigDecimal> installmentPaidMap, LoanTransaction loanTransaction) {
 
         BigDecimal totalPaidAmount = GlimUtility.add(transactionAmount, installmentPaidMap.get("installmentTransactionAmount"));
-        if(loanTransaction.isInterestWaiver()){
+        if(loanTransaction != null && loanTransaction.isInterestWaiver()){
         	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getPaidInterestAmount());
-        }else if(loanTransaction.isChargesWaiver()){
+        }else if(loanTransaction != null && loanTransaction.isChargesWaiver()){
         	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getPaidChargeAmount());
         }else {
         	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getTotalPaidAmount());
@@ -344,7 +344,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 break;
             }
 
-            if (GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isChargesWaiver()) {
+            if (loanTransaction == null ||( GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isChargesWaiver())) {
                 if (GlimUtility.isGreater(totalPaidAmount, installmentInterest)) {
                     if (GlimUtility.isGreaterThanZero(glimPaidInterest)) {
                         if (GlimUtility.isGreater(glimPaidInterest, installmentInterest)) {
@@ -381,7 +381,9 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 break;
             }
 
-            if (GlimUtility.isGreaterThanZero(totalPaidAmount) && (loanTransaction.isRepayment() || loanTransaction.isWriteOff() || loanTransaction.isRecoveryRepayment())) {
+            if (loanTransaction == null
+                    || (GlimUtility.isGreaterThanZero(totalPaidAmount) && (loanTransaction.isRepayment() || loanTransaction.isWriteOff() || loanTransaction
+                            .isRecoveryRepayment()))) {
                 if (GlimUtility.isGreater(totalPaidAmount, installmentPrincipal)) {
                     if (GlimUtility.isGreaterThanZero(glimPaidPrincipal)) {
                         if (GlimUtility.isGreater(glimPaidPrincipal, installmentPrincipal)) {
@@ -503,9 +505,9 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 installmentInterest = glim.getInterestAmount().subtract(adjustedPaidInterest);
                 installmentCharge = glim.getChargeAmount().subtract(adjustedPaidCharge);                
             }
-            if(loanTransaction.isInterestWaiver()){
+            if(loanTransaction != null && loanTransaction.isInterestWaiver()){
             	installmentAmount = installmentInterest;
-            }else if(loanTransaction.isChargesWaiver()){
+            }else if(loanTransaction != null && loanTransaction.isChargesWaiver()){
             	installmentAmount = installmentCharge;
             }else {
             	installmentAmount = glim.getInstallmentAmount();
@@ -515,7 +517,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
             if (i + 1 == numberOfInstallments && installmentNumber == numberOfInstallments) {
             	installmentPrincipal = glim.getDisbursedAmount().subtract(adjustedPaidPrincipal);
             }
-            if (GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isInterestWaiver()) {
+            if (loanTransaction == null ||( GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isInterestWaiver())) {
                 if (GlimUtility.isGreater(totalPaidAmount, installmentCharge)) {
                     if (GlimUtility.isGreaterThanZero(glimPaidCharge)) {
                         if (GlimUtility.isGreater(glimPaidCharge, installmentCharge)) {
