@@ -85,4 +85,8 @@ public interface ConfigurationDomainService {
 
     int getAdjustedAmountRoundingMode();
     
+    boolean isDefaultCurrencyEnabled();
+    
+    String retreiveDefaultCurrency();
+    
 }
