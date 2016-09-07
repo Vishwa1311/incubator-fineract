@@ -397,7 +397,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             	List<GroupLoanIndividualMonitoring> glimList = this.glimAssembler.updateFromJson(command.parsedJson(), "disbursedAmount", 
                         loan, loan.fetchNumberOfInstallmensAfterExceptions(), loan.getLoanProductRelatedDetail().getAnnualNominalInterestRate());
                 loan.updateGlim(glimList);
-                this.glimAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(),  loan.fetchNumberOfInstallmensAfterExceptions(),
+                loan.updateDefautGlimMembers(glimList);
+                this.glimAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(), loan.fetchNumberOfInstallmensAfterExceptions(),
                         glimList);
             }
             

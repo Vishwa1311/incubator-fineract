@@ -1096,7 +1096,7 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
             List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringAssembler.updateFromJson(command.parsedJson(), "approvedAmount",
                     loan, loan.fetchNumberOfInstallmensAfterExceptions(), loan.getLoanProductRelatedDetail().getAnnualNominalInterestRate());
             loan.updateGlim(glimList);
-
+            loan.updateDefautGlimMembers(glimList);
             // If loan approved amount less than loan demanded amount, then need
             // to recompute the schedule
             if (changes.containsKey(LoanApiConstants.approvedLoanAmountParameterName) || changes.containsKey("recalculateLoanSchedule")
