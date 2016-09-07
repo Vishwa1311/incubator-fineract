@@ -31,7 +31,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanStatus;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.LoanRepaymentScheduleTransactionProcessor;
-import org.apache.fineract.portfolio.loanaccount.exception.ClientAlreadyWriteOffException;
+import org.apache.fineract.portfolio.loanaccount.exception.ClientCanNotExceedWriteOffAmount;
 import org.apache.fineract.portfolio.loanaccount.exception.ClientInstallmentNotEqualToTransactionAmountException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanStateTransitionException;
 import org.joda.time.LocalDate;
@@ -96,7 +96,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
         return glimTransactions;
     }
     
-    public void validateGlimTransactionAmount(JsonCommand command){
+    public void validateGlimTransactionAmount(JsonCommand command, boolean isRecoveryRepayment){
     	BigDecimal totalInstallmentAmount = BigDecimal.ZERO;
         BigDecimal transactionAmount =  command.bigDecimalValueOfParameterNamed(LoanApiConstants.transactionAmountParamName);
         if (command.hasParameter(LoanApiConstants.clientMembersParamName)) {            
@@ -106,6 +106,15 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 if (member.get(LoanApiConstants.isClientSelectedParamName).getAsBoolean()) {
                 	BigDecimal individualTransactionAmount = member.get(LoanApiConstants.transactionAmountParamName).getAsBigDecimal();
                 	totalInstallmentAmount = GlimUtility.add(totalInstallmentAmount, individualTransactionAmount);
+                	if(isRecoveryRepayment){
+                		Long glimId = member.get(LoanApiConstants.idParameterName).getAsLong();
+                		GroupLoanIndividualMonitoring glim =  this.glimRepository.findOne(glimId);
+                		BigDecimal writeOffAmount = GlimUtility.add(glim.getPrincipalWrittenOffAmount(), glim.getInterestWrittenOffAmount(), 
+                				glim.getChargeWrittenOffAmount());
+                		if(GlimUtility.isGreaterThanZero(individualTransactionAmount.subtract(writeOffAmount))){
+                			throw new ClientCanNotExceedWriteOffAmount();
+                		}
+                	}
                 }
                 
             }
@@ -114,6 +123,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
             }
         }
     }
+    
     public Collection<GroupLoanIndividualMonitoringTransaction> waiveInterestForClients(final JsonCommand command,
             final LoanTransaction loanTransaction) {
         JsonArray clients = command.arrayOfParameterNamed(LoanApiConstants.clientMembersParamName);
@@ -125,12 +135,6 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 final Long glimId = this.fromApiJsonHelper.extractLongNamed(LoanApiConstants.idParameterName, element);
                 GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = this.groupLoanIndividualMonitoringRepositoryWrapper
                         .findOneWithNotFoundDetection(glimId);
-                
-                BigDecimal writeOfAmount = GlimUtility.add(groupLoanIndividualMonitoring.getPrincipalWrittenOffAmount(),groupLoanIndividualMonitoring.getInterestWrittenOffAmount(),
-                		groupLoanIndividualMonitoring.getChargeWrittenOffAmount());
-        		if(GlimUtility.isGreaterThanZero(writeOfAmount) && GlimUtility.isGreaterThanZero(groupLoanIndividualMonitoring.getTransactionAmount())){
-        			throw new ClientAlreadyWriteOffException();
-        		}
                 
                 final BigDecimal transactionAmount = this.fromApiJsonHelper.extractBigDecimalNamed(LoanApiConstants.transactionAmountParamName, element, locale);
                 BigDecimal totalInterestOutstandingOnLoan = BigDecimal.ZERO;
@@ -377,7 +381,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 break;
             }
 
-            if (GlimUtility.isGreaterThanZero(totalPaidAmount) && (loanTransaction.isRepayment() || loanTransaction.isWriteOff())) {
+            if (GlimUtility.isGreaterThanZero(totalPaidAmount) && (loanTransaction.isRepayment() || loanTransaction.isWriteOff() || loanTransaction.isRecoveryRepayment())) {
                 if (GlimUtility.isGreater(totalPaidAmount, installmentPrincipal)) {
                     if (GlimUtility.isGreaterThanZero(glimPaidPrincipal)) {
                         if (GlimUtility.isGreater(glimPaidPrincipal, installmentPrincipal)) {

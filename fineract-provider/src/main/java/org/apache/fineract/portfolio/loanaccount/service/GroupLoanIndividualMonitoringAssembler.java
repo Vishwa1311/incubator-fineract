@@ -82,26 +82,22 @@ public class GroupLoanIndividualMonitoringAssembler {
         this.glimRepositoryWrapper = glimRepositoryWrapper;
     }
 
-    public List<GroupLoanIndividualMonitoring> assembleGlimFromJson(final JsonCommand command, final Loan newLoanApplication) {
+    public List<GroupLoanIndividualMonitoring> assembleGlimFromJson(final JsonCommand command, boolean isRecoveryPayment) {
         List<GroupLoanIndividualMonitoring> glimMembers = new ArrayList<>();
         if (command.hasParameter(LoanApiConstants.clientMembersParamName)) {
             JsonArray clientMembers = command.arrayOfParameterNamed(LoanApiConstants.clientMembersParamName);
             for (JsonElement clientMember : clientMembers) {
                 JsonObject member = clientMember.getAsJsonObject();
                 Long glimId = member.get(LoanApiConstants.idParameterName).getAsLong();
-                GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = this.glimRepositoryWrapper.findOneWithNotFoundDetection(glimId);
+                GroupLoanIndividualMonitoring glim = this.glimRepositoryWrapper.findOneWithNotFoundDetection(glimId);
                 if (member.has(LoanApiConstants.transactionAmountParamName)) {
                     BigDecimal transactionAmount = member.get(LoanApiConstants.transactionAmountParamName).getAsBigDecimal();
-                    BigDecimal writeOffAmount = zeroIfNull(groupLoanIndividualMonitoring.getPrincipalWrittenOffAmount()).add(
-                            zeroIfNull(groupLoanIndividualMonitoring.getChargeWrittenOffAmount())).add(
-                            zeroIfNull(groupLoanIndividualMonitoring.getInterestWrittenOffAmount()));
-                    if (writeOffAmount.compareTo(BigDecimal.ZERO) > 0 && transactionAmount.compareTo(BigDecimal.ZERO) > 0) { throw new ClientAlreadyWriteOffException(); }
-                    groupLoanIndividualMonitoring.updateTransactionAmount(transactionAmount);
+                    if (GlimUtility.isGreaterThanZero(glim.getPrincipalWrittenOffAmount()) && GlimUtility.isGreaterThanZero(transactionAmount) && !isRecoveryPayment) { throw new ClientAlreadyWriteOffException(); }
+                    glim.updateTransactionAmount(transactionAmount);
                 }
                 Boolean isClientSelected = member.get(LoanApiConstants.isClientSelectedParamName).getAsBoolean();
-                //groupLoanIndividualMonitoring.setIsClientSelected(isClientSelected);
                 if (isClientSelected) {
-                    glimMembers.add(groupLoanIndividualMonitoring);
+                    glimMembers.add(glim);
                 }
             }
         }
@@ -549,18 +545,20 @@ public class GroupLoanIndividualMonitoringAssembler {
         return minMaxCap;
     }
     
-    public void updateGLIMAfterRepayment(Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions) {
+    public void updateGLIMAfterRepayment(Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions, Boolean isRecoveryRepayment) {
         List<GroupLoanIndividualMonitoring> updatedGlimList = new ArrayList<GroupLoanIndividualMonitoring>();
         for (GroupLoanIndividualMonitoringTransaction glimTransaction : glimTransactions) {
             GroupLoanIndividualMonitoring glim = glimTransaction.getGroupLoanIndividualMonitoring();
-            Map<String, BigDecimal> processedTransactionMap = glim.getProcessedTransactionMap();
-            glim.setPaidChargeAmount(zeroIfNull(glim.getPaidChargeAmount()).add(zeroIfNull(processedTransactionMap.get("processedCharge"))));
-            glim.setPaidInterestAmount(zeroIfNull(glim.getPaidInterestAmount()).add(
-                    zeroIfNull(processedTransactionMap.get("processedInterest"))));
-            glim.setPaidPrincipalAmount(zeroIfNull(glim.getPaidPrincipalAmount()).add(
-                    zeroIfNull(processedTransactionMap.get("processedPrincipal"))));
-            glim.setPaidAmount(zeroIfNull(glim.getTotalPaidAmount()).add(
-                    zeroIfNull(processedTransactionMap.get("processedinstallmentTransactionAmount"))));
+            Map<String, BigDecimal> processedTransactionMap = glim.getProcessedTransactionMap();            
+            glim.setPaidChargeAmount(GlimUtility.add(glim.getPaidChargeAmount(), processedTransactionMap.get("processedCharge")));            
+            glim.setPaidInterestAmount(GlimUtility.add(glim.getPaidInterestAmount(), processedTransactionMap.get("processedInterest")));                       
+            glim.setPaidPrincipalAmount(GlimUtility.add(glim.getPaidPrincipalAmount(), processedTransactionMap.get("processedPrincipal")));            
+            glim.setPaidAmount(GlimUtility.add(glim.getTotalPaidAmount(), processedTransactionMap.get("processedinstallmentTransactionAmount")));
+            if(isRecoveryRepayment){
+            	glim.setChargeWrittenOffAmount(GlimUtility.subtract(glim.getChargeWrittenOffAmount(), processedTransactionMap.get("processedCharge")));
+            	glim.setInterestWrittenOffAmount(GlimUtility.subtract(glim.getInterestWrittenOffAmount(), processedTransactionMap.get("processedInterest")));
+            	glim.setPrincipalWrittenOffAmount(GlimUtility.subtract(glim.getPrincipalWrittenOffAmount(), processedTransactionMap.get("processedPrincipal")));
+            }            
             updatedGlimList.add(glim);
         }
         this.glimRepositoryWrapper.save(updatedGlimList);

@@ -126,6 +126,16 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
                 glimDetail.setTransactionAmount(glimTransactionAmount);
                 transactionAmount = transactionAmount.add(glimTransactionAmount);
             }
+        } else if (is(commandParam, "recoverypayment")) {
+            groupLoanIndividualMonitoringData = (List<GroupLoanIndividualMonitoringData>) this.glimReadPlatformService
+                    .retrieveRecoveryGlimByLoanId(loanId);
+            for (GroupLoanIndividualMonitoringData glimDetail : groupLoanIndividualMonitoringData) {
+                BigDecimal glimTransactionAmount = GlimUtility.add(glimDetail.getPrincipalWrittenOffAmount(), glimDetail.getChargeWrittenOffAmount(),
+                		glimDetail.getInterestWrittenOffAmount());
+                glimDetail.setRemainingTransactionAmount(glimTransactionAmount);
+                glimDetail.setTransactionAmount(glimTransactionAmount);
+                transactionAmount = transactionAmount.add(glimTransactionAmount);
+            }
         }else {
             throw new UnrecognizedQueryParamException("command", commandParam);
         }
@@ -157,6 +167,9 @@ public class GroupLoanIndividualMonitoringTransactionApiResource {
             result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         } else if (is(commandParam, "writeoff")) {
             final CommandWrapper commandRequest = builder.writeOffTransactionForGlim(loanId).build();
+            result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+        }else if (is(commandParam, "recoverypayment")) {
+            final CommandWrapper commandRequest = builder.recoveryPaymentForGlim(loanId).build();
             result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam);

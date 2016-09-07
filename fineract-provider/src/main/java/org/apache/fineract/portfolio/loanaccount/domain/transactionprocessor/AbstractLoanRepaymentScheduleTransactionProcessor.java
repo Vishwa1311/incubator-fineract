@@ -32,6 +32,7 @@ import java.util.Set;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidDetail;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
 import org.apache.fineract.portfolio.loanaccount.domain.GroupLoanIndividualMonitoring;
@@ -324,9 +325,9 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
                             Map<String, BigDecimal> paidInstallmentMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
                                             transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
                                     installmentPaidMap, loanTransaction);
-                            
-                            if(!(paidInstallmentMap.get("installmentTransactionAmount").compareTo(BigDecimal.ZERO) == 0 && glimMember.getTotalPaidAmount().compareTo(BigDecimal.ZERO) > 0)){
-                                    if (currentInstallment.isNotFullyPaidOff()) {
+                            /*&& GlimUtility.isGreaterThanZero(glimMember.getTotalPaidAmount())*/
+                            if(!(GlimUtility.isZero(paidInstallmentMap.get("installmentTransactionAmount")) )){
+                                    if (currentInstallment.isNotFullyPaidOff() || loanTransaction.isRecoveryRepayment()) {
                                 Map<String, BigDecimal> splitMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
                                         transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
                                         installmentPaidMap, loanTransaction);
@@ -341,9 +342,11 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
                                 processedTransactionMap.put("processedinstallmentTransactionAmount", processedTransactionMap.get("processedinstallmentTransactionAmount").add(totalAmountForCurrentInstallment.getAmount()));
                                 
                                 transactionAmountPerClient = transactionAmountPerClient.minus(totalAmountForCurrentInstallment);
-                                totalAmountForCurrentInstallment = handleTransactionThatIsOnTimePaymentOfInstallmentForGlim(currentInstallment,
-                                        loanTransaction, totalAmountForCurrentInstallment, transactionMappings, principalPortion,
-                                        interestPortion, feePortion, penaltyPortion);
+                                if(!loanTransaction.isRecoveryRepayment()){
+                                	totalAmountForCurrentInstallment = handleTransactionThatIsOnTimePaymentOfInstallmentForGlim(currentInstallment,
+                                            loanTransaction, totalAmountForCurrentInstallment, transactionMappings, principalPortion,
+                                            interestPortion, feePortion, penaltyPortion);
+                                }                               
                                 
                                 //installmentPaidMap = splitMap;
                                 installmentPaidMap.put("unpaidCharge", processedTransactionMap.get("processedCharge"));
@@ -793,26 +796,20 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
      */
     @Override
     public void handleGLIMRepayment(GroupLoanIndividualMonitoringTransaction groupLoanIndividualMonitoringTransaction, BigDecimal individualTransactionAmount) {
-        final RoundingMode roundingMode = MoneyHelper.getRoundingMode();
         // final MathContext mc = new MathContext(0, RoundingMode.HALF_EVEN);
         final LoanTransaction loanTransaction = groupLoanIndividualMonitoringTransaction.getLoanTransaction();
         final GroupLoanIndividualMonitoring glim = groupLoanIndividualMonitoringTransaction
                 .getGroupLoanIndividualMonitoring();
         BigDecimal totalAmount = individualTransactionAmount.add(zeroIfNull(glim.getTotalPaidAmount())).add(zeroIfNull(glim.getWaivedChargeAmount())).add(zeroIfNull(glim.getWaivedInterestAmount()));
         BigDecimal writeOfAmount = zeroIfNull(glim.getPrincipalWrittenOffAmount()).add(zeroIfNull(glim.getInterestWrittenOffAmount())).add(zeroIfNull(glim.getChargeWrittenOffAmount()));
-		if(writeOfAmount.compareTo(BigDecimal.ZERO)>0 && individualTransactionAmount.compareTo(BigDecimal.ZERO)>0){
+		if(writeOfAmount.compareTo(BigDecimal.ZERO)>0 && individualTransactionAmount.compareTo(BigDecimal.ZERO)>0 && !loanTransaction.getTypeOf().isRecoveryRepayment()){
 			throw new ClientAlreadyWriteOffException();
 		}
-        BigDecimal installmentAmount =  BigDecimal.ZERO;
         if(glim.getTotalPaybleAmount().subtract(totalAmount).compareTo(BigDecimal.ZERO)<0){
         	throw new ClientCanNotExceedPaybleAmount();
         }
         Loan loan = loanTransaction.getLoan();
         MonetaryCurrency currency = loan.getCurrency();
-        
-        Money penaltyAmount = Money.zero(currency);
-        Money individualAmount = Money.of(currency, individualTransactionAmount);
-        Integer numberOfInstallments = loan.repaymentScheduleDetail().getNumberOfRepayments();
         
         Map<String, BigDecimal> processedTransactionMap = glim.getProcessedTransactionMap();
         
@@ -825,10 +822,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
         //BigDecimal interestToBePaidByClient = GroupLoanIndividualMonitoringTransactionAssembler.getInterestSplit(glim, individualTransactionAmount, loan, BigDecimal.ZERO);
 
         Money interestPortion = Money.of(currency, processedTransactionMap.get("processedInterest"));
-        
-        
-        Money chargePortion = feePortion.plus(penaltyPortion);
-        
+                
         Money principalPortion = Money.of(currency,processedTransactionMap.get("processedPrincipal"));
         
         Money processedinstallmentTransactionAmount = Money.of(currency,processedTransactionMap.get("processedinstallmentTransactionAmount"));

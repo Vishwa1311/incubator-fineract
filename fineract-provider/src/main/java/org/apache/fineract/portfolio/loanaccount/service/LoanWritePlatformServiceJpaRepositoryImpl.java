@@ -236,8 +236,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     private final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy;
     private final LoanScheduleAssembler loanScheduleAssembler;
     private final CodeValueRepositoryWrapper codeValueRepository;
-    private final GroupLoanIndividualMonitoringRepository groupLoanIndividualMonitoringRepository;
-    private final GroupLoanIndividualMonitoringAssembler groupLoanIndividualMonitoringAssembler;
+    private final GroupLoanIndividualMonitoringRepository glimRepository;
+    private final GroupLoanIndividualMonitoringAssembler glimAssembler;
 
     @Autowired
     public LoanWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
@@ -268,8 +268,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy,
             final LoanScheduleAssembler loanScheduleAssembler,
             final CodeValueRepositoryWrapper codeValueRepository,
-            final GroupLoanIndividualMonitoringRepository groupLoanIndividualMonitoringRepository,
-            final GroupLoanIndividualMonitoringAssembler groupLoanIndividualMonitoringAssembler) {
+            final GroupLoanIndividualMonitoringRepository glimRepository,
+            final GroupLoanIndividualMonitoringAssembler glimAssembler) {
         this.context = context;
         this.loanEventApiJsonValidator = loanEventApiJsonValidator;
         this.loanAssembler = loanAssembler;
@@ -308,8 +308,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         this.transactionProcessingStrategy = transactionProcessingStrategy;
         this.loanScheduleAssembler = loanScheduleAssembler;
         this.codeValueRepository = codeValueRepository;
-        this.groupLoanIndividualMonitoringRepository = groupLoanIndividualMonitoringRepository;
-        this.groupLoanIndividualMonitoringAssembler = groupLoanIndividualMonitoringAssembler;
+        this.glimRepository = glimRepository;
+        this.glimAssembler = glimAssembler;
     }
 
     private LoanLifecycleStateMachine defaultLoanLifecycleStateMachine() {
@@ -394,10 +394,10 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             
             //update disbursed amount for each client in glim
             if(command.hasParameter(LoanApiConstants.clientMembersParamName)){
-            	List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringAssembler.updateFromJson(command.parsedJson(), "disbursedAmount", 
+            	List<GroupLoanIndividualMonitoring> glimList = this.glimAssembler.updateFromJson(command.parsedJson(), "disbursedAmount", 
                         loan, loan.fetchNumberOfInstallmensAfterExceptions(), loan.getLoanProductRelatedDetail().getAnnualNominalInterestRate());
                 loan.updateGlim(glimList);
-                this.groupLoanIndividualMonitoringAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(),  loan.fetchNumberOfInstallmensAfterExceptions(),
+                this.glimAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(),  loan.fetchNumberOfInstallmensAfterExceptions(),
                         glimList);
             }
             
@@ -726,7 +726,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final LocalDate recalculateFrom = null;
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
         
-        List<GroupLoanIndividualMonitoring> glimList = this.groupLoanIndividualMonitoringRepository.findByLoanIdAndIsClientSelected(loanId, true);
+        List<GroupLoanIndividualMonitoring> glimList = this.glimRepository.findByLoanIdAndIsClientSelected(loanId, true);
         HashMap<Long, BigDecimal> chargesMap = new HashMap<>();
         for (GroupLoanIndividualMonitoring glim : glimList) {
             final BigDecimal approvedAmount = glim.getApprovedAmount();
@@ -734,13 +734,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 glim.setIsClientSelected(true);
                 glim.undoGlimTransaction();
                 glim.resetDerievedComponents();
-                this.groupLoanIndividualMonitoringAssembler.recalculateTotalFeeCharges(loan, chargesMap, approvedAmount,
+                this.glimAssembler.recalculateTotalFeeCharges(loan, chargesMap, approvedAmount,
                         glim.getGroupLoanIndividualMonitoringCharges());
             }
         }
-        this.groupLoanIndividualMonitoringAssembler.updateLoanChargesForGlim(loan, chargesMap);
+        this.glimAssembler.updateLoanChargesForGlim(loan, chargesMap);
         loan.updateGlim(glimList);
-        this.groupLoanIndividualMonitoringAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(),
+        this.glimAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(),
                 loan.fetchNumberOfInstallmensAfterExceptions(), glimList);
         final Map<String, Object> changes = loan.undoDisbursal(scheduleGeneratorDTO, existingTransactionIds,
                 existingReversedTransactionIds, currentUser);
@@ -780,7 +780,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     public CommandProcessingResult makeLoanRepayment(final Long loanId, final JsonCommand command, final boolean isRecoveryRepayment) {
 
         this.loanEventApiJsonValidator.validateNewRepaymentTransaction(command.json());
-
+        
         final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
         final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
         final String txnExternalId = command.stringValueOfParameterNamedAllowingNull("externalId");

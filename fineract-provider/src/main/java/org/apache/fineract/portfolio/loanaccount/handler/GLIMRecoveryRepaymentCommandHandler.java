@@ -9,21 +9,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-@CommandType(entity = "GLIMTRANSACTION", action = "REPAYMENT")
-public class GLIMRepaymentTransactionCommandHandler implements NewCommandSourceHandler {
-
-    private final GroupLoanIndividualMonitoringTransactionWritePlatformService groupLoanIndividualMonitoringTransactionWritePlatformService;
+@CommandType(entity = "GLIMTRANSACTION", action = "RECOVERYPAYMENT")
+public class GLIMRecoveryRepaymentCommandHandler  implements NewCommandSourceHandler {
+	
+	private final GroupLoanIndividualMonitoringTransactionWritePlatformService glimTransactionWritePlatformService;
 
     @Autowired
-    public GLIMRepaymentTransactionCommandHandler(
+    public GLIMRecoveryRepaymentCommandHandler(
             final GroupLoanIndividualMonitoringTransactionWritePlatformService groupLoanIndividualMonitoringTransactionWritePlatformService) {
-        this.groupLoanIndividualMonitoringTransactionWritePlatformService = groupLoanIndividualMonitoringTransactionWritePlatformService;
+        this.glimTransactionWritePlatformService = groupLoanIndividualMonitoringTransactionWritePlatformService;
     }
-
+	
     @Override
     public CommandProcessingResult processCommand(JsonCommand command) {
-    	boolean isRecoveryRepayment = false;
-        return this.groupLoanIndividualMonitoringTransactionWritePlatformService.repayGLIM(command.getLoanId(), command, isRecoveryRepayment);
+    	boolean isRecoveryRepayment = true;
+        return this.glimTransactionWritePlatformService.repayGLIM(command.getLoanId(), command, isRecoveryRepayment);
     }
 
 }
