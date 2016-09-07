@@ -3188,4 +3188,12 @@ public class CommandWrapperBuilder {
         this.loanId = loanId;
         return this;
     }
+
+    public CommandWrapperBuilder recoveryPaymentForGlim(final Long loanId) {
+        this.actionName = "RECOVERYPAYMENT";
+        this.entityName = "GLIMTRANSACTION";
+        this.href = "/glim/" + loanId + "/transactions?command=recoverypayment";
+        this.loanId = loanId;
+        return this;
+    }
 }

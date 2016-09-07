@@ -2952,8 +2952,10 @@ public class Loan extends AbstractPersistable<Long> {
         }
         if (!isHolidayValidationDone) {
             holidayDetailDTO = scheduleGeneratorDTO.getHolidayDetailDTO();
-        }
-        validateAccountStatus(event);
+        }        
+        if(!(this.isGLIMLoan() && isRecoveryRepayment)){
+        	validateAccountStatus(event);
+        }        
         validateActivityNotBeforeClientOrGroupTransferDate(event, repaymentTransaction.getTransactionDate());
         validateActivityNotBeforeLastTransactionDate(event, repaymentTransaction.getTransactionDate());
         if (!isHolidayValidationDone) {
@@ -3065,8 +3067,9 @@ public class Loan extends AbstractPersistable<Long> {
         } else {
             statusEnum = loanLifecycleStateMachine.transition(LoanEvent.LOAN_REPAYMENT_OR_WAIVER, LoanStatus.fromInt(this.loanStatus));
         }
-
-        this.loanStatus = statusEnum.getValue();
+        if(!(this.isGLIMLoan() && loanTransaction.isRecoveryRepayment())){
+        	this.loanStatus = statusEnum.getValue();
+        }        
 
         loanTransaction.updateLoan(this);
 
@@ -6416,7 +6419,8 @@ public class Loan extends AbstractPersistable<Long> {
 
                 BigDecimal writeOfAmount =  GlimUtility.add(glimMember.getPrincipalWrittenOffAmount(),glimMember.getInterestWrittenOffAmount(),
                 		glimMember.getChargeWrittenOffAmount());
-                if (GlimUtility.isGreaterThanZero(writeOfAmount) && GlimUtility.isGreaterThanZero(glimMember.getTransactionAmount())) { throw new ClientAlreadyWriteOffException(); }
+                if (GlimUtility.isGreaterThanZero(writeOfAmount) && GlimUtility.isGreaterThanZero(glimMember.getTransactionAmount()) && 
+                		!loanTransaction.getTypeOf().isRecoveryRepayment()) { throw new ClientAlreadyWriteOffException(); }
 
             }
         }
