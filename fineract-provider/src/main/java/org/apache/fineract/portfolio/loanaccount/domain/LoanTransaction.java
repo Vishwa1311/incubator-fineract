@@ -144,6 +144,10 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
 
     @Column(name = "is_reconciled")
     private boolean isReconciled;
+    
+    @LazyCollection(LazyCollectionOption.FALSE)
+    @OneToMany(cascade = CascadeType.REMOVE, mappedBy = "loanTransaction", orphanRemoval = true)
+    private Set<GroupLoanIndividualMonitoringTransaction> groupLoanIndividualMonitoringTransactions = new HashSet<>();
 
     protected LoanTransaction() {
         this.loan = null;
@@ -881,5 +885,9 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     
     public BigDecimal getFeeChargesPortion() {
         return this.feeChargesPortion;
+    }
+    
+    public Set<GroupLoanIndividualMonitoringTransaction> getGlimTransaction() {
+        return this.groupLoanIndividualMonitoringTransactions;
     }
 }

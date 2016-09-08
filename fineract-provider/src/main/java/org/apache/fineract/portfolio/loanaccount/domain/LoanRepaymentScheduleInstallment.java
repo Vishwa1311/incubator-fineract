@@ -37,6 +37,7 @@ import javax.persistence.TemporalType;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableCustom;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
@@ -812,13 +813,36 @@ public final class LoanRepaymentScheduleInstallment extends AbstractAuditableCus
     
     public Money writeOffOutstandingFeeChargeForGlim(final LocalDate transactionDate, final MonetaryCurrency currency,
             final Money feeChargeDue) {
-
         this.feeChargesWrittenOff = getFeeChargesWrittenOff(currency).getAmount().add(feeChargeDue.getAmount());
-
-        if (getFeeChargesOutstanding(currency).getAmount().compareTo(BigDecimal.ZERO)==0) {
+        if (getFeeChargesOutstanding(currency).getAmount().compareTo(BigDecimal.ZERO) == 0) {
             checkIfRepaymentPeriodObligationsAreMet(transactionDate, currency);
         }
-
         return feeChargeDue;
+    }
+
+    public void updateInterestPaid(BigDecimal interestPortion) {
+        this.interestPaid = GlimUtility.zeroIfNull(this.interestPaid).subtract(interestPortion);
+        if (this.interestPaid.compareTo(BigDecimal.ZERO) == 0) {
+            this.interestPaid = null;
+        }
+    }
+
+    public void updateFeeChargesPaid(BigDecimal feePortion) {
+        this.feeChargesPaid = GlimUtility.zeroIfNull(this.feeChargesPaid).subtract(feePortion);
+        if (this.feeChargesPaid.compareTo(BigDecimal.ZERO) == 0) {
+            this.feeChargesPaid = null;
+        }
+    }
+
+    public void updatePrincipalCompleted(BigDecimal principalPortion) {
+        this.principalCompleted = GlimUtility.zeroIfNull(this.principalCompleted).subtract(principalPortion);
+        if (this.principalCompleted.compareTo(BigDecimal.ZERO) == 0) {
+            this.principalCompleted = null;
+        }
+    }
+
+    public void markAsIncomplete() {
+        this.obligationsMet = false;
+        this.obligationsMetOnDate = null;
     }
 }
