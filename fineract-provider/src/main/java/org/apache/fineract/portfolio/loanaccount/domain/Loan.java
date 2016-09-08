@@ -3149,6 +3149,38 @@ public class Loan extends AbstractPersistable<Long> {
                 }
             }
         }
+        if (this.isGLIMLoan() && adjustedTransaction != null) {
+            LoanRepaymentScheduleInstallment updateCurrentInstallment = null;
+            Set<GroupLoanIndividualMonitoringTransaction> removeGlimTransactions = new HashSet<>();
+            for (LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
+                if (installment.isPartlyPaid() || installment.isObligationsMet()) {
+                    updateCurrentInstallment = installment;
+                }
+            }
+            Set<GroupLoanIndividualMonitoringTransaction> glimTransactions = adjustedTransaction.getGlimTransaction();
+            for (GroupLoanIndividualMonitoringTransaction glimTransaction : glimTransactions) {
+                GroupLoanIndividualMonitoring glimMember = glimTransaction.getGroupLoanIndividualMonitoring();
+                BigDecimal feeAmount = glimTransaction.getFeePortion();
+                BigDecimal interestAmount = glimTransaction.getInterestPortion();
+                BigDecimal principalAmount = glimTransaction.getPrincipalPortion();
+                glimMember.setPaidChargeAmount(glimMember.getPaidChargeAmount().subtract(feeAmount));
+                glimMember.setPaidInterestAmount(glimMember.getPaidInterestAmount().subtract(interestAmount));
+                glimMember.setPaidPrincipalAmount(glimMember.getPaidPrincipalAmount().subtract(principalAmount));
+                glimMember.setPaidAmount(glimMember.getTotalPaidAmount().subtract(glimTransaction.getTotalAmount()));
+                if (glimMember.getWaivedChargeAmount().compareTo(BigDecimal.ZERO) == 0 || glimMember.getWaivedChargeAmount() == null) {
+                    updateLoanChargesForGlim(glimMember, glimTransaction.getFeePortion(), charges(), updateCurrentInstallment);
+                }
+                updateCurrentInstallment.updateFeeChargesPaid(feeAmount);
+                updateCurrentInstallment.updateInterestPaid(interestAmount);
+                updateCurrentInstallment.updatePrincipalCompleted(principalAmount);
+                updateCurrentInstallment.markAsIncomplete();
+                removeGlimTransactions.add(glimTransaction);
+            }
+            if (!removeGlimTransactions.isEmpty()) {
+                glimTransactions.removeAll(removeGlimTransactions);
+            }
+            reprocess = false;
+        }
         if (reprocess) {
             if (this.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
                 regenerateRepaymentScheduleWithInterestRecalculation(scheduleGeneratorDTO, currentUser);
@@ -3193,6 +3225,27 @@ public class Loan extends AbstractPersistable<Long> {
         return changedTransactionDetail;
     }
     
+    private void updateLoanChargesForGlim(GroupLoanIndividualMonitoring glimMember, BigDecimal feeAmount, Set<LoanCharge> charges,
+            LoanRepaymentScheduleInstallment resetCurrentInstallment) {
+        if (GlimUtility.isGreaterThanZero(feeAmount)) {
+            Set<GroupLoanIndividualMonitoringCharge> glimCharges = glimMember.getGroupLoanIndividualMonitoringCharges();
+            for (GroupLoanIndividualMonitoringCharge glimCharge : glimCharges) {
+                BigDecimal chargeAmount = GlimUtility.isNull(glimCharge.getRevisedFeeAmount()) ? glimCharge.getFeeAmount() : glimCharge
+                        .getRevisedFeeAmount();
+                Long chargeId = glimCharge.getCharge().getId();
+                for (LoanCharge loanCharge : charges()) {
+                    if (loanCharge.getCharge().getId().equals(chargeId)) {
+                        BigDecimal amount = GlimUtility.getInstallmentAmount(chargeAmount, this.fetchNumberOfInstallmensAfterExceptions(),
+                                this.getCurrency(), resetCurrentInstallment.getInstallmentNumber());
+                        loanCharge.undoPaidOrPartiallyAmountBy(Money.of(getCurrency(), amount),
+                                resetCurrentInstallment.getInstallmentNumber(), Money.zero(getCurrency()));
+                    }
+                }
+            }
+        }
+
+    }
+
     private LoanRepaymentScheduleInstallment fetchLoanRepaymentScheduleInstallment(LocalDate dueDate) {
         LoanRepaymentScheduleInstallment installment = null;
         for (LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment : this.repaymentScheduleInstallments) {
@@ -3553,6 +3606,19 @@ public class Loan extends AbstractPersistable<Long> {
                     errorMessage);
         }
         
+        if (this.isGLIMLoan()) {
+            if (transactionForAdjustment.getTransactionDate().isBefore(getLastUserTransactionDate())) {
+                final String errorMessage = "undo of last transaction is allowed for GLIM loan.";
+                throw new InvalidLoanTransactionTypeException("transaction", "undo.of.last.transaction.is.allowed.for.glim.loan",
+                        errorMessage);
+            }
+            if (transactionForAdjustment.isWaiver()) {
+                final String errorMessage = "Only transactions of type repayment can be adjusted for GLIM loan.";
+                throw new InvalidLoanTransactionTypeException("transaction", "adjustment.is.only.allowed.to.repayment.for.glim.loan",
+                        errorMessage);
+            }
+        }
+        
         transactionForAdjustment.reverse();
         transactionForAdjustment.manuallyAdjustedOrReversed();
         
@@ -3574,6 +3640,13 @@ public class Loan extends AbstractPersistable<Long> {
 
         if (isClosedObligationsMet() || isClosedWrittenOff() || isClosedWithOutsandingAmountMarkedForReschedule()) {
             this.loanStatus = LoanStatus.ACTIVE.getValue();
+            if (this.isGLIMLoan()) {
+                Set<GroupLoanIndividualMonitoringTransaction> glimTransactions = transactionForAdjustment.getGlimTransaction();
+                for (GroupLoanIndividualMonitoringTransaction glimTransaction : glimTransactions) {
+                    GroupLoanIndividualMonitoring glimMember = glimTransaction.getGroupLoanIndividualMonitoring();
+                    glimMember.setIsActive(true);
+                }
+            }
         }
 
         if (newTransactionDetail.isRepayment() || newTransactionDetail.isInterestWaiver()) {

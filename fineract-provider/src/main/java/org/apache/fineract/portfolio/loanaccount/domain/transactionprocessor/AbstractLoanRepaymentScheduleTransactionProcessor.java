@@ -19,7 +19,6 @@
 package org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -31,7 +30,6 @@ import java.util.Set;
 
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
-import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidDetail;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
@@ -87,7 +85,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
         }
         
         for (final LoanRepaymentScheduleInstallment currentInstallment : installments) {
-        	if (!currentInstallment.getLoan().isGLIMLoan() && !currentInstallment.getTotalOutstanding(currency).isGreaterThanZero()) {
+            if (!currentInstallment.getLoan().isGLIMLoan() && !currentInstallment.getTotalOutstanding(currency).isGreaterThanZero()) {
                 currentInstallment.resetDerivedComponents();
                 currentInstallment.updateDerivedFields(currency, disbursementDate);
             }
@@ -195,7 +193,8 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
                      * reverse the original transaction and update
                      * changedTransactionDetail accordingly
                      **/
-                    if (LoanTransaction.transactionAmountsMatch(currency, loanTransaction, newLoanTransaction) || loanTransaction.getLoan().isGLIMLoan()) {
+                    if (LoanTransaction.transactionAmountsMatch(currency, loanTransaction, newLoanTransaction)
+                            || loanTransaction.getLoan().isGLIMLoan()) {
                         loanTransaction.updateLoanTransactionToRepaymentScheduleMappings(newLoanTransaction
                                 .getLoanTransactionToRepaymentScheduleMappings());
                     } else {
@@ -303,10 +302,10 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
         
         if (isGLIMLoan) {
             for (GroupLoanIndividualMonitoring glimMember : glimMembers) {
-                if(glimMember.isClientSelected() && glimMember.getTransactionAmount().compareTo(BigDecimal.ZERO)>0) {
+                if (glimMember.isClientSelected() && glimMember.getTransactionAmount().compareTo(BigDecimal.ZERO) > 0) {
                     Money transactionAmountPerClient = Money.of(currency, glimMember.getTransactionAmount());
                     Money penaltyPortion = Money.zero(currency);
-                    
+
                     Map<String, BigDecimal> processedTransactionMap = new HashMap<String, BigDecimal>();
                     processedTransactionMap.put("processedCharge", BigDecimal.ZERO);
                     processedTransactionMap.put("processedInterest", BigDecimal.ZERO);
@@ -321,54 +320,60 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
 
                     for (final LoanRepaymentScheduleInstallment currentInstallment : installments) {
                         if (transactionAmountPerClient.isGreaterThanZero()) {
-                            
-                            Map<String, BigDecimal> paidInstallmentMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
-                                            transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
+
+                            Map<String, BigDecimal> paidInstallmentMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(
+                                    glimMember, transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
                                     installmentPaidMap, loanTransaction);
-                            /*&& GlimUtility.isGreaterThanZero(glimMember.getTotalPaidAmount())*/
-                            if(!(GlimUtility.isZero(paidInstallmentMap.get("installmentTransactionAmount")) )){
-                                    if (currentInstallment.isNotFullyPaidOff() || loanTransaction.isRecoveryRepayment()) {
-                                Map<String, BigDecimal> splitMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
-                                        transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
-                                        installmentPaidMap, loanTransaction);
-                                Money feePortion = Money.of(currency, splitMap.get("unpaidCharge"));
-                                Money interestPortion = Money.of(currency, splitMap.get("unpaidInterest"));
-                                Money principalPortion = Money.of(currency, splitMap.get("unpaidPrincipal"));
-                                Money totalAmountForCurrentInstallment = Money.of(currency, splitMap.get("installmentTransactionAmount"));
-                                
-                                processedTransactionMap.put("processedCharge", processedTransactionMap.get("processedCharge").add(feePortion.getAmount()));
-                                processedTransactionMap.put("processedInterest", processedTransactionMap.get("processedInterest").add(interestPortion.getAmount()));
-                                processedTransactionMap.put("processedPrincipal", processedTransactionMap.get("processedPrincipal").add(principalPortion.getAmount()));
-                                processedTransactionMap.put("processedinstallmentTransactionAmount", processedTransactionMap.get("processedinstallmentTransactionAmount").add(totalAmountForCurrentInstallment.getAmount()));
-                                
-                                transactionAmountPerClient = transactionAmountPerClient.minus(totalAmountForCurrentInstallment);
-                                if(!loanTransaction.isRecoveryRepayment()){
-                                	totalAmountForCurrentInstallment = handleTransactionThatIsOnTimePaymentOfInstallmentForGlim(currentInstallment,
-                                            loanTransaction, totalAmountForCurrentInstallment, transactionMappings, principalPortion,
-                                            interestPortion, feePortion, penaltyPortion);
-                                }                               
-                                
-                                //installmentPaidMap = splitMap;
-                                installmentPaidMap.put("unpaidCharge", processedTransactionMap.get("processedCharge"));
-                                installmentPaidMap.put("unpaidInterest", processedTransactionMap.get("processedInterest"));
-                                installmentPaidMap.put("unpaidPrincipal", processedTransactionMap.get("processedPrincipal"));
-                                installmentPaidMap.put("installmentTransactionAmount", processedTransactionMap.get("processedinstallmentTransactionAmount"));
-                                
-                                
-                                transactionAmountUnprocessed = transactionAmountPerClient;
-                                
-                                if (transactionAmountPerClient.getAmount().compareTo(BigDecimal.ZERO) == 0) {
-                                    break;
+
+                            if (!(GlimUtility.isZero(paidInstallmentMap.get("installmentTransactionAmount")))) {
+                                if (currentInstallment.isNotFullyPaidOff() || loanTransaction.isRecoveryRepayment()) {
+                                    Map<String, BigDecimal> splitMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(
+                                            glimMember, transactionAmountPerClient.getAmount(), loan,
+                                            currentInstallment.getInstallmentNumber(), installmentPaidMap, loanTransaction);
+                                    Money feePortion = Money.of(currency, splitMap.get("unpaidCharge"));
+                                    Money interestPortion = Money.of(currency, splitMap.get("unpaidInterest"));
+                                    Money principalPortion = Money.of(currency, splitMap.get("unpaidPrincipal"));
+                                    Money totalAmountForCurrentInstallment = Money.of(currency,
+                                            splitMap.get("installmentTransactionAmount"));
+
+                                    processedTransactionMap.put("processedCharge",
+                                            processedTransactionMap.get("processedCharge").add(feePortion.getAmount()));
+                                    processedTransactionMap.put("processedInterest",
+                                            processedTransactionMap.get("processedInterest").add(interestPortion.getAmount()));
+                                    processedTransactionMap.put("processedPrincipal", processedTransactionMap.get("processedPrincipal")
+                                            .add(principalPortion.getAmount()));
+                                    processedTransactionMap.put(
+                                            "processedinstallmentTransactionAmount",
+                                            processedTransactionMap.get("processedinstallmentTransactionAmount").add(
+                                                    totalAmountForCurrentInstallment.getAmount()));
+
+                                    transactionAmountPerClient = transactionAmountPerClient.minus(totalAmountForCurrentInstallment);
+                                    if (!loanTransaction.isRecoveryRepayment()) {
+                                        totalAmountForCurrentInstallment = handleTransactionThatIsOnTimePaymentOfInstallmentForGlim(
+                                                currentInstallment, loanTransaction, totalAmountForCurrentInstallment, transactionMappings,
+                                                principalPortion, interestPortion, feePortion, penaltyPortion);
+                                    }
+
+                                    // installmentPaidMap = splitMap;
+                                    installmentPaidMap.put("unpaidCharge", processedTransactionMap.get("processedCharge"));
+                                    installmentPaidMap.put("unpaidInterest", processedTransactionMap.get("processedInterest"));
+                                    installmentPaidMap.put("unpaidPrincipal", processedTransactionMap.get("processedPrincipal"));
+                                    installmentPaidMap.put("installmentTransactionAmount",
+                                            processedTransactionMap.get("processedinstallmentTransactionAmount"));
+
+                                    transactionAmountUnprocessed = transactionAmountPerClient;
+
+                                    if (transactionAmountPerClient.getAmount().compareTo(BigDecimal.ZERO) == 0) {
+                                        break;
+                                    }
                                 }
                             }
-                            }
-                            
-                        }                  
-                        
+                        }
                     }
                     glimMember.updateProcessedTransactionMap(processedTransactionMap);
                 }
             }
+
         } else {
             for (final LoanRepaymentScheduleInstallment currentInstallment : installments) {
                 if (transactionAmountUnprocessed.isGreaterThanZero()) {

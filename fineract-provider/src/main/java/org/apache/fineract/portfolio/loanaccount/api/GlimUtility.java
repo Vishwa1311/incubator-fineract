@@ -24,40 +24,40 @@ import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 
 public class GlimUtility {
-	
-	public static Boolean isGreaterThanZero(BigDecimal amount){
-		return amount==null?false:amount.compareTo(BigDecimal.ZERO)>0;
-	}
-	
-	public static Boolean isGreaterThanZero(Money amount){
-		return amount==null?false:amount.getAmount().compareTo(BigDecimal.ZERO)>0;
-	}
-	
-	public static BigDecimal zeroIfNull(BigDecimal amount){
-    	return (amount==null)?BigDecimal.ZERO:amount;
+
+    public static Boolean isGreaterThanZero(BigDecimal amount) {
+        return amount == null ? false : amount.compareTo(BigDecimal.ZERO) > 0;
     }
-	
-	public static BigDecimal zeroIfNull(Money amount){
-    	return (amount==null)?BigDecimal.ZERO:amount.getAmount();
+
+    public static Boolean isGreaterThanZero(Money amount) {
+        return amount == null ? false : amount.getAmount().compareTo(BigDecimal.ZERO) > 0;
     }
-	
-	public static Boolean isNull(BigDecimal amount){
-    	return (amount==null);
+
+    public static BigDecimal zeroIfNull(BigDecimal amount) {
+        return (amount == null) ? BigDecimal.ZERO : amount;
     }
-	
-	public static Boolean isNullOrZero(BigDecimal amount){
-    	return (amount==null) || amount.compareTo(BigDecimal.ZERO)==0;
+
+    public static BigDecimal zeroIfNull(Money amount) {
+        return (amount == null) ? BigDecimal.ZERO : amount.getAmount();
     }
-	
-	public static Boolean isZero(BigDecimal amount){
-    	return (amount!=null) && amount.compareTo(BigDecimal.ZERO)==0;
+
+    public static Boolean isNull(BigDecimal amount) {
+        return (amount == null);
     }
-	
-	public static Boolean isEqual(BigDecimal amount1,BigDecimal amount2){
-    	return (amount1!=null) && (amount2!=null) && amount1.compareTo(amount2)==0;
+
+    public static Boolean isNullOrZero(BigDecimal amount) {
+        return (amount == null) || amount.compareTo(BigDecimal.ZERO) == 0;
     }
-	
-	public static Boolean isGreater(BigDecimal first, BigDecimal second) {
+
+    public static Boolean isZero(BigDecimal amount) {
+        return (amount != null) && amount.compareTo(BigDecimal.ZERO) == 0;
+    }
+
+    public static Boolean isEqual(BigDecimal amount1, BigDecimal amount2) {
+        return (amount1 != null) && (amount2 != null) && amount1.compareTo(amount2) == 0;
+    }
+
+    public static Boolean isGreater(BigDecimal first, BigDecimal second) {
         return zeroIfNull(first).compareTo(zeroIfNull(second)) >= 0;
     }
 

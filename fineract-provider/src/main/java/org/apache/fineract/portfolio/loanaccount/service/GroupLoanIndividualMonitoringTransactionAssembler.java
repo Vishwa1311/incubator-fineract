@@ -264,12 +264,12 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
             Integer installmentNumber, Map<String, BigDecimal> installmentPaidMap, LoanTransaction loanTransaction) {
 
         BigDecimal totalPaidAmount = GlimUtility.add(transactionAmount, installmentPaidMap.get("installmentTransactionAmount"));
-        if(loanTransaction != null && loanTransaction.isInterestWaiver()){
-        	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getPaidInterestAmount());
-        }else if(loanTransaction != null && loanTransaction.isChargesWaiver()){
-        	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getPaidChargeAmount());
-        }else {
-        	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getTotalPaidAmount());
+        if (loanTransaction != null && loanTransaction.isInterestWaiver()) {
+            totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getPaidInterestAmount());
+        } else if (loanTransaction != null && loanTransaction.isChargesWaiver()) {
+            totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getPaidChargeAmount());
+        } else {
+            totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getTotalPaidAmount());
         }
         MonetaryCurrency currency = loan.getCurrency();
         BigDecimal installmentAmount = glim.getInstallmentAmount();
@@ -289,54 +289,56 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
         Boolean isInterestWaived = GlimUtility.isGreaterThanZero(glim.getWaivedInterestAmount());
         for (int i = 0; i < scheduleList.size(); i++) {
             LoanRepaymentScheduleInstallment schedule = scheduleList.get(i);
-            BigDecimal installmentCharge = getDefaultChargeSharePerInstallment(loan, glim.getId(), glim.getChargeAmount(), schedule.getFeeChargesCharged(currency).getAmount(), loan.getSummary().getTotalFeeChargesCharged());
-            BigDecimal installmentInterest = getDefaultInterestSharePerInstallment(loan,glim.getId(),glim.getInterestAmount(),schedule.getInterestCharged(currency).getAmount(),loan.getSummary().getTotalInterestCharged());
+            BigDecimal installmentCharge = getDefaultChargeSharePerInstallment(loan, glim.getId(), glim.getChargeAmount(), schedule
+                    .getFeeChargesCharged(currency).getAmount(), loan.getSummary().getTotalFeeChargesCharged());
+            BigDecimal installmentInterest = getDefaultInterestSharePerInstallment(loan, glim.getId(), glim.getInterestAmount(), schedule
+                    .getInterestCharged(currency).getAmount(), loan.getSummary().getTotalInterestCharged());
             if (i + 1 == numberOfInstallments && installmentNumber == numberOfInstallments) {
                 installmentInterest = glim.getInterestAmount().subtract(adjustedPaidInterest);
-                installmentCharge = glim.getChargeAmount().subtract(adjustedPaidCharge);                
-            }else{
-            	adjustedPaidInterest = GlimUtility.add(adjustedPaidInterest,installmentInterest);
-            	adjustedPaidCharge = GlimUtility.add(adjustedPaidCharge, installmentCharge);
+                installmentCharge = glim.getChargeAmount().subtract(adjustedPaidCharge);
+            } else {
+                adjustedPaidInterest = GlimUtility.add(adjustedPaidInterest, installmentInterest);
+                adjustedPaidCharge = GlimUtility.add(adjustedPaidCharge, installmentCharge);
             }
             BigDecimal installmentPrincipal = installmentAmount.subtract(installmentInterest).subtract(installmentCharge);
-            if(loanTransaction.isInterestWaiver()){
+            if (loanTransaction != null && loanTransaction.isInterestWaiver()) {
                 installmentCharge = BigDecimal.ZERO;
                 installmentPrincipal = BigDecimal.ZERO;
-            }else if(loanTransaction.isChargesWaiver()){
-            	installmentInterest = BigDecimal.ZERO;
+            } else if (loanTransaction != null && loanTransaction.isChargesWaiver()) {
+                installmentInterest = BigDecimal.ZERO;
                 installmentPrincipal = BigDecimal.ZERO;
             }
-            
-            if (GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isInterestWaiver()) {
+
+            if (loanTransaction == null || (GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isInterestWaiver())) {
                 if (GlimUtility.isGreater(totalPaidAmount, installmentCharge)) {
                     if (GlimUtility.isGreaterThanZero(glimPaidCharge)) {
                         if (GlimUtility.isGreater(glimPaidCharge, installmentCharge)) {
                             glimPaidCharge = glimPaidCharge.subtract(installmentCharge);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount,installmentCharge);
+                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount, installmentCharge);
                         } else {
                             if (!isChargeWaived) {
-                                paidCharge = GlimUtility.add( paidCharge,GlimUtility.subtract(installmentCharge, glimPaidCharge));
-                                totalPaidAmount = GlimUtility.subtract(totalPaidAmount,installmentCharge);
-                            }else{
-                            	totalPaidAmount = GlimUtility.subtract(totalPaidAmount,glimPaidCharge);                          	
+                                paidCharge = GlimUtility.add(paidCharge, GlimUtility.subtract(installmentCharge, glimPaidCharge));
+                                totalPaidAmount = GlimUtility.subtract(totalPaidAmount, installmentCharge);
+                            } else {
+                                totalPaidAmount = GlimUtility.subtract(totalPaidAmount, glimPaidCharge);
                             }
-                        	glimPaidCharge = GlimUtility.subtract(glimPaidCharge ,glimPaidCharge);  
-                        }                        
+                            glimPaidCharge = GlimUtility.subtract(glimPaidCharge, glimPaidCharge);
+                        }
                     } else {
                         if (!isChargeWaived) {
-                            paidCharge = GlimUtility.add(paidCharge,installmentCharge);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,installmentCharge);
+                            paidCharge = GlimUtility.add(paidCharge, installmentCharge);
+                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount, installmentCharge);
                         }
                     }
 
-                } else {                	
-                	if (!isChargeWaived) {
-                		paidCharge = GlimUtility.add(paidCharge,GlimUtility.subtract(totalPaidAmount ,glimPaidCharge));
-                		totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,totalPaidAmount);
-                	}else{
-                		totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,glimPaidCharge);
-                	}
-            		glimPaidCharge = GlimUtility.subtract(glimPaidCharge,glimPaidCharge);
+                } else {
+                    if (!isChargeWaived) {
+                        paidCharge = GlimUtility.add(paidCharge, GlimUtility.subtract(totalPaidAmount, glimPaidCharge));
+                        totalPaidAmount = GlimUtility.subtract(totalPaidAmount, totalPaidAmount);
+                    } else {
+                        totalPaidAmount = GlimUtility.subtract(totalPaidAmount, glimPaidCharge);
+                    }
+                    glimPaidCharge = GlimUtility.subtract(glimPaidCharge, glimPaidCharge);
                 }
             }
 
@@ -344,39 +346,39 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 break;
             }
 
-            if (loanTransaction == null ||( GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isChargesWaiver())) {
+            if (loanTransaction == null || (GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isChargesWaiver())) {
                 if (GlimUtility.isGreater(totalPaidAmount, installmentInterest)) {
                     if (GlimUtility.isGreaterThanZero(glimPaidInterest)) {
                         if (GlimUtility.isGreater(glimPaidInterest, installmentInterest)) {
-                            glimPaidInterest = GlimUtility.subtract(glimPaidInterest ,installmentInterest);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,installmentInterest);
-                        } else {                            
-                        	if (!isInterestWaived) {
-                        		paidInterest = GlimUtility.add( paidInterest,GlimUtility.subtract(installmentInterest, glimPaidInterest));
-                                totalPaidAmount = GlimUtility.subtract(totalPaidAmount,installmentInterest);
-                            }else{
-                            	totalPaidAmount = GlimUtility.subtract(totalPaidAmount,glimPaidInterest);                          	
+                            glimPaidInterest = GlimUtility.subtract(glimPaidInterest, installmentInterest);
+                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount, installmentInterest);
+                        } else {
+                            if (!isInterestWaived) {
+                                paidInterest = GlimUtility.add(paidInterest, GlimUtility.subtract(installmentInterest, glimPaidInterest));
+                                totalPaidAmount = GlimUtility.subtract(totalPaidAmount, installmentInterest);
+                            } else {
+                                totalPaidAmount = GlimUtility.subtract(totalPaidAmount, glimPaidInterest);
                             }
-                        	glimPaidInterest = GlimUtility.subtract(glimPaidInterest ,glimPaidInterest);  
+                            glimPaidInterest = GlimUtility.subtract(glimPaidInterest, glimPaidInterest);
                         }
                     } else {
                         if (!isInterestWaived) {
-                            paidInterest = GlimUtility.add(paidInterest ,installmentInterest);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,installmentInterest);
-                        }                        
+                            paidInterest = GlimUtility.add(paidInterest, installmentInterest);
+                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount, installmentInterest);
+                        }
                     }
 
                 } else {
                     if (!isInterestWaived) {
-                		paidInterest = GlimUtility.add(paidInterest,GlimUtility.subtract(totalPaidAmount ,glimPaidInterest));
-                		totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,totalPaidAmount);
-                	}else{
-                		totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,glimPaidInterest);
-                	}
-                	glimPaidInterest = GlimUtility.subtract(glimPaidInterest,glimPaidInterest);
+                        paidInterest = GlimUtility.add(paidInterest, GlimUtility.subtract(totalPaidAmount, glimPaidInterest));
+                        totalPaidAmount = GlimUtility.subtract(totalPaidAmount, totalPaidAmount);
+                    } else {
+                        totalPaidAmount = GlimUtility.subtract(totalPaidAmount, glimPaidInterest);
+                    }
+                    glimPaidInterest = GlimUtility.subtract(glimPaidInterest, glimPaidInterest);
                 }
             }
-            
+
             if (GlimUtility.isZero(totalPaidAmount)) {
                 break;
             }
@@ -387,25 +389,25 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
                 if (GlimUtility.isGreater(totalPaidAmount, installmentPrincipal)) {
                     if (GlimUtility.isGreaterThanZero(glimPaidPrincipal)) {
                         if (GlimUtility.isGreater(glimPaidPrincipal, installmentPrincipal)) {
-                            glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal ,installmentPrincipal);
+                            glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal, installmentPrincipal);
                         } else {
-                            paidPrincipal = GlimUtility.add(paidPrincipal,GlimUtility.subtract(installmentPrincipal,glimPaidPrincipal));
-                            	
-                            glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal ,glimPaidPrincipal);
+                            paidPrincipal = GlimUtility.add(paidPrincipal, GlimUtility.subtract(installmentPrincipal, glimPaidPrincipal));
+
+                            glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal, glimPaidPrincipal);
                         }
                     } else {
-                        paidPrincipal = GlimUtility.add(paidPrincipal ,installmentPrincipal);
+                        paidPrincipal = GlimUtility.add(paidPrincipal, installmentPrincipal);
                     }
                     totalPaidAmount = GlimUtility.subtract(totalPaidAmount, installmentPrincipal);
 
                 } else {
-                    paidPrincipal = GlimUtility.add(paidPrincipal ,GlimUtility.subtract(totalPaidAmount, glimPaidPrincipal));
-                	glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal ,glimPaidPrincipal);
-                	totalPaidAmount = GlimUtility.subtract(totalPaidAmount, totalPaidAmount);
+                    paidPrincipal = GlimUtility.add(paidPrincipal, GlimUtility.subtract(totalPaidAmount, glimPaidPrincipal));
+                    glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal, glimPaidPrincipal);
+                    totalPaidAmount = GlimUtility.subtract(totalPaidAmount, totalPaidAmount);
                 }
             }
 
-            if (GlimUtility.isZero(totalPaidAmount)  || i + 1 == installmentNumber) {
+            if (GlimUtility.isZero(totalPaidAmount) || i + 1 == installmentNumber) {
                 break;
             }
 
@@ -415,7 +417,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
         splitMap.put("unpaidCharge", paidCharge);
         splitMap.put("unpaidInterest", paidInterest);
         splitMap.put("unpaidPrincipal", paidPrincipal);
-        splitMap.put("installmentTransactionAmount", GlimUtility.add(paidCharge ,paidInterest ,paidPrincipal));
+        splitMap.put("installmentTransactionAmount", GlimUtility.add(paidCharge, paidInterest, paidPrincipal));
         return splitMap;
     }
     
@@ -467,206 +469,4 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
         }
         return glimTransactions;
     }
-    
-    
-/*    public static Map<String, BigDecimal> getSplit(GroupLoanIndividualMonitoring glim, BigDecimal transactionAmount, Loan loan,
-            Integer installmentNumber, Map<String, BigDecimal> installmentPaidMap, LoanTransaction loanTransaction) {
-
-        BigDecimal totalPaidAmount = GlimUtility.add(transactionAmount, installmentPaidMap.get("installmentTransactionAmount"));
-        if(loanTransaction.isInterestWaiver()){
-        	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getPaidInterestAmount());
-        }else if(loanTransaction.isChargesWaiver()){
-        	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getPaidChargeAmount());
-        }else {
-        	totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getTotalPaidAmount());
-        }
-        MonetaryCurrency currency = loan.getCurrency();
-        Integer numberOfInstallments = loan.getLoanRepaymentScheduleDetail().getNumberOfRepayments();
-        List<LoanRepaymentScheduleInstallment> scheduleList = loan.getRepaymentScheduleInstallments();
-        BigDecimal paidCharge = BigDecimal.ZERO;
-        BigDecimal paidInterest = BigDecimal.ZERO;
-        BigDecimal paidPrincipal = BigDecimal.ZERO;
-
-        BigDecimal glimPaidCharge = GlimUtility.zeroIfNull(glim.getPaidChargeAmount()).add(installmentPaidMap.get("unpaidCharge"));
-        BigDecimal glimPaidInterest = GlimUtility.zeroIfNull(glim.getPaidInterestAmount()).add(installmentPaidMap.get("unpaidInterest"));
-        BigDecimal glimPaidPrincipal = GlimUtility.zeroIfNull(glim.getPaidPrincipalAmount()).add(installmentPaidMap.get("unpaidPrincipal"));
-        BigDecimal adjustedPaidInterest = GlimUtility.zeroIfNull(glim.getPaidInterestAmount()).add(installmentPaidMap.get("unpaidInterest"));
-        BigDecimal adjustedPaidPrincipal = GlimUtility.zeroIfNull(glim.getPaidPrincipalAmount()).add(installmentPaidMap.get("unpaidPrincipal"));
-        BigDecimal adjustedPaidCharge = GlimUtility.zeroIfNull(glim.getPaidChargeAmount()).add(installmentPaidMap.get("unpaidCharge"));
-
-        Boolean isChargeWaived = GlimUtility.isGreaterThanZero(glim.getWaivedChargeAmount());
-        Boolean isInterestWaived = GlimUtility.isGreaterThanZero(glim.getWaivedInterestAmount());
-        for (int i = 0; i < scheduleList.size(); i++) {
-            LoanRepaymentScheduleInstallment schedule = scheduleList.get(i);
-            BigDecimal installmentAmount = BigDecimal.ZERO;
-            BigDecimal installmentCharge = getDefaultChargeSharePerInstallment(loan, glim.getId(), glim.getChargeAmount(), schedule.getFeeChargesCharged(currency).getAmount(), loan.getSummary().getTotalFeeChargesCharged());
-            BigDecimal installmentInterest = getDefaultInterestSharePerInstallment(loan,glim.getId(),glim.getInterestAmount(),schedule.getInterestCharged(currency).getAmount(),loan.getSummary().getTotalInterestCharged());
-            if (i + 1 == numberOfInstallments && installmentNumber == numberOfInstallments) {
-                installmentInterest = glim.getInterestAmount().subtract(adjustedPaidInterest);
-                installmentCharge = glim.getChargeAmount().subtract(adjustedPaidCharge);                
-            }
-            if(loanTransaction != null && loanTransaction.isInterestWaiver()){
-            	installmentAmount = installmentInterest;
-            }else if(loanTransaction != null && loanTransaction.isChargesWaiver()){
-            	installmentAmount = installmentCharge;
-            }else {
-            	installmentAmount = glim.getInstallmentAmount();
-            }
-            
-            BigDecimal installmentPrincipal = installmentAmount.subtract(installmentInterest).subtract(installmentCharge);
-            if (i + 1 == numberOfInstallments && installmentNumber == numberOfInstallments) {
-            	installmentPrincipal = glim.getDisbursedAmount().subtract(adjustedPaidPrincipal);
-            }
-            if (loanTransaction == null ||( GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isInterestWaiver())) {
-                if (GlimUtility.isGreater(totalPaidAmount, installmentCharge)) {
-                    if (GlimUtility.isGreaterThanZero(glimPaidCharge)) {
-                        if (GlimUtility.isGreater(glimPaidCharge, installmentCharge)) {
-                            glimPaidCharge = glimPaidCharge.subtract(installmentCharge);
-                        } else {
-                            if (!isChargeWaived) {
-                                paidCharge = (i + 1 == numberOfInstallments) ? GlimUtility.add(paidCharge, installmentCharge) :
-                                	GlimUtility.subtract(GlimUtility.add( paidCharge,installmentCharge), glimPaidCharge);
-                            } else {
-                                installmentAmount = GlimUtility.subtract(installmentAmount, GlimUtility.subtract(installmentCharge,glimPaidCharge));                                
-                            }
-                            glimPaidCharge = GlimUtility.subtract(glimPaidCharge ,glimPaidCharge);
-                        }
-                        totalPaidAmount = GlimUtility.subtract(totalPaidAmount,installmentCharge);
-                    } else {
-                        if (!isChargeWaived) {
-                            paidCharge = GlimUtility.add(paidCharge,installmentCharge);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,installmentCharge);
-                        } else {
-                            installmentAmount = GlimUtility.subtract(installmentAmount ,installmentCharge);
-                        }
-                    }
-
-                } else {
-
-                    if (GlimUtility.isGreaterThanZero(glimPaidCharge)) {
-                        BigDecimal remaingCharge = GlimUtility.subtract(totalPaidAmount ,glimPaidCharge);
-                        if (!isChargeWaived) {
-                            paidCharge = GlimUtility.add(paidCharge,remaingCharge);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,totalPaidAmount);
-                        } else {
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,glimPaidCharge);
-                            installmentAmount = GlimUtility.subtract(installmentAmount ,GlimUtility.subtract(installmentCharge ,glimPaidCharge));
-                        }
-                        glimPaidCharge = GlimUtility.subtract(glimPaidCharge,glimPaidCharge);
-                    } else {
-                        if (!isChargeWaived) {
-                            paidCharge = totalPaidAmount;
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount,totalPaidAmount);
-                        } else {
-                            installmentAmount = GlimUtility.subtract(installmentAmount,installmentCharge);
-                        }
-
-                    }
-
-                }
-            }
-
-            if (GlimUtility.isZero(totalPaidAmount)) {
-                break;
-            }
-
-            if (GlimUtility.isGreaterThanZero(totalPaidAmount) && !loanTransaction.isChargesWaiver()) {
-                if (GlimUtility.isGreater(totalPaidAmount, installmentInterest)) {
-                    if (GlimUtility.isGreaterThanZero(glimPaidInterest)) {
-                        if (GlimUtility.isGreater(glimPaidInterest, installmentInterest)) {
-                            glimPaidInterest = GlimUtility.subtract(glimPaidInterest ,installmentInterest);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,installmentInterest);
-                        } else {
-                            if (!isInterestWaived) {
-                                paidInterest = (i + 1 == numberOfInstallments) ? GlimUtility.add(paidInterest,installmentInterest) : 
-                                	GlimUtility.subtract( GlimUtility.add(installmentInterest,paidInterest),glimPaidInterest);
-                                	
-                                totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,installmentInterest);
-                                glimPaidInterest = GlimUtility.subtract(glimPaidInterest ,glimPaidInterest);
-                            } else {
-                                installmentAmount = GlimUtility.subtract(installmentAmount ,GlimUtility.subtract(installmentInterest ,glimPaidInterest));
-                                totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,glimPaidInterest);
-                                glimPaidInterest = GlimUtility.subtract(glimPaidInterest ,glimPaidInterest);
-                            }
-                        }
-                    } else {
-                        if (!isInterestWaived) {
-                            paidInterest = GlimUtility.add(paidInterest ,installmentInterest);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,installmentInterest);
-                        } else {
-                            installmentAmount = GlimUtility.subtract(installmentAmount ,installmentInterest);
-                        }
-                    }
-
-                } else {
-                    if (GlimUtility.isGreaterThanZero(glimPaidInterest)) {
-                        BigDecimal remaingInterest = GlimUtility.subtract(totalPaidAmount ,glimPaidInterest);
-                        if (!isInterestWaived) {
-                            paidInterest = GlimUtility.add(paidInterest,remaingInterest);
-                            glimPaidInterest = GlimUtility.subtract(glimPaidInterest,glimPaidInterest);
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount,totalPaidAmount);
-                        } else {
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount,glimPaidInterest);
-                            installmentAmount = GlimUtility.subtract(installmentAmount , GlimUtility.subtract(installmentInterest ,glimPaidInterest));
-                            glimPaidInterest = GlimUtility.subtract(glimPaidInterest ,glimPaidInterest);
-                        }
-
-                    } else {
-                        if (!isInterestWaived) {
-                            paidInterest = totalPaidAmount;
-                            totalPaidAmount = GlimUtility.subtract(totalPaidAmount ,totalPaidAmount);
-                        } else {
-                            installmentAmount = GlimUtility.subtract(installmentAmount ,installmentInterest);
-                        }
-
-                    }
-
-                }
-            }
-            if (GlimUtility.isZero(totalPaidAmount)) {
-                break;
-            }
-
-            if (GlimUtility.isGreaterThanZero(totalPaidAmount) && (loanTransaction.isRepayment() || loanTransaction.isWriteOff())) {
-                if (GlimUtility.isGreater(totalPaidAmount, installmentPrincipal)) {
-                    if (GlimUtility.isGreaterThanZero(glimPaidPrincipal)) {
-                        if (GlimUtility.isGreater(glimPaidPrincipal, installmentPrincipal)) {
-                            glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal ,installmentPrincipal);
-                        } else {
-                            paidPrincipal = (i + 1 == numberOfInstallments) ? GlimUtility.add(paidPrincipal ,installmentPrincipal) : 
-                            	GlimUtility.subtract(GlimUtility.add(paidPrincipal,installmentPrincipal),glimPaidPrincipal);
-                            	
-                            glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal ,glimPaidPrincipal);
-                        }
-                    } else {
-                        paidPrincipal = GlimUtility.add(paidPrincipal ,installmentPrincipal);
-                    }
-                    totalPaidAmount = GlimUtility.subtract(totalPaidAmount, installmentPrincipal);
-
-                } else {
-                    if (GlimUtility.isGreaterThanZero(glimPaidPrincipal)) {
-                        paidPrincipal = GlimUtility.add(paidPrincipal ,GlimUtility.subtract(totalPaidAmount, glimPaidPrincipal));
-                        glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal ,glimPaidPrincipal);
-                    } else {
-                        paidPrincipal = GlimUtility.subtract(paidPrincipal ,totalPaidAmount);
-                    }
-
-                }
-            }
-
-            if (GlimUtility.isZero(totalPaidAmount)  || i + 1 == installmentNumber) {
-                break;
-            }
-
-        }
-
-        Map<String, BigDecimal> splitMap = new HashMap<String, BigDecimal>();
-        splitMap.put("unpaidCharge", paidCharge);
-        splitMap.put("unpaidInterest", paidInterest);
-        splitMap.put("unpaidPrincipal", paidPrincipal);
-        splitMap.put("installmentTransactionAmount", GlimUtility.add(paidCharge ,paidInterest ,paidPrincipal));
-        return splitMap;
-    }
-*/
-
 }
