@@ -1020,7 +1020,26 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
             }
         }
     }
-
+    
+    private void applyExceptionLoanTermVariations(final LoanApplicationTerms loanApplicationTerms, LocalDate fromDate) {
+        // Applies loan variations
+        while (loanApplicationTerms.getLoanTermVariations().hasVariation(fromDate)) {
+            LoanTermVariationsData variation = loanApplicationTerms.getLoanTermVariations().nextVariation();
+            if (!variation.isSpecificToInstallment()) {
+                switch (variation.getTermVariationType()) {
+                    case EMI_AMOUNT:
+                        loanApplicationTerms.setFixedEmiAmount(variation.getDecimalValue());
+                    break;
+                    case PRINCIPAL_AMOUNT:
+                        loanApplicationTerms.setFixedPrincipalAmount(variation.getDecimalValue());
+                    break;
+                    default:
+                    break;
+                }
+            }
+            variation.setProcessed(true);
+        }
+    }
     /**
      * this method calculates the principal amount for generating the repayment
      * schedule.
@@ -2194,6 +2213,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                     for (LoanTermVariationsData dueDateVariation : dueDateVariationsDataList) {
                         dueDateVariation.setProcessed(true);
                     }
+                    applyExceptionLoanTermVariations(loanApplicationTerms, lastInstallmentDate);
                     periodNumber++;
                     
                 }
