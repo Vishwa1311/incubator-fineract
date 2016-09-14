@@ -130,6 +130,8 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargeRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanDisbursementDetails;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanEvent;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanGlimRepaymentScheduleInstallment;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanGlimRepaymentScheduleInstallmentRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInstallmentCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanInterestRecalcualtionAdditionalDetails;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanLifecycleStateMachine;
@@ -238,6 +240,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     private final CodeValueRepositoryWrapper codeValueRepository;
     private final GroupLoanIndividualMonitoringRepository glimRepository;
     private final GroupLoanIndividualMonitoringAssembler glimAssembler;
+    private final LoanGlimRepaymentScheduleInstallmentRepository loanGlimRepaymentScheduleInstallmentRepository;
 
     @Autowired
     public LoanWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
@@ -269,7 +272,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final LoanScheduleAssembler loanScheduleAssembler,
             final CodeValueRepositoryWrapper codeValueRepository,
             final GroupLoanIndividualMonitoringRepository glimRepository,
-            final GroupLoanIndividualMonitoringAssembler glimAssembler) {
+            final GroupLoanIndividualMonitoringAssembler glimAssembler,
+            final LoanGlimRepaymentScheduleInstallmentRepository loanGlimRepaymentScheduleInstallmentRepository) {
         this.context = context;
         this.loanEventApiJsonValidator = loanEventApiJsonValidator;
         this.loanAssembler = loanAssembler;
@@ -310,6 +314,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         this.codeValueRepository = codeValueRepository;
         this.glimRepository = glimRepository;
         this.glimAssembler = glimAssembler;
+        this.loanGlimRepaymentScheduleInstallmentRepository = loanGlimRepaymentScheduleInstallmentRepository;
     }
 
     private LoanLifecycleStateMachine defaultLoanLifecycleStateMachine() {
@@ -728,9 +733,11 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
         
         List<GroupLoanIndividualMonitoring> glimList = this.glimRepository.findByLoanIdAndIsClientSelected(loanId, true);
+        List<Long> glimIds = new ArrayList<Long>(); 
         HashMap<Long, BigDecimal> chargesMap = new HashMap<>();
         for (GroupLoanIndividualMonitoring glim : glimList) {
             final BigDecimal approvedAmount = glim.getApprovedAmount();
+            glimIds.add(glim.getId());
             if (approvedAmount != null) {
                 glim.setIsClientSelected(true);
                 glim.undoGlimTransaction();
@@ -739,6 +746,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                         glim.getGroupLoanIndividualMonitoringCharges());
             }
         }
+        List<LoanGlimRepaymentScheduleInstallment> loanGlimRepaymentScheduleInstallments = this.loanGlimRepaymentScheduleInstallmentRepository.getLoanGlimRepaymentScheduleInstallmentByGlimIds(glimIds);
+        this.loanGlimRepaymentScheduleInstallmentRepository.deleteInBatch(loanGlimRepaymentScheduleInstallments);
         this.glimAssembler.updateLoanChargesForGlim(loan, chargesMap);
         loan.updateGlim(glimList);
         this.glimAssembler.adjustRoundOffValuesToApplicableCharges(loan.charges(),
