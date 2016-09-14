@@ -255,5 +255,22 @@ public class BankStatementsApiResource {
         String result = this.bankStatementWritePlatformService.createJournalEntries(bankStatementId, apiRequestBodyAsJson);
         return result;
     }
+    
+    @GET
+    @Path("{bankStatementId}/summary")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    public String getBankStatementSummary(@PathParam("bankStatementId") final Long bankStatementId, @Context final UriInfo uriInfo) {
+
+        this.context.authenticatedUser();
+
+        final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
+
+        final BankStatementData bankStatementData = this.bankStatementReadPlatformService.getBankStatementSummary(bankStatementId);
+
+        return this.toApiJsonSerializer.serialize(settings, bankStatementData,
+                ReconciliationApiConstants.BANK_STATEMENT_RESPONSE_DATA_PARAMETERS);
+
+    }
 
 }
