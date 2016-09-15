@@ -72,9 +72,8 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     @JoinColumn(name = "loan_id", nullable = false)
     private Loan loan;
 
-    @ManyToOne
-    @JoinColumn(name = "office_id", nullable = false)
-    private Office office;
+    @Column(name = "office_id", nullable = false)
+    private Long officeId;
 
     @ManyToOne(optional = true)
     @JoinColumn(name = "payment_detail_id", nullable = true)
@@ -235,11 +234,33 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     }
 
     public static LoanTransaction copyTransactionProperties(final LoanTransaction loanTransaction) {
-        return new LoanTransaction(loanTransaction.loan, loanTransaction.office, loanTransaction.typeOf, loanTransaction.dateOf,
-                loanTransaction.amount, loanTransaction.principalPortion, loanTransaction.interestPortion,
+        return new LoanTransaction(loanTransaction.loan, loanTransaction.officeId, loanTransaction.typeOf, 
+                loanTransaction.dateOf, loanTransaction.amount, loanTransaction.principalPortion, loanTransaction.interestPortion,
                 loanTransaction.feeChargesPortion, loanTransaction.penaltyChargesPortion, loanTransaction.overPaymentPortion,
-                loanTransaction.reversed, loanTransaction.paymentDetail, loanTransaction.externalId, new LocalDateTime(
-                        loanTransaction.createdDate), loanTransaction.appUser);
+                loanTransaction.reversed, loanTransaction.paymentDetail, loanTransaction.externalId, loanTransaction.createdDate,
+                loanTransaction.appUser);
+    }
+    
+    private LoanTransaction(final Loan loan, final Long officeId, final Integer typeOf, final Date dateOf, final BigDecimal amount,
+            final BigDecimal principalPortion, final BigDecimal interestPortion, final BigDecimal feeChargesPortion,
+            final BigDecimal penaltyChargesPortion, final BigDecimal overPaymentPortion, final boolean reversed,
+            final PaymentDetail paymentDetail, final String externalId, final Date createdDate, final AppUser appUser) {
+        this.loan = loan;
+        this.typeOf = typeOf;
+        this.dateOf = dateOf;
+        this.amount = amount;
+        this.principalPortion = principalPortion;
+        this.interestPortion = interestPortion;
+        this.feeChargesPortion = feeChargesPortion;
+        this.penaltyChargesPortion = penaltyChargesPortion;
+        this.overPaymentPortion = overPaymentPortion;
+        this.reversed = reversed;
+        this.paymentDetail = paymentDetail;
+        this.officeId = officeId;
+        this.externalId = externalId;
+        this.submittedOnDate = DateUtils.getDateOfTenant();
+        this.createdDate = createdDate;
+        this.appUser = appUser;
     }
 
     public static LoanTransaction accrueLoanCharge(final Loan loan, final Office office, final Money amount, final LocalDate applyDate,
@@ -284,7 +305,10 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         this.overPaymentPortion = overPaymentPortion;
         this.reversed = reversed;
         this.paymentDetail = paymentDetail;
-        this.office = office;
+        if(office != null){
+            this.officeId = office.getId();
+        }
+        
         this.externalId = externalId;
         this.submittedOnDate = DateUtils.getDateOfTenant();
         this.createdDate = createdDate.toDate();
@@ -313,7 +337,9 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         this.amount = amount;
         this.dateOf = date.toDateTimeAtStartOfDay().toDate();
         this.externalId = externalId;
-        this.office = office;
+        if(office != null){
+            this.officeId = office.getId();
+        }
         this.submittedOnDate = DateUtils.getDateOfTenant();
         this.createdDate = createdDate.toDate();
         this.appUser = appUser;
@@ -327,7 +353,9 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         this.amount = amount;
         this.dateOf = date.toDateTimeAtStartOfDay().toDate();
         this.externalId = externalId;
-        this.office = office;
+        if(office != null){
+            this.officeId = office.getId();
+        }
         this.submittedOnDate = DateUtils.getDateOfTenant();
         this.createdDate = createdDate.toDate();
         this.appUser = appUser;
@@ -569,7 +597,8 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         if (this.paymentDetail != null) {
             paymentDetailData = this.paymentDetail.toData();
         }
-        return new LoanTransactionData(getId(), this.office.getId(), this.office.getName(), transactionType, paymentDetailData,
+        String officeName = null;
+        return new LoanTransactionData(getId(), this.officeId, officeName, transactionType, paymentDetailData,
                 currencyData, getTransactionDate(), this.amount, this.principalPortion, this.interestPortion, this.feeChargesPortion,
                 this.penaltyChargesPortion, this.overPaymentPortion, this.externalId, transfer, null, outstandingLoanBalance,
                 this.unrecognizedIncomePortion, this.manuallyAdjustedOrReversed);
@@ -581,7 +610,7 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(this.typeOf);
 
         thisTransactionData.put("id", getId());
-        thisTransactionData.put("officeId", this.office.getId());
+        thisTransactionData.put("officeId", this.officeId);
         thisTransactionData.put("type", transactionType);
         thisTransactionData.put("reversed", Boolean.valueOf(isReversed()));
         thisTransactionData.put("date", getTransactionDate());
