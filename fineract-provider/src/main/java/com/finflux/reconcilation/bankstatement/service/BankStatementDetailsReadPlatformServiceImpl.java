@@ -44,9 +44,9 @@ public class BankStatementDetailsReadPlatformServiceImpl implements BankStatemen
             		" gl.name as glAccount "+
             		" from f_bank_statement_details bsd "+
             		" join f_bank_statement bs on (bs.id=bsd.bank_statement_id and bsd.bank_statement_id = ? and bsd.bank_statement_detail_type = "+BankStatementDetailType.NONPORTFOLIO.getValue()+" )"+
-            		" join f_bank b on b.id=bs.bank "+
-            		" join m_office office on office.external_id=bsd.branch_external_id"+
-            		" join acc_gl_account gl on (gl.gl_code=bsd.gl_code )";
+            		" left join f_bank b on b.id=bs.bank "+
+            		" left join m_office office on office.external_id=bsd.branch_external_id"+
+            		" left join acc_gl_account gl on (gl.gl_code=bsd.gl_code )";
         }
 
         @Override
