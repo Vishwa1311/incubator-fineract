@@ -315,14 +315,7 @@ public class GroupLoanIndividualMonitoringAssembler {
                 Long loanPurposeId = member.get(LoanApiConstants.loanPurposeIdParamName).getAsLong();
                 loanPurpose = this.codeValueRepository.findOne(loanPurposeId);
             }
-
-            // charges calculation
-            Set<GroupLoanIndividualMonitoringCharge> clientCharges = new HashSet<GroupLoanIndividualMonitoringCharge>();
-            calculateTotalCharges(newLoanApplication, element, amount, client, clientCharges);
-
-            // total interest calculation
-            BigDecimal totalInterest = calculateTotalInterest(interestRate, numberOfRepayment, amount);
-
+            
             final BigDecimal adjustedAmount = BigDecimal.ZERO;
             final BigDecimal installmentAmount = BigDecimal.ZERO;
             final BigDecimal totalPaybleAmount = BigDecimal.ZERO;
@@ -333,9 +326,19 @@ public class GroupLoanIndividualMonitoringAssembler {
             final BigDecimal paidChargeAmount = BigDecimal.ZERO;
             final BigDecimal waivedInterestAmount = BigDecimal.ZERO;
             final BigDecimal waivedChargeAmount = BigDecimal.ZERO;
+            BigDecimal totalInterest =  BigDecimal.ZERO;
+            Set<GroupLoanIndividualMonitoringCharge> clientCharges = new HashSet<GroupLoanIndividualMonitoringCharge>();
 
-            // calculate percentage of principal amount
-            percentage = calculatePercentageOfAmount(element, amount, percentage);
+            if (GlimUtility.isGreaterThanZero(amount)) {
+                // charges calculation
+                calculateTotalCharges(newLoanApplication, element, amount, client, clientCharges);
+
+                // total interest calculation
+                totalInterest = calculateTotalInterest(interestRate, numberOfRepayment, amount);
+
+                // calculate percentage of principal amount
+                percentage = calculatePercentageOfAmount(element, amount, percentage);
+            }
 
             GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = GroupLoanIndividualMonitoring.createInstance(newLoanApplication,
                     client, amount, null, null, loanPurpose, isClientSelected, adjustedAmount, installmentAmount, totalPaybleAmount,
