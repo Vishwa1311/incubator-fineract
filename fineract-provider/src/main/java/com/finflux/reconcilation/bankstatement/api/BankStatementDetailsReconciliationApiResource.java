@@ -29,6 +29,7 @@ import org.springframework.stereotype.Component;
 
 import com.finflux.reconcilation.ReconciliationApiConstants;
 import com.finflux.reconcilation.bankstatement.data.BankStatementDetailsData;
+import com.finflux.reconcilation.bankstatement.service.BankStatementDetailsReadPlatformService;
 import com.finflux.reconcilation.bankstatement.service.BankStatementReadPlatformService;
 
 @Path("/bankstatements/{bankStatementId}/details")
@@ -43,13 +44,15 @@ public class BankStatementDetailsReconciliationApiResource {
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
     @SuppressWarnings("rawtypes")
     private final ToApiJsonSerializer apiJsonSerializer;
+    private final BankStatementDetailsReadPlatformService bankStatementDetailsReadPlatformService;
 
     @Autowired
     public BankStatementDetailsReconciliationApiResource(final ApiRequestParameterHelper apiRequestParameterHelper,
             final PlatformSecurityContext context, final BankStatementReadPlatformService bankStatementReadPlatformService,
             final ToApiJsonSerializer<BankStatementDetailsData> bankStatementDetailsApiJsonSerializer,
             final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService,
-            @SuppressWarnings("rawtypes") final ToApiJsonSerializer apiJsonSerializer) {
+            @SuppressWarnings("rawtypes") final ToApiJsonSerializer apiJsonSerializer,
+            final BankStatementDetailsReadPlatformService bankStatementDetailsReadPlatformService) {
 
         this.apiRequestParameterHelper = apiRequestParameterHelper;
         this.context = context;
@@ -57,6 +60,7 @@ public class BankStatementDetailsReconciliationApiResource {
         this.bankStatementDetailsApiJsonSerializer = bankStatementDetailsApiJsonSerializer;
         this.commandsSourceWritePlatformService = commandsSourceWritePlatformService;
         this.apiJsonSerializer = apiJsonSerializer;
+        this.bankStatementDetailsReadPlatformService = bankStatementDetailsReadPlatformService;
     }
 
     @GET
@@ -68,9 +72,17 @@ public class BankStatementDetailsReconciliationApiResource {
         this.context.authenticatedUser();
 
         List<BankStatementDetailsData> bankStatementDetailsData = null;
-
-        bankStatementDetailsData = this.bankStatementReadPlatformService.retrieveBankStatementDetailsData(bankStatementId, command);
-
+        
+        if(command.equalsIgnoreCase(ReconciliationApiConstants.RECONCILED)){
+			bankStatementDetailsData = this.bankStatementDetailsReadPlatformService.retrieveBankStatementDetailsReconciledData(bankStatementId);
+		}else if(command.equalsIgnoreCase(ReconciliationApiConstants.JOURNAL_ENTRY)){
+			bankStatementDetailsData = this.bankStatementDetailsReadPlatformService.retrieveBankStatementNonPortfolioData(bankStatementId);
+		}else if(command.equalsIgnoreCase(ReconciliationApiConstants.MISCELLANEOUS)){
+			bankStatementDetailsData = this.bankStatementDetailsReadPlatformService.retrieveBankStatementMiscellaneousData(bankStatementId);
+		}else{
+			bankStatementDetailsData = this.bankStatementDetailsReadPlatformService.retrieveBankStatementDetailsDataForReconcile(bankStatementId);
+		}
+        
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
 
         return this.bankStatementDetailsApiJsonSerializer.serialize(settings, bankStatementDetailsData,

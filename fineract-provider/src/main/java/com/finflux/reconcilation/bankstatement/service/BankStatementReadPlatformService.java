@@ -19,4 +19,6 @@ public interface BankStatementReadPlatformService {
     public List<BankStatementDetailsData> retrieveBankStatementDetailsData(final Long bankStatementId, String command);
 
     public List<BankStatementData> retrieveBankStatementsByAssociatedBank(final Long bankId);
+    
+    public BankStatementData getBankStatementSummary(final Long bankStatementId);
 }

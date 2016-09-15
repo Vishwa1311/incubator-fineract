@@ -218,6 +218,8 @@ public class LoanTransactionData {
         this.paymentTypeOptions = paymentOptions;
         this.externalId = externalId;
         this.submittedOnDate = submittedOnDate;
+        this.groupExternalId = groupExternalId;
+        this.loanAccountNumber = loanAccountNumber;
         this.unrecognizedIncomePortion = null;
         this.transfer = null;
         this.principalPortion = null;
@@ -230,8 +232,6 @@ public class LoanTransactionData {
         this.fixedEmiAmount = null;
         this.feeChargesPortion = null;
         this.currency = null;
-        this.groupExternalId = groupExternalId;
-        this.loanAccountNumber = loanAccountNumber;
     }
 
     public static LoanTransactionData LoanTransactionDataTemplate(Long id, final Long officeId, final String officeName,
@@ -240,6 +240,42 @@ public class LoanTransactionData {
             final String groupExternalId, final String loanAccountNumber) {
         return new LoanTransactionData(id, officeId, officeName, transactionType, paymentDetailData, date, amount, paymentOptions,
                 externalId, submittedOnDate, groupExternalId, loanAccountNumber);
+
+    }
+    
+    
+    
+    private LoanTransactionData(Long id, final Long officeId, final String officeName, LoanTransactionEnumData transactionType,
+            final LocalDate date, final BigDecimal amount,final String groupExternalId, final String loanAccountNumber) {
+        this.id = id;
+        this.officeId = officeId;
+        this.officeName = officeName;
+        this.type = transactionType;
+        this.groupExternalId = groupExternalId;
+        this.loanAccountNumber = loanAccountNumber;
+        this.date = date;
+        this.amount = amount;
+        this.paymentDetailData = null;
+        this.paymentTypeOptions = null;
+        this.externalId = null;
+        this.submittedOnDate = null;
+        this.unrecognizedIncomePortion = null;
+        this.transfer = null;
+        this.principalPortion = null;
+        this.possibleNextRepaymentDate = null;
+        this.penaltyChargesPortion = null;
+        this.overpaymentPortion = null;
+        this.outstandingLoanBalance = null;
+        this.manuallyReversed = false;
+        this.interestPortion = null;
+        this.fixedEmiAmount = null;
+        this.feeChargesPortion = null;
+        this.currency = null;
+    }
+
+    public static LoanTransactionData LoanTransactionDataForReconciliationLoanTransactionData(Long id, final Long officeId, final String officeName, LoanTransactionEnumData transactionType,
+            final LocalDate date, final BigDecimal amount,final String groupExternalId, final String loanAccountNumber) {
+        return new LoanTransactionData(id, officeId, officeName, transactionType, date, amount,groupExternalId, loanAccountNumber);
 
     }
 

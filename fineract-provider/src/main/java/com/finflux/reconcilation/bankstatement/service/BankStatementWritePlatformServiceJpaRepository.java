@@ -57,6 +57,7 @@ import com.finflux.reconcilation.bank.domain.BankRepositoryWrapper;
 import com.finflux.reconcilation.bank.exception.BankNotAssociatedExcecption;
 import com.finflux.reconcilation.bankstatement.data.BankStatementDetailsData;
 import com.finflux.reconcilation.bankstatement.domain.BankStatement;
+import com.finflux.reconcilation.bankstatement.domain.BankStatementDetailType;
 import com.finflux.reconcilation.bankstatement.domain.BankStatementDetails;
 import com.finflux.reconcilation.bankstatement.domain.BankStatementDetailsRepositoryWrapper;
 import com.finflux.reconcilation.bankstatement.domain.BankStatementRepositoryWrapper;
@@ -89,6 +90,7 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
     private final JournalEntryRepository journalEntryRepository;
     private final BankGLAccountReadPlatformService bankGLAccountReadPlatformService;
     private final CurrencyReadPlatformService currencyReadPlatformService;
+    private final BankStatementDetailsReadPlatformService bankStatementDetailsReadPlatformService;
 
     @Autowired
 	public BankStatementWritePlatformServiceJpaRepository(final PlatformSecurityContext context,
@@ -102,7 +104,7 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
 			final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService,
 			final JournalEntryRepository journalEntryRepository,
 			final BankGLAccountReadPlatformService bankGLAccountReadPlatformService,
-			final CurrencyReadPlatformService currencyReadPlatformService) {
+			final CurrencyReadPlatformService currencyReadPlatformService, final BankStatementDetailsReadPlatformService bankStatementDetailsReadPlatformService) {
         this.context = context;
         this.documentRepository = documentRepository;
         this.contentRepositoryFactory = contentRepositoryFactory;
@@ -116,6 +118,7 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
         this.journalEntryRepository = journalEntryRepository;
         this.bankGLAccountReadPlatformService = bankGLAccountReadPlatformService;
         this.currencyReadPlatformService = currencyReadPlatformService;
+        this.bankStatementDetailsReadPlatformService  = bankStatementDetailsReadPlatformService;
     }
 
     @Transactional
@@ -293,9 +296,19 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
                 }
 
                 if (row.getRowNum() != 0 && isValid) {
+                	Integer bankStatementDetailType = 0;
+                	if(bankStatementTransactionType.equalsIgnoreCase(ReconciliationApiConstants.OTHER)){
+                		bankStatementDetailType = BankStatementDetailType.NONPORTFOLIO.getValue();
+                	}else if(bankStatementTransactionType.equalsIgnoreCase(ReconciliationApiConstants.ERROR)){
+                		bankStatementDetailType = BankStatementDetailType.MISCELLANEOUS.getValue();
+                	}else{
+                		bankStatementDetailType = BankStatementDetailType.PORTFOLIO.getValue();
+                	}
+                	boolean isReconciled = false;
+                	LoanTransaction loanTransaction = null;
                     BankStatementDetails bankStatementDetails = BankStatementDetails.instance(null, transactionId, transactionDate,
-                            description, amount, mobileNumber, clientAccountNumber, loanAccountNumber, groupExternalId, false, null,
-                            branchExternalId, accountingType, glCode, isJournalEntry, bankStatementTransactionType);
+                            description, amount, mobileNumber, clientAccountNumber, loanAccountNumber, groupExternalId, isReconciled, loanTransaction,
+                            branchExternalId, accountingType, glCode, bankStatementTransactionType, bankStatementDetailType);
                     bankStatementDetailsList.add(bankStatementDetails);
                 }
                 if (row.getRowNum() != 0) {
@@ -344,15 +357,15 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
 
     @SuppressWarnings("unused")
     private void revertChanges(final Long bankStatementId) {
-        List<BankStatementDetailsData> changedBankStatementDetailsData = changedBankStatementDetailsData(bankStatementId);
+        List<BankStatementDetailsData> changedBankStatementDetailsData = this.bankStatementDetailsReadPlatformService.changedBankStatementDetailsData(bankStatementId);
         List<String> changedJournalEntriesData = new ArrayList<String>();
         List<Long> loanTransactionForUndoReconcile = new ArrayList<Long>();
         if (changedBankStatementDetailsData.size() > 0) {
             for (BankStatementDetailsData bankStatementDetailsData : changedBankStatementDetailsData) {
-                if (bankStatementDetailsData.getIsJournalEntry()) {
+                if (bankStatementDetailsData.getBankStatementDetailType()==BankStatementDetailType.NONPORTFOLIO.getValue()) {
                     changedJournalEntriesData.add(bankStatementDetailsData.getTransactionId());
-                } else {
-                    loanTransactionForUndoReconcile.add(bankStatementDetailsData.getLoanTransaction());
+                } else if (bankStatementDetailsData.getBankStatementDetailType()==BankStatementDetailType.PORTFOLIO.getValue()){
+                    loanTransactionForUndoReconcile.add(bankStatementDetailsData.getLoanTransactionId());
                 }
             }
         }
@@ -603,29 +616,31 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
 
             final JsonArray transactionDataArray = command.arrayOfParameterNamed(ReconciliationApiConstants.transactionDataParamName);
             if (!transactionDataArray.isJsonNull() && transactionDataArray.size() > 0) {
-
+            	List<BankStatementDetails> bankDetailsList = new ArrayList<BankStatementDetails>();
                 for (int i = 0; i < transactionDataArray.size(); i++) {
 
                     final JsonObject jsonObject = transactionDataArray.get(i).getAsJsonObject();
-                    final Long bankStatementId = jsonObject.get(ReconciliationApiConstants.bankTransctionIdParamName).getAsLong();
+                    final Long bankStatementDetailId = jsonObject.get(ReconciliationApiConstants.bankTransctionIdParamName).getAsLong();
                     final Long loanTransactionId = jsonObject.get(ReconciliationApiConstants.loanTransactionIdParamName).getAsLong();
-                    BankStatementDetails bankTransaction = null;
+                    BankStatementDetails bankStatementDetail = null;
                     LoanTransaction loanTransaction = null;
                     if (loanTransactionId != null) {
                         loanTransaction = this.loanTransactionRepository.findOneWithNotFoundDetection(loanTransactionId);
                         if (loanTransaction != null && !loanTransaction.isReversed() && !loanTransaction.isRefund()
                                 && !loanTransaction.isReconciled()) {
                             loanTransaction.setReconciled(true);
-                            this.loanTransactionRepository.save(loanTransaction);
-                            bankTransaction = this.bankStatementDetailsRepository.findOneWithNotFoundDetection(bankStatementId);
-                            bankTransaction.setIsReconciled(true);
-                            bankTransaction.setLoanTransaction(loanTransaction);
-                            this.bankStatementDetailsRepository.save(bankTransaction);
+                            //this.loanTransactionRepository.save(loanTransaction);
+                            bankStatementDetail = this.bankStatementDetailsRepository.findOneWithNotFoundDetection(bankStatementDetailId);
+                            bankStatementDetail.setIsReconciled(true);
+                            bankStatementDetail.setLoanTransaction(loanTransaction);
+                            bankDetailsList.add(bankStatementDetail);
+                            //this.bankStatementDetailsRepository.save(bankTransaction);
 
                         }
                     }
 
                 }
+                this.bankStatementDetailsRepository.save(bankDetailsList);
 
             }
 
@@ -650,12 +665,11 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
                 .withEntityId(command.entityId()) //
                 .build();
     }
-
+    
     @SuppressWarnings("unused")
     @Override
     public String createJournalEntries(Long bankStatementId, String apiRequestBodyAsJson) {
-        List<BankStatementDetailsData> bankStatementDetailsData = this.bankStatementReadPlatformService.retrieveBankStatementDetailsData(
-                bankStatementId, ReconciliationApiConstants.JOURNAL_COMMAND_PARAMETER);
+        List<BankStatementDetailsData> bankStatementDetailsData = this.bankStatementDetailsReadPlatformService.retrieveBankStatementNonPortfolioData(bankStatementId);
         Long defaultBankGLAccountId = null;
         if (bankStatementDetailsData.size() > 0) {
             Bank bank = this.bankStatementRepository.findOneWithNotFoundDetection(bankStatementId).getBank();
@@ -672,30 +686,41 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
         Map<String, String> requestBodyMap = gson.fromJson(apiRequestBodyAsJson, type);
         String locale = requestBodyMap.get(ReconciliationApiConstants.localeParamName);
         String currencyCode = currencyReadPlatformService.getDefaultCurrencyCode();
+        List<BankStatementDetails> updatedList = new ArrayList<BankStatementDetails>();
         for (BankStatementDetailsData bankStatementDetail : bankStatementDetailsData) {
-            HashMap<String, Object> responseMap = new HashMap<String, Object>();
-            HashMap<String, Object> requestMap = new HashMap<String, Object>();
-            requestMap.put(ReconciliationApiConstants.localeParamName, locale);
-            requestMap.put(ReconciliationApiConstants.dateFormatParamName, "MMM DD, YYYY");
-            requestMap.put(ReconciliationApiConstants.officeIdParamName, bankStatementDetail.getBranch());
-            requestMap.put(ReconciliationApiConstants.transactionDateParamName, bankStatementDetail.getTransactionDate());
-            requestMap.put(ReconciliationApiConstants.currencyCodeParamName, currencyCode);
-            requestMap.putAll(getCreditAndDebitMap(bankStatementDetail, defaultBankGLAccountId));
-            String requestBody = gson.toJson(requestMap);
-            CommandProcessingResult result = null;
-            final CommandWrapper commandRequest = new CommandWrapperBuilder().createJournalEntry().withJson(requestBody).build();
-            result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
-            BankStatementDetails toUpdate = this.bankStatementDetailsRepository.findOneWithNotFoundDetection(bankStatementDetail.getId());
-            toUpdate.setTransactionId(result.getTransactionId());
-            this.bankStatementDetailsRepository.save(toUpdate);
-            responseMap.put(ReconciliationApiConstants.BANK_STATEMENT_DETAIL_ID, bankStatementDetail.getId());
-            responseMap.put(ReconciliationApiConstants.JOURNAL_ENTRY_RESPONSE, result);
-            resultList.add(responseMap);
+        	if(!bankStatementDetail.getIsReconciled()){
+        		HashMap<String, Object> responseMap = new HashMap<String, Object>();
+                HashMap<String, Object> requestMap = new HashMap<String, Object>();
+                requestMap.put(ReconciliationApiConstants.localeParamName, locale);
+                requestMap.put(ReconciliationApiConstants.dateFormatParamName, "MMM DD, YYYY");
+                requestMap.put(ReconciliationApiConstants.officeIdParamName, bankStatementDetail.getBranch());
+                requestMap.put(ReconciliationApiConstants.transactionDateParamName, bankStatementDetail.getTransactionDate());
+                requestMap.put(ReconciliationApiConstants.currencyCodeParamName, currencyCode);
+                requestMap.putAll(getCreditAndDebitMap(bankStatementDetail, defaultBankGLAccountId));
+                String requestBody = null;
+                if(requestMap.containsKey(ReconciliationApiConstants.officeIdParamName)){
+                    requestBody = gson.toJson(requestMap);   
+                    CommandProcessingResult result = null;
+                    final CommandWrapper commandRequest = new CommandWrapperBuilder().createJournalEntry().withJson(requestBody).build();
+                    result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+                    BankStatementDetails toUpdate = this.bankStatementDetailsRepository.findOneWithNotFoundDetection(bankStatementDetail.getId());
+                    toUpdate.setTransactionId(result.getTransactionId());
+                    toUpdate.setIsReconciled(true);
+                    updatedList.add(toUpdate);            
+                    responseMap.put(ReconciliationApiConstants.BANK_STATEMENT_DETAIL_ID, bankStatementDetail.getId());
+                    responseMap.put(ReconciliationApiConstants.JOURNAL_ENTRY_RESPONSE, result);
+                    resultList.add(responseMap);         	
+                }
+        	}
+            
         }
+        this.bankStatementDetailsRepository.save(updatedList);
         responseData.put(ReconciliationApiConstants.RESOURCE, resultList);
         return gson.toJson(responseData);
     }
 
+    
+    
     @SuppressWarnings("unused")
     private HashMap<String, Object> getCreditAndDebitMap(BankStatementDetailsData bankStatementDetail, Long defaultBankGLAccountId) {
 
