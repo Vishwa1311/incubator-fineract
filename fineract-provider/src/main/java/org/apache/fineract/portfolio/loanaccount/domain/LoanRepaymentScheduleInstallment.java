@@ -845,4 +845,9 @@ public final class LoanRepaymentScheduleInstallment extends AbstractAuditableCus
         this.obligationsMet = false;
         this.obligationsMetOnDate = null;
     }
+
+    public void resetTotalPaidAmount() {
+        this.totalPaidInAdvance = null;
+        this.totalPaidLate = null;
+    }
 }
