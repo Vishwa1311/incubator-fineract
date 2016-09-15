@@ -147,6 +147,7 @@ import org.apache.fineract.portfolio.loanaccount.exception.LoanOfficerAssignment
 import org.apache.fineract.portfolio.loanaccount.exception.LoanOfficerUnassignmentException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.exception.MultiDisbursementDataRequiredException;
+import org.apache.fineract.portfolio.loanaccount.exception.OtherLoanDisbursementDetailWithDateException;
 import org.apache.fineract.portfolio.loanaccount.guarantor.service.GuarantorDomainService;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.OverdueLoanScheduleData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.DefaultScheduledDateGenerator;
@@ -2321,6 +2322,15 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             if (group.isNotActive()) { throw new GroupNotActiveException(group.getId()); }
         }
     }
+    
+    private void checkOtherDisbursementDetailsWithDate(final Loan loan, final Long disbursementId, final Date updatedDisbursementDate) {
+        for (LoanDisbursementDetails loanDisbursementDetails : loan.getDisbursementDetails()) {
+            if (loanDisbursementDetails.expectedDisbursementDate().equals(updatedDisbursementDate)
+                    && loanDisbursementDetails.getId() != disbursementId) { throw new OtherLoanDisbursementDetailWithDateException(
+                    "Loan disbursement details with date - " + updatedDisbursementDate + " for loan - " + loan.getId() + " already exists.",
+                    loan.getId(), updatedDisbursementDate.toString()); }
+        }
+    }
 
     @Override
     @Transactional
@@ -2668,6 +2678,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
         checkClientOrGroupActive(loan);
+        checkOtherDisbursementDetailsWithDate(loan, disbursementId, command.DateValueOfParameterNamed(LoanApiConstants.updatedDisbursementDateParameterName));
         LoanDisbursementDetails loanDisbursementDetails = loan.fetchLoanDisbursementsById(disbursementId);
         this.loanEventApiJsonValidator.validateUpdateDisbursementDateAndAmount(command.json(), loanDisbursementDetails);
         LocalDate recalculateFromDate = null;
