@@ -39,6 +39,9 @@ import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.GlimChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
+import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringChargeRepository;
+import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.charge.service.GroupLoanIndividualMonitoringChargeReadPlatformServiceImpl;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
@@ -68,18 +71,20 @@ public class GroupLoanIndividualMonitoringAssembler {
     private final ChargeRepositoryWrapper chargeRepository;
     private final FromJsonHelper fromApiJsonHelper;    
     private final GroupLoanIndividualMonitoringRepositoryWrapper glimRepositoryWrapper;
+    private final GroupLoanIndividualMonitoringChargeRepositoryWrapper glimChrageRepository;
 
     @Autowired
     public GroupLoanIndividualMonitoringAssembler(GroupLoanIndividualMonitoringReadPlatformService glimReadPlatformService,
             CodeValueRepository codeValueRepository, final ClientRepositoryWrapper clientRepository,
             final ChargeRepositoryWrapper chargeRepository, final FromJsonHelper fromApiJsonHelper,
-            final GroupLoanIndividualMonitoringRepositoryWrapper glimRepositoryWrapper) {
+            final GroupLoanIndividualMonitoringRepositoryWrapper glimRepositoryWrapper, final GroupLoanIndividualMonitoringChargeRepositoryWrapper glimChrageRepository) {
         this.glimReadPlatformService = glimReadPlatformService;
         this.codeValueRepository = codeValueRepository;
         this.clientRepository = clientRepository;
         this.chargeRepository = chargeRepository;
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.glimRepositoryWrapper = glimRepositoryWrapper;
+        this.glimChrageRepository = glimChrageRepository;
     }
 
     public List<GroupLoanIndividualMonitoring> assembleGlimFromJson(final JsonCommand command, boolean isRecoveryPayment) {
@@ -379,9 +384,10 @@ public class GroupLoanIndividualMonitoringAssembler {
                 GroupLoanIndividualMonitoring groupLoanIndividualMonitoring = null;
                 BigDecimal revisedFeeAmount = null;
                 BigDecimal waivedChargeAmount = null;
+                BigDecimal paidCharge = null;
                 GroupLoanIndividualMonitoringCharge glimCharge = GroupLoanIndividualMonitoringCharge.instance(
                         groupLoanIndividualMonitoring, client, charge, totalChargeAmount, revisedFeeAmount, charge.isEmiRoundingGoalSeek(),
-                        waivedChargeAmount);
+                        waivedChargeAmount,paidCharge);
                 clientCharges.add(glimCharge);
             }
         }
@@ -554,9 +560,15 @@ public class GroupLoanIndividualMonitoringAssembler {
     
     public void updateGLIMAfterRepayment(Collection<GroupLoanIndividualMonitoringTransaction> glimTransactions, Boolean isRecoveryRepayment) {
         List<GroupLoanIndividualMonitoring> updatedGlimList = new ArrayList<GroupLoanIndividualMonitoring>();
+        List<GroupLoanIndividualMonitoringCharge> glimChargesForUpdate = new ArrayList<GroupLoanIndividualMonitoringCharge>();
         for (GroupLoanIndividualMonitoringTransaction glimTransaction : glimTransactions) {
-            GroupLoanIndividualMonitoring glim = glimTransaction.getGroupLoanIndividualMonitoring();
-            Map<String, BigDecimal> processedTransactionMap = glim.getProcessedTransactionMap();            
+            GroupLoanIndividualMonitoring glim = glimTransaction.getGroupLoanIndividualMonitoring();            
+            Map<String, BigDecimal> processedTransactionMap = glim.getProcessedTransactionMap();
+            Set<GroupLoanIndividualMonitoringCharge> ch = glim.getGroupLoanIndividualMonitoringCharges();
+            for (GroupLoanIndividualMonitoringCharge glimCharge : ch) {
+            	glimCharge.setPaidCharge(processedTransactionMap.get(glimCharge.getCharge().getId().toString()));
+            	glimChargesForUpdate.add(glimCharge);
+			}         
             glim.setPaidChargeAmount(GlimUtility.add(glim.getPaidChargeAmount(), processedTransactionMap.get("processedCharge")));            
             glim.setPaidInterestAmount(GlimUtility.add(glim.getPaidInterestAmount(), processedTransactionMap.get("processedInterest")));                       
             glim.setPaidPrincipalAmount(GlimUtility.add(glim.getPaidPrincipalAmount(), processedTransactionMap.get("processedPrincipal")));            
@@ -568,6 +580,7 @@ public class GroupLoanIndividualMonitoringAssembler {
             }            
             updatedGlimList.add(glim);
         }
+        this.glimChrageRepository.save(glimChargesForUpdate);
         this.glimRepositoryWrapper.save(updatedGlimList);
     }
     
