@@ -58,9 +58,13 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
 
     @Column(name = "waived_charge_amount", scale = 6, precision = 19, nullable = true)
     private BigDecimal waivedChargeAmount;
+    
+    @Column(name = "paid_charge", scale = 6, precision = 19, nullable = true)
+    private BigDecimal paidCharge;
 
     public GroupLoanIndividualMonitoringCharge(final GroupLoanIndividualMonitoring glim, final Client client, final Charge charge,
-            final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek, final BigDecimal waivedChargeAmount) {
+            final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek, final BigDecimal waivedChargeAmount,
+            final BigDecimal paidCharge) {
         this.groupLoanIndividualMonitoring = glim;
         this.client = client;
         this.charge = charge;
@@ -68,6 +72,7 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
         this.revisedFeeAmount = revisedFeeAmount;
         this.emiRoundingGoalSeek = emiRoundingGoalSeek;
         this.waivedChargeAmount = waivedChargeAmount;
+        this.paidCharge = paidCharge;
     }
 
     public GroupLoanIndividualMonitoringCharge() {
@@ -75,8 +80,9 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
     }
 
     public static GroupLoanIndividualMonitoringCharge instance(final GroupLoanIndividualMonitoring glim, final Client client,
-            final Charge charge, final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek, final BigDecimal waivedChargeAmount) {
-        return new GroupLoanIndividualMonitoringCharge(glim, client, charge, feeAmount, revisedFeeAmount, emiRoundingGoalSeek, waivedChargeAmount);
+            final Charge charge, final BigDecimal feeAmount, final BigDecimal revisedFeeAmount, final boolean emiRoundingGoalSeek, final BigDecimal waivedChargeAmount,
+            final BigDecimal paidCharge) {
+        return new GroupLoanIndividualMonitoringCharge(glim, client, charge, feeAmount, revisedFeeAmount, emiRoundingGoalSeek, waivedChargeAmount, paidCharge);
     }
 
     public GroupLoanIndividualMonitoring getGlim() {
@@ -139,5 +145,15 @@ public class GroupLoanIndividualMonitoringCharge extends AbstractPersistable<Lon
 	public void setWaivedChargeAmount(BigDecimal waivedChargeAmount) {
 		this.waivedChargeAmount = waivedChargeAmount;
 	}
+
+	public BigDecimal getPaidCharge() {
+		return this.paidCharge;
+	}
+
+	public void setPaidCharge(BigDecimal paidCharge) {
+		this.paidCharge = paidCharge;
+	}
+	
+	
         
 }
