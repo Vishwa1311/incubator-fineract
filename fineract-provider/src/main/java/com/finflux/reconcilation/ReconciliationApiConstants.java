@@ -1,6 +1,5 @@
 package com.finflux.reconcilation;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -35,6 +34,7 @@ public class ReconciliationApiConstants {
     public static final String xlsFileExtension = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     public static final String xlsxFileExtension = "application/vnd.ms-excel";
     public static final String RECONCILE_ACTION = "RECONCILE";
+    public static final String UNDO_RECONCILE_ACTION = "UNDORECONCILE";
     public static final String bankIdParamName = "bankId";
     public static final String BANK_DEFAULT_GL_CODE = "000001";
     public static final String transactionDataParamName = "transactionData";

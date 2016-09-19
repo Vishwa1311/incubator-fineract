@@ -75,7 +75,15 @@ public class CommandWrapperBuilder {
     }
 
     public CommandWrapperBuilder reconcileBankStatementDetails(final Long bankStatementId) {
-        this.actionName = "RECONCILE";
+        this.actionName = ReconciliationApiConstants.RECONCILE_ACTION;
+        this.entityName = ReconciliationApiConstants.BANK_STATEMENT_DETAILS_RESOURCE_NAME;
+        this.entityId = bankStatementId;
+        this.href = "/bankstatements/" + bankStatementId + "/details";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoReconcileBankStatementDetails(final Long bankStatementId) {
+        this.actionName = ReconciliationApiConstants.UNDO_RECONCILE_ACTION;
         this.entityName = ReconciliationApiConstants.BANK_STATEMENT_DETAILS_RESOURCE_NAME;
         this.entityId = bankStatementId;
         this.href = "/bankstatements/" + bankStatementId + "/details";
@@ -83,7 +91,7 @@ public class CommandWrapperBuilder {
     }
 
     public CommandWrapperBuilder reconcileBankStatement(final Long bankStatementId) {
-        this.actionName = "RECONCILE";
+        this.actionName = ReconciliationApiConstants.RECONCILE_ACTION;
         this.entityName = ReconciliationApiConstants.BANK_STATEMENT_RESOURCE_NAME;
         this.entityId = bankStatementId;
         this.href = "/bankstatements/" + bankStatementId + "?command=reconcile";

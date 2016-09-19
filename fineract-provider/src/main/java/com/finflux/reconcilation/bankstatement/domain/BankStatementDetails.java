@@ -1,6 +1,7 @@
 package com.finflux.reconcilation.bankstatement.domain;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 
 import javax.persistence.Column;
@@ -13,6 +14,7 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
+import org.joda.time.DateTime;
 import org.springframework.data.jpa.domain.AbstractPersistable;
 
 @SuppressWarnings("serial")
@@ -70,6 +72,10 @@ public class BankStatementDetails extends AbstractPersistable<Long> {
     
     @Column(name = "bank_statement_detail_type", nullable = false)
     private Integer bankStatementDetailType;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_date", nullable = true)
+    private Date updatedDate = null;
     
 
     public BankStatementDetails(final BankStatement bankStatement, final String transactionId, final Date transactionDate,
@@ -93,6 +99,7 @@ public class BankStatementDetails extends AbstractPersistable<Long> {
         this.glCode = glCode;
         this.transactionType = transactionType;
         this.bankStatementDetailType = bankStatementDetailType;
+        this.updatedDate = null;
     }
 
     public BankStatementDetails() {
@@ -145,6 +152,18 @@ public class BankStatementDetails extends AbstractPersistable<Long> {
 	public void setBankStatementDetailType(Integer bankStatementDetailType) {
 		this.bankStatementDetailType = bankStatementDetailType;
 	}
-       
 
+	public Date getUpdatedDate() {
+		return this.updatedDate;
+	}
+
+	public void setUpdatedDate(Date updatedDate) {
+		this.updatedDate = updatedDate;
+	}
+
+	public LoanTransaction getLoanTransaction() {
+		return this.loanTransaction;
+	}	
+	
+	
 }

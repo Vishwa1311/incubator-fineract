@@ -19,6 +19,8 @@ public interface BankStatementWritePlatformService {
     public Long deleteBankStatementDetails(final Long bankStatementDetailsId);
 
     public CommandProcessingResult reconcileBankStatementDetails(JsonCommand command);
+    
+    public CommandProcessingResult undoReconcileBankStatementDetails(JsonCommand command);
 
     public CommandProcessingResult reconcileBankStatement(JsonCommand command);
 
