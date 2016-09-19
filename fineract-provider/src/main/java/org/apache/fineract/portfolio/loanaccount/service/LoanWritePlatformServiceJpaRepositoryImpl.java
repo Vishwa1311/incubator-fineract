@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.portfolio.loanaccount.service;
 
-import java.math.BigDecimal;
+import java.math.BigDecimal; 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -142,12 +142,12 @@ import org.apache.fineract.portfolio.loanaccount.exception.DateMismatchException
 import org.apache.fineract.portfolio.loanaccount.exception.ExceedingTrancheCountException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidPaidInAdvanceAmountException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanDisbursalException;
+import org.apache.fineract.portfolio.loanaccount.exception.LoanDisbursementDateException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanMultiDisbursementException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanOfficerAssignmentException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanOfficerUnassignmentException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.exception.MultiDisbursementDataRequiredException;
-import org.apache.fineract.portfolio.loanaccount.exception.OtherLoanDisbursementDetailWithDateException;
 import org.apache.fineract.portfolio.loanaccount.guarantor.service.GuarantorDomainService;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.OverdueLoanScheduleData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.DefaultScheduledDateGenerator;
@@ -2326,7 +2326,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     private void checkOtherDisbursementDetailsWithDate(final Loan loan, final Long disbursementId, final Date updatedDisbursementDate) {
         for (LoanDisbursementDetails loanDisbursementDetails : loan.getDisbursementDetails()) {
             if (loanDisbursementDetails.expectedDisbursementDate().equals(updatedDisbursementDate)
-                    && loanDisbursementDetails.getId() != disbursementId) { throw new OtherLoanDisbursementDetailWithDateException(
+                    && loanDisbursementDetails.getId() != disbursementId) { throw new LoanDisbursementDateException(
                     "Loan disbursement details with date - " + updatedDisbursementDate + " for loan - " + loan.getId() + " already exists.",
                     loan.getId(), updatedDisbursementDate.toString()); }
         }
