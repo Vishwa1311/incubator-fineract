@@ -27,6 +27,7 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.documentmanagement.command.DocumentCommand;
 import org.apache.fineract.infrastructure.documentmanagement.command.DocumentCommandValidator;
 import org.apache.fineract.infrastructure.documentmanagement.contentrepository.ContentRepository;
@@ -297,9 +298,9 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
 
                 if (row.getRowNum() != 0 && isValid) {
                 	Integer bankStatementDetailType = 0;
-                	if(bankStatementTransactionType.equalsIgnoreCase(ReconciliationApiConstants.OTHER)){
+                	if(bankStatementTransactionType.replaceAll(" ", "").equalsIgnoreCase((ReconciliationApiConstants.OTHER).replaceAll(" ", ""))){
                 		bankStatementDetailType = BankStatementDetailType.NONPORTFOLIO.getValue();
-                	}else if(bankStatementTransactionType.equalsIgnoreCase(ReconciliationApiConstants.ERROR)){
+                	}else if(bankStatementTransactionType.replaceAll(" ", "").equalsIgnoreCase((ReconciliationApiConstants.ERROR).replaceAll(" ", ""))){
                 		bankStatementDetailType = BankStatementDetailType.MISCELLANEOUS.getValue();
                 	}else{
                 		bankStatementDetailType = BankStatementDetailType.PORTFOLIO.getValue();
@@ -633,6 +634,7 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
                             bankStatementDetail = this.bankStatementDetailsRepository.findOneWithNotFoundDetection(bankStatementDetailId);
                             bankStatementDetail.setIsReconciled(true);
                             bankStatementDetail.setLoanTransaction(loanTransaction);
+                            bankStatementDetail.setUpdatedDate(new Date());
                             bankDetailsList.add(bankStatementDetail);
                             //this.bankStatementDetailsRepository.save(bankTransaction);
 
@@ -755,5 +757,35 @@ public class BankStatementWritePlatformServiceJpaRepository implements BankState
         final String transactionId = Long.toHexString(Long.parseLong(uniqueVal));
         return transactionId;
     }
+
+	@Override
+	public CommandProcessingResult undoReconcileBankStatementDetails(
+			JsonCommand command) {
+        if (command.parameterExists(ReconciliationApiConstants.transactionDataParamName)) {
+            final JsonArray transactionDataArray = command.arrayOfParameterNamed(ReconciliationApiConstants.transactionDataParamName);
+            if (!transactionDataArray.isJsonNull() && transactionDataArray.size() > 0) {
+            	List<LoanTransaction> loanTransactionList = new ArrayList<LoanTransaction>();
+            	List<BankStatementDetails> bankDetailsList = new ArrayList<BankStatementDetails>();
+                for (int i = 0; i < transactionDataArray.size(); i++) {
+                    final JsonObject jsonObject = transactionDataArray.get(i).getAsJsonObject();
+                    final Long bankStatementDetailId = jsonObject.get(ReconciliationApiConstants.bankTransctionIdParamName).getAsLong();
+                    BankStatementDetails bankStatementDetail = this.bankStatementDetailsRepository.findOneWithNotFoundDetection(bankStatementDetailId);
+                    LoanTransaction loanTransaction = bankStatementDetail.getLoanTransaction();
+                    loanTransaction.setReconciled(false);
+                    loanTransactionList.add(loanTransaction);
+                    bankStatementDetail.setLoanTransaction(null);
+                    bankStatementDetail.setIsReconciled(false);
+                }
+                this.bankStatementDetailsRepository.save(bankDetailsList);
+                this.loanTransactionRepository.save(loanTransactionList);
+            }
+
+        }
+        return new CommandProcessingResultBuilder() //
+                .withCommandId(command.commandId()) //
+                .withEntityId(command.entityId()) //
+                .build();
+    
+	}
 
 }

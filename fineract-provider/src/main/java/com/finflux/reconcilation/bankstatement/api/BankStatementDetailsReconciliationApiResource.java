@@ -92,11 +92,17 @@ public class BankStatementDetailsReconciliationApiResource {
     @PUT
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    public String makeReconcile(@PathParam("bankStatementId") final Long bankStatementId, final String apiRequestBodyAsJson,
-            @Context final UriInfo uriInfo) {
+    public String reconcileUpdate(@PathParam("bankStatementId") final Long bankStatementId, final String apiRequestBodyAsJson,
+            @Context final UriInfo uriInfo, @QueryParam("command") String command) {
 
-        final CommandWrapper commandRequest = new CommandWrapperBuilder().reconcileBankStatementDetails(bankStatementId)
-                .withJson(apiRequestBodyAsJson).build();
+        CommandWrapper commandRequest = null;
+        if(command.equalsIgnoreCase(ReconciliationApiConstants.RECONCILE_ACTION)){
+        	commandRequest = new CommandWrapperBuilder().reconcileBankStatementDetails(bankStatementId)
+                    .withJson(apiRequestBodyAsJson).build();
+        }else{
+        	commandRequest = new CommandWrapperBuilder().undoReconcileBankStatementDetails(bankStatementId)
+                    .withJson(apiRequestBodyAsJson).build();
+        }
 
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
 

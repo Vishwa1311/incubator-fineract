@@ -156,7 +156,7 @@ public class BankStatementDetailsReadPlatformServiceImpl implements BankStatemen
 
         final BankStatementDetailsDataMapper rm = new BankStatementDetailsDataMapper();
 
-        final String sql = "SELECT " + rm.schema() +"  and bsd.bank_statement_detail_type = "+ BankStatementDetailType.PORTFOLIO.getValue()+" and bsd.is_reconciled = 1 ";
+        final String sql = "SELECT " + rm.schema() +"  and bsd.bank_statement_detail_type = "+ BankStatementDetailType.PORTFOLIO.getValue()+" and bsd.is_reconciled = 1 order by bsd.updated_date desc ";
         
         List<BankStatementDetailsData> bankStatementDataList = this.jdbcTemplate.query(sql, rm, new Object[] { bankStatementId });
         for (BankStatementDetailsData bankStatementData : bankStatementDataList) {
