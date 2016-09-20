@@ -55,7 +55,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanStatus;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
-import org.apache.fineract.portfolio.loanaccount.exception.ClientAlreadyWriteOffException;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanEventApiJsonValidator;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
@@ -234,7 +233,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
                         if (transactionAmountPerClient.isGreaterThanZero()) {
                             Map<String, BigDecimal> paidInstallmentMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glim,
                                     transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
-                                    installmentPaidMap, waiveLoanChargeTransaction);
+                                    installmentPaidMap, waiveLoanChargeTransaction, null);
 
                             if (!(paidInstallmentMap.get("installmentTransactionAmount").compareTo(BigDecimal.ZERO) == 0 && glim
                                     .getTotalPaidAmount().compareTo(BigDecimal.ZERO) > 0)) {
@@ -242,7 +241,7 @@ public class GroupLoanIndividualMonitoringTransactionWritePlatformServiceImpl im
 
                                     Map<String, BigDecimal> splitMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glim,
                                             transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
-                                            installmentPaidMap, waiveLoanChargeTransaction);
+                                            installmentPaidMap, waiveLoanChargeTransaction, null);
 
                                     Money feePortionForCurrentInstallment = Money.of(currency, splitMap.get("unpaidCharge"));
                                     Money interestPortionForCurrentInstallment = Money.of(currency, splitMap.get("unpaidInterest"));

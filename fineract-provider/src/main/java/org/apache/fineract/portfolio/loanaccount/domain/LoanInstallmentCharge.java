@@ -148,7 +148,7 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
     }
 
     private BigDecimal calculateAmountOutstanding(final MonetaryCurrency currency) {
-        return getAmount(currency).minus(getAmountWaived(currency)).minus(getAmountPaid(currency)).getAmount();
+        return getAmount(currency).minus(getAmountWaived(currency)).minus(getAmountPaid(currency)).minus(getAmountWrittenOff(currency)).getAmount();
     }
 
     public boolean isPaid() {
@@ -293,6 +293,34 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
 
         return amountToDeductOnThisCharge;
     }
+    
+    public Money undoGlimPaidAmountBy(Money incrementBy, final Money feeAmount) {
+
+        Money amountPaidToDate = Money.of(incrementBy.getCurrency(), this.amountPaid);
+
+        Money amountToDeductOnThisCharge = Money.zero(incrementBy.getCurrency());
+        if (incrementBy.isGreaterThanOrEqualTo(amountPaidToDate)) {
+            amountToDeductOnThisCharge = amountPaidToDate;
+            amountPaidToDate = Money.zero(incrementBy.getCurrency());
+            this.amountPaid = amountPaidToDate.getAmount();
+            incrementBy = incrementBy.minus(amountToDeductOnThisCharge);
+            this.amountOutstanding = calculateAmountOutstanding(incrementBy.getCurrency());
+            
+        } else {
+            amountToDeductOnThisCharge = incrementBy;
+            amountPaidToDate = amountPaidToDate.minus(incrementBy);
+            this.amountPaid = amountPaidToDate.getAmount();
+            this.amountOutstanding = calculateAmountOutstanding(incrementBy.getCurrency());
+        }
+        this.amountThroughChargePayment = feeAmount.getAmount();
+        this.paid = determineIfFullyPaid();
+        if(!GlimUtility.isZero(this.amountOutstanding) && this.isWaived()) {
+            this.waived = false;
+        }
+
+        return amountToDeductOnThisCharge;
+    }
+
 
 	public LoanCharge getLoancharge() {
 		return this.loancharge;

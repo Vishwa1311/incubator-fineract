@@ -261,7 +261,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
 }
     
     public static Map<String, BigDecimal> getSplit(GroupLoanIndividualMonitoring glim, BigDecimal transactionAmount, Loan loan,
-            Integer installmentNumber, Map<String, BigDecimal> installmentPaidMap, LoanTransaction loanTransaction) {
+            Integer installmentNumber, Map<String, BigDecimal> installmentPaidMap, LoanTransaction loanTransaction, GroupLoanIndividualMonitoringTransaction glimTransaction) {
 
         BigDecimal totalPaidAmount = GlimUtility.add(transactionAmount, installmentPaidMap.get("installmentTransactionAmount"));
         if (loanTransaction != null && loanTransaction.isInterestWaiver()) {
@@ -271,6 +271,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
         } else {
             totalPaidAmount = GlimUtility.add(totalPaidAmount, glim.getTotalPaidAmount());
         }
+       
         MonetaryCurrency currency = loan.getCurrency();
         BigDecimal installmentAmount = glim.getInstallmentAmount();
         Integer numberOfInstallments = loan.getLoanRepaymentScheduleDetail().getNumberOfRepayments();
@@ -282,6 +283,12 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
         BigDecimal glimPaidCharge = GlimUtility.zeroIfNull(glim.getPaidChargeAmount()).add(installmentPaidMap.get("unpaidCharge"));
         BigDecimal glimPaidInterest = GlimUtility.zeroIfNull(glim.getPaidInterestAmount()).add(installmentPaidMap.get("unpaidInterest"));
         BigDecimal glimPaidPrincipal = GlimUtility.zeroIfNull(glim.getPaidPrincipalAmount()).add(installmentPaidMap.get("unpaidPrincipal"));
+        if (glimTransaction != null) {
+            totalPaidAmount = GlimUtility.subtract(totalPaidAmount, glimTransaction.getTotalAmount());
+            glimPaidCharge = GlimUtility.subtract(glimPaidCharge, glimTransaction.getFeePortion());
+            glimPaidInterest = GlimUtility.subtract(glimPaidInterest, glimTransaction.getInterestPortion());
+            glimPaidPrincipal = GlimUtility.subtract(glimPaidPrincipal, glimTransaction.getPrincipalPortion());
+        }
         BigDecimal adjustedPaidInterest = BigDecimal.ZERO;
         BigDecimal adjustedPaidCharge = BigDecimal.ZERO;
 
@@ -385,7 +392,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
 
             if (loanTransaction == null
                     || (GlimUtility.isGreaterThanZero(totalPaidAmount) && (loanTransaction.isRepayment() || loanTransaction.isWriteOff() || loanTransaction
-                            .isRecoveryRepayment()))) {
+                            .isRecoveryRepayment() || loanTransaction.isReversed()))) {
                 if (GlimUtility.isGreater(totalPaidAmount, installmentPrincipal)) {
                     if (GlimUtility.isGreaterThanZero(glimPaidPrincipal)) {
                         if (GlimUtility.isGreater(glimPaidPrincipal, installmentPrincipal)) {
@@ -408,6 +415,7 @@ public class GroupLoanIndividualMonitoringTransactionAssembler {
             }
 
             if (GlimUtility.isZero(totalPaidAmount) || i + 1 == installmentNumber) {
+                
                 break;
             }
 

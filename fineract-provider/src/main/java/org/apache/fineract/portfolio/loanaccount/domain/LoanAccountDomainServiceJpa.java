@@ -785,7 +785,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         final boolean isAccountTransfer = false;
         postJournalEntries(loan, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
         recalculateAccruals(loan);
-        this.businessEventNotifierService.notifyBusinessEventWasExecuted(BUSINESS_EVENTS.LOAN_WAIVE_INTEREST,
+        this.businessEventNotifierService.notifyBusinessEventWasExecuted(BUSINESS_EVENTS.LOAN_WRITTEN_OFF,
                 constructEntityMap(BUSINESS_ENTITY.LOAN_TRANSACTION, writeoffTransaction));
 
         builderResult.withEntityId(writeoffTransaction.getId()).withOfficeId(loan.getOfficeId()) //

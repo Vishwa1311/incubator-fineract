@@ -332,13 +332,13 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
 
                             Map<String, BigDecimal> paidInstallmentMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(
                                     glimMember, transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
-                                    installmentPaidMap, loanTransaction);
+                                    installmentPaidMap, loanTransaction, null);
 
                             if (!(GlimUtility.isZero(paidInstallmentMap.get("installmentTransactionAmount")))) {
                                 if (currentInstallment.isNotFullyPaidOff() || loanTransaction.isRecoveryRepayment()) {
                                     Map<String, BigDecimal> splitMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(
                                             glimMember, transactionAmountPerClient.getAmount(), loan,
-                                            currentInstallment.getInstallmentNumber(), installmentPaidMap, loanTransaction);
+                                            currentInstallment.getInstallmentNumber(), installmentPaidMap, loanTransaction, null);
                                     Money feePortion = Money.of(currency, splitMap.get("unpaidCharge"));
                                     Money interestPortion = Money.of(currency, splitMap.get("unpaidInterest"));
                                     Money principalPortion = Money.of(currency, splitMap.get("unpaidPrincipal"));
@@ -512,36 +512,37 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
 
     }
     
-    private void updateGlimChargesPaidAmountBy(final LoanTransaction loanTransaction, Map<Long, BigDecimal> chargeAmountMap, final Set<LoanCharge> charges,
-            final Integer installmentNumber) {
-    	MonetaryCurrency currency = loanTransaction.getLoan().getCurrency();
-    	Set<LoanChargePaidBy> chargesPaidBies = loanTransaction.getLoanChargesPaid();
-    	for (LoanCharge loanCharge : charges) {
-			for (Long chargeId : chargeAmountMap.keySet()) {
-				if(chargeId == loanCharge.getCharge().getId()){
-					Money amountRemaining = Money.of(currency, chargeAmountMap.get(chargeId)) ;
-					Set<LoanCharge> chargeSet = new HashSet<LoanCharge>();
-					chargeSet.add(loanCharge);
-					while(amountRemaining.isGreaterThanZero()){
-						final LoanCharge unpaidCharge = findEarliestUnpaidChargeFromUnOrderedSet(chargeSet, currency);
-						Money feeAmount = Money.zero(currency);
-			            if (loanTransaction.isChargePayment()) {
-			                feeAmount = Money.of(currency, chargeAmountMap.get(chargeId)) ;
-			            }
-			            if (unpaidCharge == null) break;
-			            final Money amountPaidTowardsCharge = unpaidCharge.updatePaidAmountBy(amountRemaining, installmentNumber, feeAmount);
-			            
-			            if (!amountPaidTowardsCharge.isZero()) {		                
-			                final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(loanTransaction, unpaidCharge,
-			                            amountPaidTowardsCharge.getAmount(), installmentNumber);
-			                    chargesPaidBies.add(loanChargePaidBy);
-			                amountRemaining = amountRemaining.minus(amountPaidTowardsCharge);
-			            }
-					}
-		            
-				}
-			}
-		}
+    private void updateGlimChargesPaidAmountBy(final LoanTransaction loanTransaction, Map<Long, BigDecimal> chargeAmountMap,
+            final Set<LoanCharge> charges, final Integer installmentNumber) {
+        MonetaryCurrency currency = loanTransaction.getLoan().getCurrency();
+        Set<LoanChargePaidBy> chargesPaidBies = loanTransaction.getLoanChargesPaid();
+        for (LoanCharge loanCharge : charges) {
+            for (Long chargeId : chargeAmountMap.keySet()) {
+                if (chargeId == loanCharge.getCharge().getId()) {
+                    Money amountRemaining = Money.of(currency, chargeAmountMap.get(chargeId));
+                    Set<LoanCharge> chargeSet = new HashSet<LoanCharge>();
+                    chargeSet.add(loanCharge);
+                    while (amountRemaining.isGreaterThanZero()) {
+                        final LoanCharge unpaidCharge = findEarliestUnpaidChargeFromUnOrderedSet(chargeSet, currency);
+                        Money feeAmount = Money.zero(currency);
+                        if (loanTransaction.isChargePayment()) {
+                            feeAmount = Money.of(currency, chargeAmountMap.get(chargeId));
+                        }
+                        if (unpaidCharge == null) break;
+                        final Money amountPaidTowardsCharge = unpaidCharge
+                                .updatePaidAmountBy(amountRemaining, installmentNumber, feeAmount);
+
+                        if (!amountPaidTowardsCharge.isZero()) {
+                            final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(loanTransaction, unpaidCharge,
+                                    amountPaidTowardsCharge.getAmount(), installmentNumber);
+                            chargesPaidBies.add(loanChargePaidBy);
+                            amountRemaining = amountRemaining.minus(amountPaidTowardsCharge);
+                        }
+                    }
+
+                }
+            }
+        }
 
     }
 
@@ -623,7 +624,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
             if (transactionAmountPerClient.isGreaterThanZero()) {
                 Map<String, BigDecimal> paidInstallmentMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
                         transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(), installmentPaidMap,
-                        loanTransaction);
+                        loanTransaction, null);
 
                 if (!(paidInstallmentMap.get("installmentTransactionAmount").compareTo(BigDecimal.ZERO) == 0 && glimMember
                         .getTotalPaidAmount().compareTo(BigDecimal.ZERO) > 0)) {
@@ -631,7 +632,7 @@ public abstract class AbstractLoanRepaymentScheduleTransactionProcessor implemen
 
                         Map<String, BigDecimal> splitMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
                                 transactionAmountPerClient.getAmount(), loan, currentInstallment.getInstallmentNumber(),
-                                installmentPaidMap, loanTransaction);
+                                installmentPaidMap, loanTransaction, null);
                         Money feePortionForCurrentInstallment = Money.of(currency, splitMap.get("unpaidCharge"));
                         Money interestPortionForCurrentInstallment = Money.of(currency, splitMap.get("unpaidInterest"));
                         Money principalPortionForCurrentInstallment = Money.of(currency, splitMap.get("unpaidPrincipal"));

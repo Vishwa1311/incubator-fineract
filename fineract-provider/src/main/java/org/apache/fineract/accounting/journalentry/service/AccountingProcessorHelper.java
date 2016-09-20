@@ -168,7 +168,10 @@ public class AccountingProcessorHelper {
                         for (final Map<String, Object> taxData : taxDatas) {
                             final BigDecimal taxAmount = (BigDecimal) taxData.get("amount");
                             final Long creditAccountId = (Long) taxData.get("creditAccountId");
-                            final Long debitAccountId = (Long) taxData.get("debitAccountId");
+                            Long debitAccountId = null;
+                            if(taxData.get("debitAccountId") != null) {
+                                debitAccountId = (Long) taxData.get("debitAccountId");
+                            }
                             taxPayments.add(new TaxPaymentDTO(debitAccountId, creditAccountId, taxAmount, loanChargeId));
                         }
                     }
@@ -702,7 +705,12 @@ public class AccountingProcessorHelper {
                 for (TaxPaymentDTO taxPaymentDTO : taxPaymentDTOs) {                    
                     if (taxPaymentDTO.getAmount() != null && taxPaymentDTO.getLoanChargeId().equals(chargePaymentDTO.getLoanChargeId())) {
                         BigDecimal taxAmount = taxPaymentDTO.getAmount();
-                        final GLAccount taxGLAccount = getGLAccountById(taxPaymentDTO.getCreditAccountId());                        
+                        GLAccount taxGLAccount = null;
+                        if (taxPaymentDTO.getCreditAccountId() != null) {
+                            taxGLAccount = getGLAccountById(taxPaymentDTO.getCreditAccountId());
+                        } else {
+                            taxGLAccount = chargeSpecificAccount;
+                        }
                         if (creditDetailsMap.containsKey(taxGLAccount)) {
                             final BigDecimal existingAmount = creditDetailsMap.get(taxGLAccount);
                             taxAmount = taxAmount.add(existingAmount);
