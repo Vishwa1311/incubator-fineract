@@ -39,9 +39,7 @@ import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.GlimChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringCharge;
-import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringChargeRepository;
 import org.apache.fineract.portfolio.charge.domain.GroupLoanIndividualMonitoringChargeRepositoryWrapper;
-import org.apache.fineract.portfolio.charge.service.GroupLoanIndividualMonitoringChargeReadPlatformServiceImpl;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.api.GlimUtility;
@@ -182,6 +180,7 @@ public class GroupLoanIndividualMonitoringAssembler {
     	
         for (GroupLoanIndividualMonitoringCharge glimCharge : glimCharges) {
             glimCharge.setWaivedChargeAmount(BigDecimal.ZERO);
+            glimCharge.setPaidCharge(BigDecimal.ZERO);
             BigDecimal feeCharge = percentageOf(amount, glimCharge.getCharge().getAmount());
             BigDecimal totalChargeAmount = feeCharge;
             final BigDecimal minCap = glimCharge.getCharge().getMinCap();

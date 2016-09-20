@@ -58,7 +58,7 @@ public class GlimLoanWriteServiceImpl implements GlimLoanWriteService, BusinessE
                     installmentPaidMap.put("unpaidPrincipal", BigDecimal.ZERO);
                     installmentPaidMap.put("installmentTransactionAmount", BigDecimal.ZERO);
                     Map<String, BigDecimal> paidInstallmentMap = GroupLoanIndividualMonitoringTransactionAssembler.getSplit(glimMember,
-                            glimMember.getInstallmentAmount(), loan, currentInstallment.getInstallmentNumber(), installmentPaidMap, null);
+                            glimMember.getInstallmentAmount(), loan, currentInstallment.getInstallmentNumber(), installmentPaidMap, null, null);
                     final BigDecimal principal = paidInstallmentMap.get("unpaidPrincipal");
                     final BigDecimal interestCharged = paidInstallmentMap.get("unpaidInterest");
                     final BigDecimal feeChargesCharged = paidInstallmentMap.get("unpaidCharge");

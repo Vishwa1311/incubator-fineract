@@ -998,6 +998,10 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         }
 
         LocalDate recalculateFrom = null;
+        if (loan.isGLIMLoan()) {
+            List<GroupLoanIndividualMonitoring> defaultGlimMembers = this.glimRepository.findByLoanIdAndIsClientSelected(loanId, true);
+            loan.updateDefautGlimMembers(defaultGlimMembers);
+        }
 
         if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
             recalculateFrom = transactionToAdjust.getTransactionDate().isAfter(transactionDate) ? transactionDate : transactionToAdjust

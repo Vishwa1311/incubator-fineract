@@ -333,6 +333,13 @@ public class LoanCharge extends AbstractPersistable<Long> {
         }
         populateDerivedFields(loanPrincipal, chargeAmount, numberOfRepayments, loanCharge, clientMembers, glimCharges, totalFee);
         this.paid = determineIfFullyPaid();
+        
+        if (this.charge != null && this.charge.getTaxGroup() != null){
+            this.taxGroup = this.charge.getTaxGroup();
+        }
+        if (loan != null && this.charge.getTaxGroup() != null) {
+            createLoanChargeTaxDetails(loan.getDisbursementDate(), chargeAmount);
+        }
     }
 
 
@@ -1165,6 +1172,30 @@ public class LoanCharge extends AbstractPersistable<Long> {
             this.amountPaid = amountPaidToDate.getAmount();
             this.amountOutstanding = calculateAmountOutstanding(incrementBy.getCurrency());
         }
+        return amountDeductedOnThisCharge;
+    }
+    
+    public Money undoGlimPaidOrPartiallyAmountBy(final Money incrementBy, final Integer installmentNumber, final Money feeAmount) {
+        Money processAmount = Money.zero(incrementBy.getCurrency());
+        if (isInstalmentFee()) {
+            if (installmentNumber == null) {
+                processAmount = getLastPaidOrPartiallyPaidInstallmentLoanCharge(incrementBy.getCurrency()).undoGlimPaidAmountBy(incrementBy,
+                        feeAmount);
+            } else {
+                processAmount = getInstallmentLoanCharge(installmentNumber).undoGlimPaidAmountBy(incrementBy, feeAmount);
+            }
+        } else {
+            processAmount = incrementBy;
+        }
+        Money amountPaidToDate = Money.of(processAmount.getCurrency(), this.amountPaid);
+
+        Money amountDeductedOnThisCharge = Money.zero(processAmount.getCurrency());
+
+        amountDeductedOnThisCharge = processAmount;
+        amountPaidToDate = amountPaidToDate.minus(processAmount);
+        this.amountPaid = amountPaidToDate.getAmount();
+        this.amountOutstanding = calculateAmountOutstanding(incrementBy.getCurrency());
+
         return amountDeductedOnThisCharge;
     }
 

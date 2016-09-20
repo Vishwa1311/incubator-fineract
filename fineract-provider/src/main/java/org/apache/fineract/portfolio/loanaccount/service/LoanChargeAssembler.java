@@ -284,9 +284,6 @@ public class LoanChargeAssembler {
                     totalChargeAmount = (feeCharge.add(GroupLoanIndividualMonitoringAssembler.percentageOf(feeCharge, totalTaxPercentage)));
                     totalChargeAmount = BigDecimal.valueOf(Math.round(Double.valueOf("" + totalChargeAmount)));
                 }
-                /*if (charge.isEmiRoundingGoalSeek()) {
-                    totalChargeAmount = BigDecimal.valueOf(Math.ceil(totalChargeAmount.doubleValue()));
-                }*/
                 totalFee = totalFee.add(totalChargeAmount);
                 
             }

@@ -819,7 +819,7 @@ public final class LoanRepaymentScheduleInstallment extends AbstractAuditableCus
         }
         return feeChargeDue;
     }
-
+    
     public void updateInterestPaid(BigDecimal interestPortion) {
         this.interestPaid = GlimUtility.zeroIfNull(this.interestPaid).subtract(interestPortion);
         if (this.interestPaid.compareTo(BigDecimal.ZERO) == 0) {

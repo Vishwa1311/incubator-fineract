@@ -724,7 +724,9 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
                 for (final LoanChargeTaxDetailsPaidBy taxDetail : taxDetails) {
                     final Map<String, Object> taxDetailsData = new HashMap<>();
                     taxDetailsData.put("amount", taxDetail.getAmount());
-                    taxDetailsData.put("creditAccountId", taxDetail.getTaxComponent().getCreditAcount().getId());
+                    if(taxDetail.getTaxComponent().getCreditAcount() != null) {
+                        taxDetailsData.put("creditAccountId", taxDetail.getTaxComponent().getCreditAcount().getId());
+                    }
                     taxData.add(taxDetailsData);
                 }
                 loanChargePaidData.put("taxDetails", taxData);
