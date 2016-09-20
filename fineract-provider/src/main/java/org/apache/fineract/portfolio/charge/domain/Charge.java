@@ -146,9 +146,9 @@ public class Charge extends AbstractPersistable<Long> {
         final Integer feeFrequency = command.integerValueOfParameterNamed("feeFrequency");
         final Boolean emiRoundingGoalSeek = command.booleanPrimitiveValueOfParameterNamed("emiRoundingGoalSeek");
         final Boolean isGlimCharge = command.booleanPrimitiveValueOfParameterNamed("isGlimCharge");
-        GlimChargeCalculationType glimChargeCalculation = GlimChargeCalculationType.INVALID;
+        GlimChargeCalculationType glimChargeCalculation = GlimChargeCalculationType.INVALID;        
         if(command.hasParameter(ChargesApiConstants.glimChargeCalculation)){
-        	glimChargeCalculation = GlimChargeCalculationType.fromInt(command.integerValueOfParameterNamed("glimChargeCalculationType"));
+        	glimChargeCalculation = GlimChargeCalculationType.fromInt(command.integerValueOfParameterNamed("glimChargeCalculation"));
         }
         
 
