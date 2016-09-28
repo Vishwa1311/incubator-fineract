@@ -82,5 +82,8 @@ public interface ConfigurationDomainService {
     boolean isDailyTPTLimitEnabled();
     
     Long getDailyTPTLimit();
+
+    boolean isSavingAccountsInculdedInCollectionSheet();
     
+    boolean isWithDrawForSavingsIncludedInCollectionSheet();
 }

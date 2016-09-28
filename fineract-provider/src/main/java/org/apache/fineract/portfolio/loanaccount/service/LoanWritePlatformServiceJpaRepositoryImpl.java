@@ -33,6 +33,8 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -55,8 +57,10 @@ import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
+import org.apache.fineract.organisation.workingdays.data.WorkingDayExemptionsData;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDays;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
+import org.apache.fineract.organisation.workingdays.service.WorkingDayExemptionsReadPlatformService;
 import org.apache.fineract.portfolio.account.PortfolioAccountType;
 import org.apache.fineract.portfolio.account.data.AccountTransferDTO;
 import org.apache.fineract.portfolio.account.data.PortfolioAccountData;
@@ -76,6 +80,7 @@ import org.apache.fineract.portfolio.account.domain.StandingInstructionType;
 import org.apache.fineract.portfolio.account.service.AccountAssociationsReadPlatformService;
 import org.apache.fineract.portfolio.account.service.AccountTransfersReadPlatformService;
 import org.apache.fineract.portfolio.account.service.AccountTransfersWritePlatformService;
+import org.apache.fineract.portfolio.account.service.StandingInstructionWritePlatformService;
 import org.apache.fineract.portfolio.accountdetails.domain.AccountType;
 import org.apache.fineract.portfolio.calendar.domain.Calendar;
 import org.apache.fineract.portfolio.calendar.domain.CalendarEntityType;
@@ -227,6 +232,9 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     private final LoanSummaryWrapper loanSummaryWrapper;
     private final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy;
     private final LoanScheduleAssembler loanScheduleAssembler;
+    private final CodeValueRepositoryWrapper codeValueRepository;
+    private final StandingInstructionWritePlatformService standingInstructionWritePlatformService;
+    private final WorkingDayExemptionsReadPlatformService workingDayExcumptionsReadPlatformService;
 
     @Autowired
     public LoanWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
@@ -255,7 +263,9 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final BusinessEventNotifierService businessEventNotifierService, final GuarantorDomainService guarantorDomainService,
             final LoanUtilService loanUtilService, final LoanSummaryWrapper loanSummaryWrapper,
             final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy,
-            final LoanScheduleAssembler loanScheduleAssembler) {
+            final LoanScheduleAssembler loanScheduleAssembler,
+            final CodeValueRepositoryWrapper codeValueRepository,final StandingInstructionWritePlatformService standingInstructionWritePlatformService,
+            final WorkingDayExemptionsReadPlatformService workingDayExcumptionsReadPlatformService) {
         this.context = context;
         this.loanEventApiJsonValidator = loanEventApiJsonValidator;
         this.loanAssembler = loanAssembler;
@@ -293,6 +303,9 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         this.loanSummaryWrapper = loanSummaryWrapper;
         this.transactionProcessingStrategy = transactionProcessingStrategy;
         this.loanScheduleAssembler = loanScheduleAssembler;
+        this.codeValueRepository = codeValueRepository;
+        this.standingInstructionWritePlatformService = standingInstructionWritePlatformService;
+        this.workingDayExcumptionsReadPlatformService  = workingDayExcumptionsReadPlatformService;
     }
 
     private LoanLifecycleStateMachine defaultLoanLifecycleStateMachine() {
@@ -786,8 +799,9 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 final boolean allowTransactionsOnNonWorkingDay = this.configurationDomainService.allowTransactionsOnNonWorkingDayEnabled();
                 boolean isHolidayEnabled = false;
                 isHolidayEnabled = this.configurationDomainService.isRescheduleRepaymentsOnHolidaysEnabled();
+                final List<WorkingDayExemptionsData> workingDayExemptions = this.workingDayExcumptionsReadPlatformService.getWorkingDayExemptionsForEntityType(EntityAccountType.LOAN.getValue());
                 holidayDetailDTO = new HolidayDetailDTO(isHolidayEnabled, holidays, workingDays, allowTransactionsOnHoliday,
-                        allowTransactionsOnNonWorkingDay);
+                        allowTransactionsOnNonWorkingDay, workingDayExemptions);
                 loans.validateRepaymentDateIsOnHoliday(singleLoanRepaymentCommand.getTransactionDate(),
                         holidayDetailDTO.isAllowTransactionsOnHoliday(), holidayDetailDTO.getHolidays());
                 loans.validateRepaymentDateIsOnNonWorkingDay(singleLoanRepaymentCommand.getTransactionDate(),

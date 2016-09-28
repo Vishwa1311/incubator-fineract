@@ -35,6 +35,7 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
+import org.apache.fineract.organisation.workingdays.data.AdjustedDateDetailsDTO;
 import org.apache.fineract.organisation.workingdays.domain.RepaymentRescheduleType;
 import org.apache.fineract.portfolio.calendar.domain.Calendar;
 import org.apache.fineract.portfolio.calendar.domain.CalendarInstance;
@@ -182,10 +183,12 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
             LocalDate previousRepaymentDate = scheduleParams.getActualRepaymentDate();
             scheduleParams.setActualRepaymentDate(this.scheduledDateGenerator.generateNextRepaymentDate(
                     scheduleParams.getActualRepaymentDate(), loanApplicationTerms, isFirstRepayment, holidayDetailDTO));
-            isFirstRepayment = false;
-            LocalDate scheduledDueDate = this.scheduledDateGenerator.adjustRepaymentDate(scheduleParams.getActualRepaymentDate(),
-                    loanApplicationTerms, holidayDetailDTO);
-
+			isFirstRepayment = false;
+			AdjustedDateDetailsDTO adjustedDateDetailsDTO = this.scheduledDateGenerator.adjustRepaymentDate(
+					scheduleParams.getActualRepaymentDate(), loanApplicationTerms, holidayDetailDTO);
+			LocalDate scheduledDueDate = adjustedDateDetailsDTO.getChangedScheduleDate();
+			scheduleParams.setActualRepaymentDate(adjustedDateDetailsDTO.getChangedActualRepaymentDate());
+            
             // calculated interest start date for the period
             LocalDate periodStartDateApplicableForInterest = calculateInterestStartDateForPeriod(loanApplicationTerms,
                     scheduleParams.getPeriodStartDate(), idealDisbursementDate, firstRepaymentdate,
@@ -1940,7 +1943,9 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                     }
 
                     adjustedInstallmentDueDate = this.scheduledDateGenerator.adjustRepaymentDate(installmentDueDate, loanApplicationTerms,
-                            holidayDetailDTO);
+                            holidayDetailDTO).getChangedScheduleDate();
+                    
+                    
 
                     final int daysInInstallment = Days.daysBetween(installmentFromDate, adjustedInstallmentDueDate).getDays();
 
@@ -2337,6 +2342,11 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                     }
                     LocalDate previousRepaymentDate = actualRepaymentDate;
                     ArrayList<LoanTermVariationsData> dueDateVariationsDataList = new ArrayList<>();
+                    actualRepaymentDate = this.scheduledDateGenerator.generateNextRepaymentDate(actualRepaymentDate,
+                            loanApplicationTerms, isFirstRepayment, holidayDetailDTO);
+                    isFirstRepayment = false;
+                    lastInstallmentDate = this.scheduledDateGenerator.adjustRepaymentDate(actualRepaymentDate, loanApplicationTerms,
+                            holidayDetailDTO).getChangedScheduleDate();
 
                  // check for date changes
                     while (loanApplicationTerms.getLoanTermVariations().hasDueDateVariation(lastInstallmentDate)) {
@@ -2352,7 +2362,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                                 loanApplicationTerms, isFirstRepayment, holidayDetailDTO);
                         isFirstRepayment = false;
                         lastInstallmentDate = this.scheduledDateGenerator.adjustRepaymentDate(actualRepaymentDate, loanApplicationTerms,
-                                holidayDetailDTO);
+                                holidayDetailDTO).getChangedScheduleDate();
                         loanTermVariationParams = applyExceptionLoanTermVariations(loanApplicationTerms, lastInstallmentDate,
                                 exceptionDataListIterator);
                     } while (loanTermVariationParams != null && loanTermVariationParams.isSkipPeriod());
@@ -2917,5 +2927,49 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
         }
 
     }
+    
+    /**
+     * Method will adjust first and last interest amounts for rounding EMI
+     */
+/*    private void adjustInterestForRoundingEMIAmount(final LoanApplicationTerms loanApplicationTerms, final EmiDetails emiDetails,
+            LoanScheduleParams scheduleParams, LoanScheduleModelPeriod installment) {
+        if (loanApplicationTerms.getInterestMethod().isDecliningBalnce() && loanApplicationTerms.isAdjustFirstEMIAmount()) {
+            final MonetaryCurrency currency = scheduleParams.getCurrency();
+            if (loanApplicationTerms.isAdjustLastInstallmentInterestForRounding() && scheduleParams.getOutstandingBalance().isZero()) {
+                if (emiDetails.getEmiAmount().compareTo(emiDetails.getLastEmiAmount()) != 0) {
+                    installment.addInterestAmount(Money.of(currency, emiDetails.getEmiAmount().subtract(emiDetails.getLastEmiAmount())));
+                }
+            } else if (scheduleParams.getPeriodNumber() == 1 && loanApplicationTerms.getFirstEmiAmount() != null) {
+                BigDecimal roundedFirstEmiAmount = loanApplicationTerms.roundFirstEmiAmount(loanApplicationTerms.getFirstEmiAmount());
+                if (roundedFirstEmiAmount.compareTo(loanApplicationTerms.getFirstEmiAmount()) != 0) {
+                    installment.addInterestAmount(Money.of(currency,
+                            roundedFirstEmiAmount.subtract(loanApplicationTerms.getFirstEmiAmount())));
+                }
+            }
+        }
+    }
+    */
+    
+    private class EmiDetails {
+        private BigDecimal emiAmount;
+        private BigDecimal lastEmiAmount;
 
+        public BigDecimal getEmiAmount() {
+            return this.emiAmount;
+        }
+
+        public void setEmiAmount(BigDecimal emiAmount) {
+            if (this.emiAmount == null) {
+                this.emiAmount = emiAmount;
+            }
+        }
+
+        public BigDecimal getLastEmiAmount() {
+            return this.lastEmiAmount;
+        }
+
+        public void setLastEmiAmount(BigDecimal lastEmiAmount) {
+            this.lastEmiAmount = lastEmiAmount;
+        }
+    }
 }
