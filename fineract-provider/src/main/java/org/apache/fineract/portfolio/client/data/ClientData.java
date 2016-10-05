@@ -534,4 +534,12 @@ final public class ClientData implements Comparable<ClientData> {
         }
         this.loanAccountSummaryDatas.add(loanAccountSummaryData);
     }
+    
+    public Collection<GroupGeneralData> getGroups() {
+        return this.groups;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
 }

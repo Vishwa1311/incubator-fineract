@@ -50,6 +50,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 @Service(value = "scheduledJobRunnerService")
 public class ScheduledJobRunnerServiceImpl implements ScheduledJobRunnerService {
 
@@ -62,6 +63,8 @@ public class ScheduledJobRunnerServiceImpl implements ScheduledJobRunnerService 
     private final SavingsAccountChargeReadPlatformService savingsAccountChargeReadPlatformService;
     private final DepositAccountReadPlatformService depositAccountReadPlatformService;
     private final DepositAccountWritePlatformService depositAccountWritePlatformService;
+
+
 
     @Autowired
     public ScheduledJobRunnerServiceImpl(final RoutingDataSourceServiceFactory dataSourceServiceFactory,
@@ -362,6 +365,13 @@ public class ScheduledJobRunnerServiceImpl implements ScheduledJobRunnerService 
             jdbcTemplate.update(insertSql + sb.toString());
         }
 
+    }
+    
+    @Override
+    @CronTarget(jobName=JobName.HIGHMARK_ENQUIRY)
+    public void highmarkEnquiry() {
+
+//        clientCreditRequestService.sendAndSaveClientCreditRequest();
     }
 
 }
