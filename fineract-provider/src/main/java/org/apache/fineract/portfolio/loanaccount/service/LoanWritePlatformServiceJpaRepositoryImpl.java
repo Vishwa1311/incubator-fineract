@@ -343,6 +343,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             this.loanEventApiJsonValidator.validateDisbursementDateWithMeetingDate(actualDisbursementDate, calendarInstance, 
                     scheduleGeneratorDTO.isSkipRepaymentOnFirstDayofMonth(), scheduleGeneratorDTO.getNumberOfdays());
         }
+
         LocalDate expectedFirstRepaymentDate = null;
         if (rescheduledRepaymentDate != null) {
             expectedFirstRepaymentDate = new LocalDate(rescheduledRepaymentDate);
@@ -365,6 +366,10 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                         isSkipRepaymentOnFirstDayOfMonth, numberOfDays);
             }
         }
+
+        this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_DISBURSAL,
+                constructEntityMap(BUSINESS_ENTITY.LOAN, command));
+
         this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_DISBURSAL,
                 constructEntityMap(BUSINESS_ENTITY.LOAN, loan));
 

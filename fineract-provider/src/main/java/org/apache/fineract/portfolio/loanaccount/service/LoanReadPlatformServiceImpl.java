@@ -130,6 +130,12 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import com.finflux.organisation.transaction.authentication.data.TransactionAuthenticationData;
+import com.finflux.organisation.transaction.authentication.domain.SupportedAuthenticationPortfolioTypes;
+import com.finflux.organisation.transaction.authentication.domain.SupportedAuthenticaionTransactionTypes;
+import com.finflux.organisation.transaction.authentication.domain.SupportedTransactionTypeEnumerations;
+import com.finflux.organisation.transaction.authentication.service.TransactionAuthenticationReadPlatformService;
+
 @Service
 public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
 	
@@ -157,7 +163,10 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     private final LoanUtilService loanUtilService;
     private final PledgeReadPlatformService pledgeReadPlatformService;
     private final ConfigurationDomainService configurationDomainService;
+
     private final static Logger logger = LoggerFactory.getLogger(LoanReadPlatformServiceImpl.class);
+    private final TransactionAuthenticationReadPlatformService transactionAuthenticationReadPlatformService;
+
 
     @Autowired
     public LoanReadPlatformServiceImpl(final PlatformSecurityContext context, final LoanRepository loanRepository,
@@ -172,7 +181,8 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
             final LoanRepaymentScheduleTransactionProcessorFactory loanRepaymentScheduleTransactionProcessorFactory, 
             final PledgeReadPlatformService pledgeReadPlatformService,
             final FloatingRatesReadPlatformService floatingRatesReadPlatformService, final LoanUtilService loanUtilService,
-            final ConfigurationDomainService configurationDomainService) {
+            final ConfigurationDomainService configurationDomainService,
+    		final TransactionAuthenticationReadPlatformService transactionAuthenticationReadPlatformService) {
         this.context = context;
         this.loanRepository = loanRepository;
         this.loanTransactionRepository = loanTransactionRepository;
@@ -194,6 +204,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         this.floatingRatesReadPlatformService = floatingRatesReadPlatformService;
         this.loanUtilService = loanUtilService;
         this.configurationDomainService = configurationDomainService;
+        this.transactionAuthenticationReadPlatformService = transactionAuthenticationReadPlatformService;
     }
 
     @Override
@@ -507,9 +518,13 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         if (paymentDetailsRequired) {
             paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
         }
+            Collection<TransactionAuthenticationData> transactionAuthenticationOptions = this.transactionAuthenticationReadPlatformService
+    				.retiveTransactionAuthenticationDetailsForTemplate(
+    						SupportedAuthenticationPortfolioTypes.LOANS.getValue(),
+    						SupportedAuthenticaionTransactionTypes.DISBURSEMENT.getValue(), loan.getApprovedPrincipal());
         final Boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled = this.configurationDomainService.isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled();
         return LoanTransactionData.LoanTransactionDataForDisbursalTemplate(transactionType, loan.getExpectedDisbursedOnLocalDateForTemplate(), loan.getDisburseAmountForTemplate(), 
-        		paymentOptions, loan.retriveLastEmiAmount(), loan.getNextPossibleRepaymentDateForRescheduling(isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled));
+        		paymentOptions, loan.retriveLastEmiAmount(), loan.getNextPossibleRepaymentDateForRescheduling(isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled),transactionAuthenticationOptions);
 
     }
 
