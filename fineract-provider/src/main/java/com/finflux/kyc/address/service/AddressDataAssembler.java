@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,9 +28,11 @@ import com.finflux.infrastructure.gis.state.domain.StateRepositoryWrapper;
 import com.finflux.infrastructure.gis.taluka.domain.Taluka;
 import com.finflux.infrastructure.gis.taluka.domain.TalukaRepositoryWrapper;
 import com.finflux.kyc.address.api.AddressApiConstants;
+import com.finflux.kyc.address.data.AddressEntityTypeEnums;
 import com.finflux.kyc.address.domain.Address;
 import com.finflux.kyc.address.domain.AddressEntity;
 import com.finflux.kyc.address.domain.AddressEntityRepository;
+import com.finflux.kyc.address.exception.AddressTypeAlreadyExistsException;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -70,7 +73,7 @@ public class AddressDataAssembler {
     public List<Address> assembleCreateForm(final Integer entityTypeEnum, final Long entityId, final JsonCommand command) {
 
         final List<Address> addresses = new ArrayList();
-
+        
         final JsonElement parentElement = command.parsedJson();
         final JsonObject parentElementObj = parentElement.getAsJsonObject();
         if (parentElement.isJsonObject() && !command.parameterExists(AddressApiConstants.addressesParamName)) {
@@ -147,6 +150,8 @@ public class AddressDataAssembler {
 
         final String[] addressTypes = this.fromApiJsonHelper.extractArrayNamed(AddressApiConstants.addressTypesParamName, element);
 
+        validateAddressTypeAlreadyExistsOrNot(addressTypes,entityId, entityTypeEnum);
+        
         final Set<AddressEntity> addressEntities = constructAddressEntityObjects(address, addressTypes, entityId, entityTypeEnum);
 
         if (address != null && addressEntities != null && addressEntities.size() > 0) {
@@ -155,7 +160,25 @@ public class AddressDataAssembler {
         return address;
     }
 
-    private Address constructAddressObject(final JsonObject element, final Locale locale) {
+	private void validateAddressTypeAlreadyExistsOrNot(final String[] addressTypes, final Long entityId,
+			final Integer entityTypeEnum) {
+		if (addressTypes != null) {
+			final Set<String> addressTypesSet = Arrays.stream(addressTypes).collect(Collectors.toSet());
+			for (final String id : addressTypesSet) {
+				final Long addressTypeId = Long.parseLong(id);
+				final CodeValue addressType = this.codeValueRepository.findOneWithNotFoundDetection(addressTypeId);
+				final AddressEntity addressEntity = findByAddressTypeAndEntityIdAndEntityTypeEnum(addressType, entityId,
+						entityTypeEnum);
+				if (addressEntity != null) {
+					final EnumOptionData addressEntityData = AddressEntityTypeEnums.addressEntity(entityTypeEnum);
+					throw new AddressTypeAlreadyExistsException(addressType.label(), addressEntityData.getValue(),
+							entityId);
+				}
+			}
+		}
+	}
+
+	private Address constructAddressObject(final JsonObject element, final Locale locale) {
 
         final String houseNo = this.fromApiJsonHelper.extractStringNamed(AddressApiConstants.houseNoParamName, element);
 
@@ -286,19 +309,19 @@ public class AddressDataAssembler {
     private void constructAddressEntity(Set<AddressEntity> addressEntities, Address address, CodeValue addressType,
             CodeValue parentAddressType, Long entityId, Integer entityTypeEnum, int i) {
         AddressEntity addressEntity = findByAddressTypeAndEntityIdAndEntityTypeEnum(addressType, entityId, entityTypeEnum);
-        if (i == 0) {
-            if (addressEntity != null) {
-                addressEntity.assignAddressAndMakeItActive(address, parentAddressType);
-            } else {
-                addressEntity = AddressEntity.create(address, addressType, entityId, entityTypeEnum, parentAddressType);
-            }
-        } else {
-            if (addressEntity != null) {
-                addressEntity.assignAddressAndMakeItActive(address, parentAddressType);
-            } else {
-                addressEntity = AddressEntity.create(address, addressType, entityId, entityTypeEnum, parentAddressType);
-            }
-        }
+		if (i == 0) {
+			if (addressEntity != null) {
+				addressEntity.assignAddressAndMakeItActive(address, parentAddressType);
+			} else {
+				addressEntity = AddressEntity.create(address, addressType, entityId, entityTypeEnum, parentAddressType);
+			}
+		} else {
+			if (addressEntity != null) {
+				addressEntity.assignAddressAndMakeItActive(address, parentAddressType);
+			} else {
+				addressEntity = AddressEntity.create(address, addressType, entityId, entityTypeEnum, parentAddressType);
+			}
+		}
         if (addressEntity != null) {
             addressEntities.add(addressEntity);
         } else {
