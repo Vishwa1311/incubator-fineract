@@ -16,30 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.infrastructure.sms.service;
+package org.apache.fineract.infrastructure.sms.scheduler;
 
 import java.util.Collection;
-import java.util.Date;
-import java.util.List;
 
-import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.sms.data.SmsData;
+import org.apache.fineract.infrastructure.sms.data.TenantSmsConfiguration;
 
-public interface SmsReadPlatformService {
+/**
+ * Scheduled Job service interface for SMS message
+ **/
+public interface SmsMessageScheduledJobService {
 
-    Collection<SmsData> retrieveAll();
+    /**
+     * sends a batch of SMS messages to the SMS gateway
+     **/
+    public void sendMessages();
 
-    SmsData retrieveOne(Long resourceId);
-    
-    Collection<SmsData> retrieveAllPending(Integer limit);
-    
-    Collection<SmsData> retrieveAllSent(Integer limit);
-    
-    Collection<SmsData> retrieveAllDelivered(Integer limit);
-    
-    Collection<SmsData> retrieveAllFailed(Integer limit);
+    /**
+     * get delivery report from the SMS gateway
+     **/
+    public void getDeliveryReports();
 
-    Page<SmsData> retrieveSmsByStatus(Integer limit,Integer status,Date dateFrom,Date dateTo, String dateFormat);
+    public TenantSmsConfiguration getTenantSmsConfiguration();
     
-    List<Long> retrieveExternalIdsOfAllSent(Integer limit);
+    public void sendMessagesProcess(final TenantSmsConfiguration tenantSmsConfiguration, final Collection<SmsData> pendingMessages);
 }

@@ -957,11 +957,15 @@ public final class Client extends AbstractPersistable<Long> {
 
     }
 
-	public Integer getLegalForm() {
-		return legalForm;
-	}
+    public Integer getLegalForm() {
+        return legalForm;
+    }
 
-	public void setLegalForm(Integer legalForm) {
-		this.legalForm = legalForm;
-	}
+    public void setLegalForm(Integer legalForm) {
+        this.legalForm = legalForm;
+    }
+
+    public String getMobileNo() {
+        return this.mobileNo;
+    }
 }

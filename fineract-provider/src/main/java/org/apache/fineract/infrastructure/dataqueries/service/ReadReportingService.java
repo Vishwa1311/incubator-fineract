@@ -44,4 +44,6 @@ public interface ReadReportingService {
     ReportData retrieveReport(final Long id);
 
     Collection<String> getAllowedReportTypes();
+    
+    public GenericResultsetData retrieveGenericResultSetForSmsCampaign(final String name, final String type, final Map<String, String> queryParams);
 }

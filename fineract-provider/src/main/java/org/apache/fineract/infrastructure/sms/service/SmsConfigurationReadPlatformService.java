@@ -19,27 +19,12 @@
 package org.apache.fineract.infrastructure.sms.service;
 
 import java.util.Collection;
-import java.util.Date;
-import java.util.List;
 
-import org.apache.fineract.infrastructure.core.service.Page;
-import org.apache.fineract.infrastructure.sms.data.SmsData;
+import org.apache.fineract.infrastructure.sms.data.SmsConfigurationData;
 
-public interface SmsReadPlatformService {
-
-    Collection<SmsData> retrieveAll();
-
-    SmsData retrieveOne(Long resourceId);
-    
-    Collection<SmsData> retrieveAllPending(Integer limit);
-    
-    Collection<SmsData> retrieveAllSent(Integer limit);
-    
-    Collection<SmsData> retrieveAllDelivered(Integer limit);
-    
-    Collection<SmsData> retrieveAllFailed(Integer limit);
-
-    Page<SmsData> retrieveSmsByStatus(Integer limit,Integer status,Date dateFrom,Date dateTo, String dateFormat);
-    
-    List<Long> retrieveExternalIdsOfAllSent(Integer limit);
+public interface SmsConfigurationReadPlatformService {
+	
+	Collection<SmsConfigurationData> retrieveAll();
+	
+	SmsConfigurationData retrieveOne(String name);
 }

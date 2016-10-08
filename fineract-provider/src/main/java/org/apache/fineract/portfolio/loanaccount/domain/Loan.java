@@ -5866,4 +5866,16 @@ public class Loan extends AbstractPersistable<Long> {
         }
     }
     
+    public CodeValue getLoanPurpose() {
+        return this.loanPurpose;
+    }
+
+    
+    public Set<LoanOfficerAssignmentHistory> getLoanOfficerHistory() {
+        return this.loanOfficerHistory;
+    }
+    
+    public Staff loanOfficer(){
+        return this.loanOfficer;
+    }
 }
