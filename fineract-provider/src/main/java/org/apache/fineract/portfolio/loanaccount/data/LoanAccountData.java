@@ -35,6 +35,7 @@ import org.apache.fineract.portfolio.calendar.data.CalendarData;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
 import org.apache.fineract.portfolio.collateral.data.CollateralData;
 import org.apache.fineract.portfolio.collaterals.data.PledgeData;
+import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.floatingrates.data.InterestRatePeriodData;
 import org.apache.fineract.portfolio.fund.data.FundData;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
@@ -1536,4 +1537,38 @@ public class LoanAccountData {
         return BigDecimal.ZERO;
     }
 
+    public boolean isMonthlyRepaymentFrequencyType() {
+        return (this.repaymentFrequencyType.getId().intValue() == PeriodFrequencyType.MONTHS.getValue());
+    }
+
+    public boolean isLoanProductLinkedToFloatingRate() {
+        return this.isLoanProductLinkedToFloatingRate;
+    }
+
+    public LocalDate getDisbursementDate() {
+        return this.timeline.getDisbursementDate();
+    }
+
+    public boolean isFloatingInterestRate() {
+        return this.isFloatingInterestRate;
+    }
+
+    public BigDecimal getInterestRateDifferential() {
+        return this.interestRateDifferential;
+    }
+
+    /**
+     * Used to produce a {@link LoanAccountData} with only collateral options
+     * for now.
+     * 
+     * @return {@link LoanAccountData} object
+     */
+    public static LoanAccountData emptyTemplate() {
+        final Collection<CodeValueData> loanCollateralOptions = null;
+
+        return LoanAccountData.collateralTemplate(loanCollateralOptions);
+    }
+    public Long getLoanProductId() {
+        return loanProductId;
+    }
 }
