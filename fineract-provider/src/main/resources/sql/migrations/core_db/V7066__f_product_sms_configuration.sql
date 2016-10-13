@@ -9,7 +9,7 @@ CREATE TABLE `f_product_sms_configuration` (
 	`lastmodifiedby_id` BIGINT(20) NOT NULL,
 	`lastmodified_date` DATETIME NOT NULL,
 	PRIMARY KEY (`id`),
-	UNIQUE INDEX `UQ_f_prod_sms_config_loan_product` (`product_type`, `product_id`),
+	UNIQUE INDEX `UQ_f_prod_sms_config_product_type_product_id` (`product_type`, `product_id`),
 	INDEX `FK_f_prod_sms_config_createdby_id` (`createdby_id`),
 	INDEX `FK_f_prod_sms_config_lmb_id` (`lastmodifiedby_id`),
 	CONSTRAINT `FK_f_prod_sms_config_createdby_id` FOREIGN KEY (`createdby_id`) REFERENCES `m_appuser` (`id`),
