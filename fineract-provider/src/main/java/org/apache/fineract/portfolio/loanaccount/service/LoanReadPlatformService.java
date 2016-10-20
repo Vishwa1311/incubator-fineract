@@ -77,7 +77,7 @@ public interface LoanReadPlatformService {
 
     Collection<CalendarData> retrieveCalendars(Long groupId);
 
-    Page<LoanAccountData> retrieveAll(SearchParameters searchParameters);
+    Page<LoanAccountData> retrieveAll(SearchParameters searchParameters, boolean lookup);
 
     Collection<StaffData> retrieveAllowedLoanOfficers(Long selectedOfficeId, boolean staffInSelectedOfficeOnly);
 
@@ -126,5 +126,9 @@ public interface LoanReadPlatformService {
     LoanTransactionData retrieveRefundByCashTemplate(Long loanId);
     
     Collection<InterestRatePeriodData> retrieveLoanInterestRatePeriodData(Long loanId);
+
     Collection<Long> retrieveLoanIdsWithPendingIncomePostingTransactions();
+    
+    Collection<LoanAccountData> retrieveAllForTaskLookupBySearchParameters(SearchParameters searchParameters);
+	
 }
