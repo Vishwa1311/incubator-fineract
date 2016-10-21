@@ -288,4 +288,9 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
 	public boolean isWithDrawForSavingsIncludedInCollectionSheet() {
 		return this.globalConfigurationRepository.findOneByNameWithNotFoundDetection("savings_withdraw_included_in_collection_sheet").isEnabled();
 	}
+
+	@Override
+	public boolean isJlgLoansIncludedInIndividualCollectionSheet() {
+		return this.globalConfigurationRepository.findOneByNameWithNotFoundDetection("jlg_loans_included_in_individual_collection_sheet").isEnabled();
+	}
 }
