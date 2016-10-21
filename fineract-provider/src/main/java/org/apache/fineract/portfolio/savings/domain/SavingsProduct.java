@@ -590,7 +590,7 @@ public class SavingsProduct extends AbstractPersistable<Long> {
             this.daysToEscheat = newValue;
         }
         
-        if(!this.isDormancyTrackingActive){
+        if(this.isDormancyTrackingActive ==null || !this.isDormancyTrackingActive){
         	this.daysToInactive = null;
         	this.daysToDormancy = null;
         	this.daysToEscheat = null;
