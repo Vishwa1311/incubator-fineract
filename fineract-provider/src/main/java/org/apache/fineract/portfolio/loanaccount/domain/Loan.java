@@ -2356,7 +2356,7 @@ public class Loan extends AbstractPersistable<Long> {
             }
             isEmiAmountChanged = true;
         }
-        if (rescheduledRepaymentDate != null && this.loanProduct.isMultiDisburseLoan()) {
+        if (rescheduledRepaymentDate != null) {
             final boolean isSpecificToInstallment = false;
             LoanTermVariations loanVariationTerms = new LoanTermVariations(LoanTermVariationType.DUE_DATE.getValue(),
                     nextPossibleRepaymentDate.toDate(), emiAmount, rescheduledRepaymentDate, isSpecificToInstallment, this,
@@ -5690,19 +5690,31 @@ public class Loan extends AbstractPersistable<Long> {
     public LocalDate getNextPossibleRepaymentDateForRescheduling() {
         Set<LoanDisbursementDetails> loanDisbursementDetails = this.disbursementDetails;
         LocalDate nextRepaymentDate = new LocalDate();
-        for (LoanDisbursementDetails loanDisbursementDetail : loanDisbursementDetails) {
-            if (loanDisbursementDetail.actualDisbursementDate() == null) {
+        if(this.isMultiDisburmentLoan()){
+            for (LoanDisbursementDetails loanDisbursementDetail : loanDisbursementDetails) {
+                if (loanDisbursementDetail.actualDisbursementDate() == null) {
+                    for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
+                        if (installment.getDueDate().isEqual(loanDisbursementDetail.expectedDisbursementDateAsLocalDate())
+                                || installment.getDueDate().isAfter(loanDisbursementDetail.expectedDisbursementDateAsLocalDate())
+                                && installment.isNotFullyPaidOff()) {
+                            nextRepaymentDate = installment.getDueDate();
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }else {
                 for (final LoanRepaymentScheduleInstallment installment : this.repaymentScheduleInstallments) {
-                    if (installment.getDueDate().isEqual(loanDisbursementDetail.expectedDisbursementDateAsLocalDate())
-                            || installment.getDueDate().isAfter(loanDisbursementDetail.expectedDisbursementDateAsLocalDate())
+                    if (installment.getDueDate().isEqual(this.getExpectedDisbursedOnLocalDate())
+                            || installment.getDueDate().isAfter(this.getExpectedDisbursedOnLocalDate())
                             && installment.isNotFullyPaidOff()) {
                         nextRepaymentDate = installment.getDueDate();
                         break;
                     }
                 }
-                break;
-            }
         }
+           
         return nextRepaymentDate;
     }
     
